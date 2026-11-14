@@ -1,0 +1,45 @@
+# Builds the addon zip with the BigWigs packager.
+# - Tag vX.Y.Z and push it: tests run, then the zip goes to CurseForge (needs the CF_API_KEY secret).
+# - "Run workflow" by hand (Actions tab): a dry run. Tests run and the zip is built and kept as a
+#   download on the run page; nothing is uploaded.
+name: Package
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Offline tests
+        run: |
+          pip install lupa
+          python tests/run.py
+
+      - name: Package (dry run, no upload)
+        if: github.event_name == 'workflow_dispatch'
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -d
+
+      - name: Package and upload to CurseForge
+        if: github.event_name == 'push'
+        uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YeahNahMate-zip
+          path: .release/*.zip
+          include-hidden-files: true      # .release starts with a dot

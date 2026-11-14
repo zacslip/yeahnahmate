@@ -1,0 +1,222 @@
+# Changelog
+
+## 0.17.0
+
+- **Proximity voice** (new, off until you tick it): hear guildies louder the closer they are, in Blizzard's own guild voice chat. The addon turns each guildie's volume up and down by how far away they are; Blizzard carries the voice.
+  - A speaker tab on the left of the window, next to the banner. Click it to slide the voice panel out; right-click to turn Proximity on or off. Its colour shows the state: grey off, red can't start (it says why), gold not in guild voice yet (with a Join guild voice button), green on, blue group voice.
+  - Settings in the panel: Range (Close, Normal, Far), Far away (Silent or Faint), Not on map (guildies the addon can't place: Normal or Quiet), Fade (Even or Natural), Full volume for my group.
+  - **Near you in voice**: who's in guild voice, nearest first, with distance, volume and who's talking. Click a name to always hear them at full volume.
+  - **Group voice**: in a party or raid, move to your group's own private voice chat. Guildies in the group with the addon get a pop-up to join (their own click); Back to guild voice returns you.
+  - Unticking Proximity keeps you in guild voice at normal volume; **Leave voice** takes you out.
+  - Your own volume for each guildie stays the top, mutes are never touched, and every volume goes back when you turn it off, leave guild voice or log out (or at the next login after a crash).
+  - Volumes glide (no jumps), and guildies' positions are guessed between updates. With Proximity on and a guildie in voice within 400 yards, your position goes every 3 seconds while you move.
+  - `/ynm voice` (on/off), `/ynm voice join | group | guild | leave`, and a key binding (Options > Keybindings > AddOns). The ? in the panel explains how to turn on voice chat and where it can get in the way.
+  - Everyone who wants proximity needs this version: guildies without it stay at normal volume.
+
+## 0.13.0
+
+- **One layout for Dungeons, Professions and Ask.** Each has a sidebar on the left: the main button at the top (Post a group, New request, Ask a question), the views under it with counts, then a box (your dungeon status, the Crafty Bugger, the Lore Master). The lists and forms are on the right.
+  - Professions: the profession list is now a menu at the top of the list ("All professions"). Under New request, Recipes, Requests and History are cards like the Dungeons tab's, each saying how things stand (recipes, open requests and how many you can make, finished and made). The Crafty Bugger is on the Legends tab.
+  - Dungeons: the sidebar is four cards. At the top, yours: whether you're available, and your group (where, and who's waiting to join; click to post one). Under a line, what's out there: open groups (how many, how many at your level) and available guildies (how many, and their roles). Click a card to open it on the right; the forms are two columns.
+  - Ask: under Ask a question, Open, Mine and Resolved are cards (how many open and how many have no answer yet; how many of yours and how many wait for you to mark; how many resolved). Under a line, the new question alert is a card too: click it to turn the alert on or off. The Lore Master is on the Legends tab.
+  - Professions: Ask on a recipe lets you pick who. With one crafter online it opens the whisper box for them; with more, the button says how many ("Ask (3)") and opens a list of who's online, highest skill first. Click one to open the whisper box.
+  - Professions: **request pop-ups are now opt in**, like the Ask alert. They're off for everyone after updating; the new Request alert card (under a line on the Professions tab) turns them on or off. Settings has the same switch.
+- **New Legends tab**: the guild's titles (Lore Master, Crafty Bugger), each with its holder, the top 10, your points and how it's earned. Click a title box on Ask or Professions to get there.
+- **New GM tab**, only for the guild master and the managers they name. The guild master can name managers (any rank). Managers can do what officers can (edit the guild info, take down questions, gather for events), get a shield next to their name, and see the tab. The "who can edit" ranks setting moved here from the Info tab.
+- Dungeons: when you post a group, your own role counts as at least 1 (a healer's group has at least 1 healer), on the form and in Your group.
+- Tabs: Calendar moved before Dungeons; each tab is as wide as its name so they all fit.
+
+## 0.12.0
+
+- **Crafty Bugger**: a new title for whoever makes the most craft requests. You get a point each time a guildie marks their request done with your name on it. The most points over the last 30 days (at least 3) makes you the Crafty Bugger, with a wrench next to your name everywhere in the addon. A new **Crafty Bugger** view on the Professions tab lists the top 10.
+  - If only one guildie said "I'll make it", Done names them by itself. If several did, Done first asks who made it: tick them, then Done again.
+  - History now shows who actually made each request.
+- **Your characters link up by themselves.** The addon knows which characters you've played on your WoW account. Each one tells the guild about the others, and they only count as one person when both characters say so, so nobody can claim someone else's character. Each character joins in the first time it logs in with this version.
+  - Answers and requests made on any of your characters count for you, and your Lore Master book and Crafty Bugger wrench show on all of them. Your own alts can't earn you points by answering or making your own requests.
+  - Guildies see "Alt of ..." (or your list of alts) in your tooltip.
+  - Settings > Your characters: pick your main, see which characters are linked, or untick "Link my characters in this guild" to keep them apart.
+- Settings: the memory line moved under the minimap button to make room.
+
+## 0.11.0
+
+- Officers can remove a question, or one guildie's posts on a question, for everyone with the addon. Open the question on the Ask tab: **Remove question** in the sidebar, or the **x** by someone's post. It asks first, and can't be undone.
+  - Officers are the ranks that can edit the guild info (the guild master chooses on the Info tab).
+  - Removed answers don't count towards the Lore Master, and a removed question's points go too.
+  - Someone whose posts were removed can't post on that question again.
+  - A removed question still counts towards its asker's 3 open questions until its 48 hours are up.
+- Rank markers on the Roster: a gold crown for the guild master, a silver one for the rank under them, and a shield for any other officer rank. A key under the list names your guild's ranks, and the tooltip shows it too.
+
+## 0.10.0
+
+- New **Ask** tab: ask the guild a question ("what level for Deadmines?") and anyone with the addon can answer.
+  - Open, Mine and Answered views, topic filters and a search box. Answered questions stay searchable for 30 days, and similar past questions show up while you type a new one.
+  - Link an item (drag it from your bags), a quest from your quest log, or a dungeon (shows its level range).
+  - A question takes answers for 48 hours. You get a pop-up for each answer and can reply. When it's sorted, click Mark resolved and tick the answers that helped (or none, if you worked it out yourself).
+  - The tab has a sidebar: a big Ask a question button, the views with how many are in each, the Lore Master and the alert tick. One Topic button and a search box sit over the cards.
+  - Up to 3 open questions each. A new switch in Settings > Pop-ups covers answers to your questions.
+  - **Lore Master**: you get a point each time an asker ticks your answer as one that helped. The most points over the last 30 days (at least 3) makes you the Lore Master, with a book next to your name everywhere in the addon. The Lore Master view on the Ask tab lists the top 10.
+  - **Alert me when someone asks a question** (tick it at the bottom of the Ask tab; off until you do): a small alert you can drag anywhere shows each new question for 15 seconds. Click it to open the card, right-click to close it. It waits until you're out of combat and out of dungeons, and makes no sound.
+  - Home shows how many questions are open (and yours waiting to be marked); click it for the Ask tab. The guild breakdown names the Lore Master.
+- Older versions of the addon simply don't see questions; everything else keeps working between versions.
+- Catching up at log-in now also notices an old copy of something a guildie changed while you were away (found while testing questions).
+- Fixes from a code review before release: guildies whose saved recipes were left out of Professions search at log-in now show up once the roster loads; a craft request finished over a week ago no longer makes guildies' addons keep asking for it; text with accented letters, curly apostrophes or emoji is no longer cut short; the small alert answers the first click after you drag it; a half-typed reply no longer follows you to another question; sim mode keeps everything about fake guildies on your screen.
+
+## 0.9.11
+
+- Professions: when a guildie's recipe list arrives or changes, only their recipes are updated instead of rebuilding the whole guild's list. No more hitch with the Professions tab open in a big guild.
+
+## 0.9.10
+
+- Map: a guildie's card on the world map no longer shows the distance (the minimap card still does).
+
+## 0.9.9
+
+- Guild breakdown: the professions chart now says plainly that it only counts what guildies with the addon have shared (the game doesn't show other players' professions). "Nobody has yet" was misleading and now reads "No addon user has shared yet".
+
+## 0.9.8
+
+- Roster: a search box. Type part of a name to find a guildie, online or offline, whichever filter is picked. Escape clears it.
+- Professions: the "Who can make..." list redraws faster in big guilds.
+
+## 0.9.7
+
+- Home: the "Guildies online" box now opens a **Guild breakdown** page with four charts: classes (bars in class colours), levels (your band in gold), professions (guildies with the addon, and crafts nobody has yet) and the guild at a glance (members, addon users, could tank/heal, highest level, ranks).
+- Switch between all members, those online now, and those on this week.
+
+## 0.9.6
+
+- Professions: a friendlier "Who can make..." list. Each recipe shows the item's icon, its name in the item's quality colour, and the real item tooltip on hover.
+- Recipes are grouped into sections (Bags, Potions and elixirs, Cloth armour, Weapons and shields, Enchants...) that open and close with a click. With nothing searched, you start with just the section list.
+- Filter buttons along the top: All, Bags, Armour, Weapons, Potions, Food, Enchants, Other.
+
+## 0.9.5
+
+- Professions: the tab now names any of your crafting professions it hasn't read yet ("Open your Tailoring window once...") in a gold box at the top of the tab, even when guildies' recipes fill the list. Before, the hint only showed while the list was empty.
+
+## 0.9.4
+
+- Fixed: a guildie in another zone or far away could stay stuck on your minimap. Minimap dots now only show guildies who are actually in range.
+
+## 0.9.3
+
+- The guild's own crest in the window banner, the welcome box and the pop-ups; the owl on the minimap button and in the AddOns list.
+- Calendar: a Raid roster button, coming soon (raid sign-ups, confirmed and bench, the raid's mix, groups).
+
+## 0.9.2
+
+- For testers: `/ynm dev wipe yes` clears everything the addon has saved and reloads, like a fresh install.
+
+## 0.9.1
+
+- Settings: the Privacy text was cut off; it now shows in full.
+
+## 0.9.0 (first Beta)
+
+First public test version. Map dots, roster, dungeon groups and "I'm available", guild calendar with
+Gather, professions with craft requests, guild info and streamers, all shared only within your guild.
+Thanks for testing! Please report anything odd in the comments (`/ynm errors` shows any errors).
+
+### Development history before the Beta
+
+- 0.8.10: craft requests: you can type how many you need (1 to 20) as well as using - and +.
+- 0.8.9: lighter on memory. In a big guild the addon was throwing away about 6 MB of memory a minute
+  (the game sweeps it up, so the memory figure in Settings rose and fell, up to 12 MB in a play test).
+  Now about a sixth of that: guild roster updates reuse what they already have, map dots only redraw
+  when they move, and the window redraws at most once a second for guildies moving about (clicks are
+  still instant).
+- 0.8.8: keeping everyone in step, found by a new test that runs six copies of the addon together.
+  When you log in, guildies already online catch up on anything you changed while they were away
+  (events, craft requests, guild info). Answers to your events given while you were offline now reach
+  you. A new craft request is no longer lost when an older one was finished while you were away.
+- 0.8.7: fixes from a third full code review. Changes made while you were offline now reach you:
+  cancelled or moved events, finished craft requests, changed answers and newer guild info. An
+  officer's older guild info can no longer roll back a newer one. A gathering stopped early no
+  longer pops up later. Long-running weekly events always get passed on to guildies who log in.
+- 0.8.6: Settings shows how much memory Yeah Nah Mate is using (checked when you open it). Ready for
+  a whole guild on the addon: when a guildie logs in, everyone tells them where they are directly
+  instead of telling the whole guild; when lots of guildies ask for your recipe list at once, it goes
+  to the guild once instead of to each of them.
+- 0.8.5: Settings has a switch for each kind of pop-up (new groups, sign-ups, craft requests,
+  someone making yours, gatherings, guildies going to your events, reminders). The gathering pop-up
+  can now be turned off too. If you had pop-ups off, they all stay off.
+- 0.8.4: the welcome page (and pop-ups) sit above the main window instead of mixing with it.
+- 0.8.3: fixes from a second full code review: cancelled weekly events stay cancelled; copies at login
+  are no longer cut off; a gathering reaches guildies who log in before its event does; nobody can
+  claim or answer on someone else's behalf, and copies can't overrule the author; moving an event
+  keeps its answers; faster Requests list; the "going" pop-up names the right week; "I'm live now"
+  after 6 hours works first click.
+- 0.8.2: one welcome page on first run (what's shared, Yeah/Nah for your map dot and your
+  professions; reopen it from Settings). Faster Professions tab in big guilds. Home's fourth box shows
+  open craft requests; the banner says when a newer version is out; tidier footer.
+- 0.8.0: gathering. On the day of an event, its organiser (or an officer) clicks Gather: guildies who
+  said they're going get a pop-up to ask for an invite, and the organiser's Gather list shows who
+  asked, who's going and online, and who's in the group, with Invite, "Invite next" (one per click)
+  and "Make it a raid". Everyone who joins is moved onto the organiser's layer by the game. Home and
+  the event card show "Gathering now" with an Ask button.
+- 0.7.2: a History view on the Professions tab: the last 30 days of finished requests (done and who
+  made it, cancelled, or ran out, flagging anyone who said they'd make one that ran out). Filter by a
+  name to see that guildie's record, or by an item. "Who can make" is now called "Recipes".
+- 0.7.1: easier to say what you need in a request: suggestions from the guild's recipes as you type
+  (click one, or Enter for the first), drag an item from your bags onto the box, and a typed name that
+  matches a recipe exactly is linked to it.
+- 0.7.0: craft requests. Professions has a Requests view: ask the guild for something to be made
+  (Request on any recipe, or type it), how many, and a note. Crafters who know the recipe get a
+  pop-up and can say "I'll make it" so everyone knows it's taken; mark it Done when you've got it.
+- 0.6.4: the window is branded with the guild: a banner across the top with your faction's crest,
+  the guild's name big and gold, members / online / with the addon, and you and your rank. "Near my
+  level" is a fixed 3 levels (the setting is gone).
+- 0.6.3: "Who can edit" is one tidy control (< Officer and above >) so rank names always fit.
+- 0.6.2: the Discord invite sits right under the guild message at the top of Home.
+- 0.6.1: the guild Discord invite: officers set it with the guild info; everyone can copy it from
+  the Info tab and the bottom of Home.
+- 0.6.0: guild board. Officers can set a message for the top of everyone's Home tab and write a
+  longer Info page (new Info tab); the guild master chooses which ranks may edit. New Streamers tab:
+  post your Twitch name, when you stream and what, and mark yourself live; guildies can copy your
+  Twitch address. Home shows who's live.
+- 0.5.3: tank / healer / DPS counts are three clear rows ("Tanks  -  1  +") in the event form, the
+  post-a-group form and "Your group"; "My role" for the leader. Settings has one "Pop-ups and sounds"
+  section: pop-ups, reminders and sound switches, a choice of four sounds (with Test), and which of
+  the game's volume sliders the sound follows.
+- 0.5.2: "Mute answers" can be ticked when making or editing an event.
+- 0.5.1: your own Available card has a "Take me off the list" button; long dungeon lists wrap and
+  say "+N more" (hover the card for all of them); your own events have a Mute button for the
+  "X is going" pop-ups; lists that scroll show "1-2 of 4" with up/down buttons (calendar day,
+  open groups, available guildies, recipes).
+- 0.5.0 (Phase 5): guild calendar. Make events (title, time, kind, roles for dungeons, note, every
+  week), answer Going / Maybe / Can't with your role, see who's coming. A reminder 15 minutes before
+  events you're going to (switchable). Home shows what's next up. Times show in your own time zone.
+- 0.4.1: fixes from a full code review: the window could eat key presses if opened in combat after
+  closing it with Escape; the minimap button's border and glow were missing; recipe lists of offline
+  guildies fill in reliably in big guilds and can't be overwritten by a bad copy; fewer messages and
+  less work in big guilds.
+- 0.4.0 (Phase 4): guild dungeons. Post a group (dungeon, your role, who's needed, note); guildies sign
+  up as tank, healer or DPS and you invite them with one click. Mark yourself available (roles,
+  dungeons, how long, note) so guildies can whisper or invite you. Pop-ups for new groups at your
+  level, for your dungeons, and for sign-ups (switchable, with or without sound). Home shows how many
+  groups are open.
+- 0.3.1: the window can be closed in combat (X button and Escape); the whisper box and question
+  box X buttons fixed the same way.
+- 0.3.0 (Phase 3): guild professions. Your recipes are read when you open a profession window and
+  shared only if you say yes (asked once; change it in Settings). The Professions tab lists the
+  guild's professions and searches "who can make..."; Ask opens a whisper prefilled for the first
+  online crafter. Offline guildies' recipes stay searchable.
+- 0.2.2: clearer log wording when sharing is switched off.
+- 0.2.1: `/ynm log` reads in plain English ("sent my position to the guild", "position OFF"),
+  with a clear totals line at the end.
+- 0.2.0 (Phase 2): guildmates with the addon as class-coloured dots on the world map and minimap,
+  with a tooltip (level, zone, what they're up to, how far away). Your position is only shared if
+  you say yes (asked once; change it in Settings), never from inside dungeons. Roster has a Status
+  column (in a dungeon, group 3/5, in town, away). Home shows who's near you right now, closest first.
+  Settings: share position, show on world map / minimap, dot size. Roster sort resets on /reload.
+- 0.1.2: Roster columns sort when you click their titles (click again to reverse, a third time for the
+  usual order). Online guildies stay on top. Your choice is remembered.
+- 0.1.1: names fixed for Forever ("First Surname"): your own messages are recognised, whispers and
+  invites use the plain name, and longer names fit in the Roster and Home lists.
+- 0.1.0 (test build, Phase 1): the real window replaces the mock-up. Home and Roster tabs with your
+  real guild (filters: online, near my level, in my zone, everyone); who has the addon (a tick, and
+  their version); Whisper (our own small box: you press Send) and Invite buttons; minimap button;
+  Settings for the "near my level" range and the minimap button. Dungeons, Calendar and Professions
+  say what's coming. Test tools: `/ynm log`, `/ynm errors`, `/ynm dev sim on|off`, `/ynm dev probe`.
+
+- 0.0.1: project set up (libraries, offline tests, install script). Nothing usable in game yet;
+  the clickable mock-up lives in `mockup/`.

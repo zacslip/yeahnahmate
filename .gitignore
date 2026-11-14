@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.zip
+.release/
+tools/curseforge/screenshots/
+screenshots/
+tools/wow_path.txt

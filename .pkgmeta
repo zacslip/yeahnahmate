@@ -1,0 +1,25 @@
+# BigWigs packager (https://github.com/BigWigsMods/packager). The addon lives in YeahNahMate/ inside
+# the repo; the zip holds just that folder. The libraries are already in YeahNahMate/libs (no externals).
+package-as: YeahNahMate
+
+move-folders:
+  YeahNahMate/YeahNahMate: YeahNahMate
+
+ignore:
+  - tests
+  - tools
+  - PLAN.md
+  - CLAUDE.md
+  - README.md
+  - CONTRIBUTING.md
+  - docs
+  - .github
+  - .editorconfig
+  - .luacheckrc
+  - .gitattributes
+  - .gitignore
+  - YeahNahMate/Media/crestCut.xcf
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown

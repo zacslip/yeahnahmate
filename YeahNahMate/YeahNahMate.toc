@@ -1,0 +1,64 @@
+## Interface: 16001
+## Title: Yeah Nah Mate
+## Notes: Guild map, roster, dungeon finder, calendar, professions and proximity voice, shared only with your guildmates.
+## Author: zacslip
+## Version: 0.17.0
+## SavedVariables: YeahNahMateDB
+## IconTexture: Interface\AddOns\YeahNahMate\Media\crestmini
+## AddonCompartmentFunc: YeahNahMate_OnAddonCompartmentClick
+## X-License: MIT
+## X-Curse-Project-ID: 1795554
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\AceComm-3.0\ChatThrottleLib.lua
+libs\AceComm-3.0\AceComm-3.0.lua
+libs\AceSerializer-3.0\AceSerializer-3.0.lua
+libs\HereBeDragons\HereBeDragons-2.0.lua
+libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
+
+Strings.lua
+Core.lua
+Guild.lua
+Comm.lua
+Sync.lua
+Alts.lua
+Roster.lua
+Status.lua
+Map.lua
+Data\RecipeItems.lua
+Professions.lua
+Requests.lua
+Questions.lua
+Dungeons.lua
+Calendar.lua
+Gather.lua
+Board.lua
+Milestones.lua
+Breakdown.lua
+Sim.lua
+Probe.lua
+VoiceProbe.lua
+Voice.lua
+UI\Widgets.lua
+UI\Window.lua
+UI\Whisper.lua
+UI\Welcome.lua
+UI\Home.lua
+UI\Breakdown.lua
+UI\Roster.lua
+UI\Professions.lua
+UI\Ask.lua
+UI\Legends.lua
+UI\Dungeons.lua
+UI\Toast.lua
+UI\QAlert.lua
+UI\Gather.lua
+UI\Calendar.lua
+UI\Streamers.lua
+UI\Info.lua
+UI\GMMilestones.lua
+UI\GM.lua
+UI\Settings.lua
+UI\Voice.lua
+UI\Minimap.lua
