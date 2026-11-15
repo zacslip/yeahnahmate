@@ -38,7 +38,7 @@ Board.LIVE_FOR = 6 * 3600       -- "live now" switches itself off after 6 hours
 Board.MAX_MANAGERS = 20
 local ASK_WINDOW = 300
 
-local function Clean(s, max) return type(s) == "string" and s:gsub("|", ""):gsub("\r", ""):sub(1, max) or "" end
+local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub("|", ""):gsub("\r", "")), max) or "" end
 local function OneLine(s, max) return Clean(s, max):gsub("\n", " ") end
 local Future = ns.Future
 

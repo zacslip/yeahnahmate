@@ -204,8 +204,7 @@ local function Build()
     -- with other addons' windows open, parts of ours drew over theirs and parts under
     -- (windows in the same strata mix by frame level). A top-level window lifts itself and
     -- everything in it above the others when it's clicked or opened, so it's never half-covered.
-    frame:SetToplevel(true)
-    frame:HookScript("OnShow", function(self) self:Raise() end)
+    frame:SetToplevel(true)             -- (opening it raises it too: the OnShow below)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -244,6 +243,7 @@ local function Build()
         end)
     end)
     frame:SetScript("OnShow", function(self)
+        self:Raise()
         if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
         ns.Guild.Request()
         UI.Select(current)
@@ -286,7 +286,7 @@ local function Build()
     foot = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     foot:SetPoint("BOTTOMLEFT", 14, 10)
 
-    -- The voice drawer on the right edge (UI/Voice.lua).
+    -- The voice drawer on the left edge (UI/Voice.lua).
     if UI.BuildVoiceDrawer then UI.BuildVoiceDrawer(frame) end
 end
 

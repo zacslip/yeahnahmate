@@ -31,11 +31,14 @@ local function Send()
         ns.Print(L.WHISPER_LOCKED)
         return
     end
-    text = text:sub(1, 255)
-    if C_ChatInfo and C_ChatInfo.SendChatMessage then
-        C_ChatInfo.SendChatMessage(text, "WHISPER", nil, target.name)
-    elseif SendChatMessage then
-        SendChatMessage(text, "WHISPER", nil, target.name)
+    text = ns.CutBytes(text, 255)
+    local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    if not send then return end
+    -- If the game refuses it, say so and keep the box open with the text, rather than a Lua error.
+    local ok, err = pcall(send, text, "WHISPER", nil, target.name)
+    if not ok then
+        ns.Print(string.format(L.WHISPER_FAILED, tostring(err)))
+        return
     end
     box:Hide()
 end

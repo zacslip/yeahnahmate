@@ -200,6 +200,20 @@ function ns.CutLetters(s, max)
     end
     return s:sub(1, stop)
 end
+-- At most max bytes, never half a letter. For limits counted in bytes (chat lines are 255 bytes;
+-- the saved limits on titles and notes): s:sub(1, max) can cut an accented letter or an emoji in
+-- two, and the game refuses a chat line that ends in half a letter.
+function ns.CutBytes(s, max)
+    if #s <= max then return s end
+    local stop = max
+    -- The first byte left out: if it's the middle of a letter (10xxxxxx), leave that whole letter out.
+    while stop > 0 do
+        local b = s:byte(stop + 1)
+        if b < 128 or b >= 192 then break end
+        stop = stop - 1
+    end
+    return s:sub(1, stop)
+end
 -- Shortened to max letters with "..." when it's longer.
 function ns.ShortText(s, max)
     if ns.Letters(s) <= max then return s end

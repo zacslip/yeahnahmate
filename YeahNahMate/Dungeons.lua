@@ -102,7 +102,7 @@ function D.AtMyLevel(key)
     return me >= d.min - 2 and me <= d.max
 end
 
-local function Clean(s, max) return type(s) == "string" and s:gsub("[|\n\r]", ""):sub(1, max) or "" end
+local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub("[|\n\r]", "")), max) or "" end
 local function Count(n, max) n = tonumber(n); if not n then return 0 end return math.max(0, math.min(max, math.floor(n))) end
 local function RoleSet(s)
     local r = {}

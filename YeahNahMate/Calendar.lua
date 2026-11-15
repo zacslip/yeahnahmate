@@ -41,7 +41,7 @@ local ASK_WINDOW = 300
 Cal.KINDS = { d = true, l = true, s = true, o = true }
 Cal.ANSWERS = { y = true, m = true, n = true }
 
-local function Clean(s, max) return type(s) == "string" and s:gsub("[|\n\r]", ""):sub(1, max) or "" end
+local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub("[|\n\r]", "")), max) or "" end
 local function Count(n, max) n = tonumber(n); if not n then return 0 end return math.max(0, math.min(max, math.floor(n))) end
 local Future = ns.Future
 

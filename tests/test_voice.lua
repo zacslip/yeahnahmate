@@ -1,5 +1,5 @@
--- The voice drawer: a speaker tab on the main window's right edge slides a panel out
--- and back. For now the panel only says "Coming soon".
+-- The voice drawer: a speaker tab on the main window's left edge slides a panel out and back, with
+-- the voice state, the settings and who's near you in voice.
 YeahNahMateDB = nil
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
 LOGGED_IN = true

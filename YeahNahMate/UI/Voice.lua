@@ -158,6 +158,7 @@ function UI.VoiceRefresh()
         end
     end
     panel.groupCheck:SetChecked(s.voiceGroupFull ~= false)
+    panel.popCheck:SetChecked(s.pop.voice ~= false)
     tab.state, tab.line, tab.talking = state, line, talking
     UI.VoiceList()
 end
@@ -277,13 +278,17 @@ function UI.BuildVoiceDrawer(frame)
     panel.groupCheck = UI.Check(body, L.VOICE_GROUP_FULL, PAD - 4, -110, s.voiceGroupFull ~= false,
         function(v) s.voiceGroupFull = v; ns.Fire("SETTINGS") end)
     Hover(panel.groupCheck, L.VOICE_GROUP_TIP)
+    -- The pop-up a guildie's Group voice button sends (settings.pop.voice; Settings has no room for it).
+    panel.popCheck = UI.Check(body, L.VOICE_POP_LABEL, PAD - 4, -132, s.pop.voice ~= false,
+        function(v) s.pop.voice = v; ns.Fire("SETTINGS") end)
+    Hover(panel.popCheck, L.VOICE_POP_TIP)
 
     -- Near you in voice. Click a name to always hear them (like ForeverVoice and WakVoice).
-    UI.Header(body, L.VOICE_NEAR, PAD, -142, WIDTH - 2 * PAD)
+    UI.Header(body, L.VOICE_NEAR, PAD, -164, WIDTH - 2 * PAD)
     panel.rows = {}
     for i = 1, ROWS do
         local row = CreateFrame("Button", nil, body)
-        row:SetPoint("TOPLEFT", PAD, -164 - (i - 1) * ROW_H)
+        row:SetPoint("TOPLEFT", PAD, -186 - (i - 1) * ROW_H)
         row:SetSize(WIDTH - 2 * PAD, ROW_H)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row:SetScript("OnClick", function(self)
@@ -315,8 +320,8 @@ function UI.BuildVoiceDrawer(frame)
         row:Hide()
         panel.rows[i] = row
     end
-    panel.more = UI.Text(body, "", "GameFontDisableSmall", PAD, -166 - ROWS * ROW_H)
-    panel.empty = UI.Text(body, L.VOICE_NOBODY, "GameFontDisableSmall", PAD, -166, WIDTH - 2 * PAD)
+    panel.more = UI.Text(body, "", "GameFontDisableSmall", PAD, -188 - ROWS * ROW_H)
+    panel.empty = UI.Text(body, L.VOICE_NOBODY, "GameFontDisableSmall", PAD, -188, WIDTH - 2 * PAD)
     panel.empty:SetWordWrap(true)
     panel.empty:Hide()
 

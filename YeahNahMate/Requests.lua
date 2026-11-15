@@ -43,7 +43,7 @@ local MAX_COPIES = 100
 local MAX_MAKERS = 5
 R.BUGGER_MIN = 3
 
-local function Clean(s, max) return type(s) == "string" and s:gsub("[|\n\r]", ""):sub(1, max) or "" end
+local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub("[|\n\r]", "")), max) or "" end
 local Future = ns.Future
 
 function R.Store()

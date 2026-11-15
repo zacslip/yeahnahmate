@@ -43,7 +43,7 @@ local IS_TITLE = { any = true, lore = true, crafty = true }
 
 local Board = ns.Board
 
-local function Clean(s, max) return type(s) == "string" and s:gsub("|", ""):gsub("[\r\n]", " "):sub(1, max) or "" end
+local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub("|", ""):gsub("[\r\n]", " ")), max) or "" end
 
 function MS.Store()
     local b = Board.Store()
@@ -382,7 +382,7 @@ function MS.Fire(card, details, test, key)
     if key == nil then key = card.id end
     if not test and key and c.msDone[key] then return "done already" end
     local filled = MS.Fill(card.m, MyDetails(details))
-    local line = (MS.TAG .. filled):sub(1, CHAT_MAX)
+    local line = ns.CutBytes(MS.TAG .. filled, CHAT_MAX)
     local did = {}
     if not test and key then c.msDone[key] = GetServerTime() end
     if card.gc then
@@ -400,7 +400,7 @@ function MS.Fire(card, details, test, key)
         end
     end
     if card.pu then
-        if test ~= "dry" then ns.Comm.Send({ t = "MSF", m = Plain(filled):sub(1, MS.MAX_MSG) }, "GUILD") end
+        if test ~= "dry" then ns.Comm.Send({ t = "MSF", m = ns.CutBytes(Plain(filled), MS.MAX_MSG) }, "GUILD") end
         MS.ShowPop(ns.me, Plain(filled))
         did[#did + 1] = "pop-up"
     end
@@ -699,7 +699,7 @@ function MS.PostWelcome(newName, test)
     local w = MS.Welcome()
     local key = ns.Key(newName) or newName
     local filled = MS.Fill(w.m, { name = newName:match("^%S+") or newName })
-    local line = (MS.TAG .. filled):sub(1, CHAT_MAX)
+    local line = ns.CutBytes(MS.TAG .. filled, CHAT_MAX)
     local did = {}
     if w.gc then
         local c = Char()
@@ -719,7 +719,7 @@ function MS.PostWelcome(newName, test)
         end
     end
     if w.pu then
-        if test ~= "dry" then ns.Comm.Send({ t = "MSF", m = filled:sub(1, MS.MAX_MSG) }, "GUILD") end
+        if test ~= "dry" then ns.Comm.Send({ t = "MSF", m = ns.CutBytes(filled, MS.MAX_MSG) }, "GUILD") end
         MS.ShowPop(ns.me, filled)
         did[#did + 1] = "pop-up"
     end

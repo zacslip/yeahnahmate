@@ -69,19 +69,23 @@ for _, f in ipairs(files) do
                 check(false, f .. " sends chat that isn't a whisper"); bad = bad + 1
             end
         end
+        -- The one send: pcall(send, text, "WHISPER", ...), from Send() (Enter or the Send button).
+        if select(2, code:gsub("pcall%(send, ", "")) ~= 1 or not code:find('pcall(send, text, "WHISPER"', 1, true) then
+            check(false, f .. " must send only as WHISPER through its one Send()"); bad = bad + 1
+        end
     elseif f:match("/Probe%.lua$") then
-        -- Phase 9 probe: /ynm dev msprobe chat posts one GUILD test line from a timer,
+        -- The milestones probe: /ynm dev msprobe chat posts one GUILD test line from a timer,
         -- only when the developer types it. Nothing else in the probe sends chat.
         local n = select(2, bare:gsub("SendChatMessage", ""))
         if n > 2 or not code:find('L.MSPROBE_CHAT_LINE, "GUILD"', 1, true) then
             check(false, f .. ": the probe may only send its one GUILD test line"); bad = bad + 1
         end
     elseif f:match("/Milestones%.lua$") then
-        -- Phase 9: milestone posts are the one no-click guild chat line. Only through
+        -- Milestone and welcome posts are the one no-click guild chat line. Only through
         -- Post(), only "GUILD", and every line starts with the [Yeah Nah Mate] tag (MS.Fire).
         local n = select(2, bare:gsub("SendChatMessage", ""))
         if n > 2 or not code:find('pcall(send, text, "GUILD")', 1, true) or select(2, code:gsub("Post%(line%)", "")) ~= 2
-            or select(2, code:gsub("local line = %(MS%.TAG %.%. filled%)", "")) ~= 2 then
+            or select(2, code:gsub("local line = ns%.CutBytes%(MS%.TAG %.%. filled, CHAT_MAX%)", "")) ~= 2 then
             check(false, f .. ": milestones may only post tagged GUILD lines through Post()"); bad = bad + 1
         end
     elseif bare:find("SendChatMessage", 1, true) then
