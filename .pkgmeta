@@ -10,13 +10,13 @@ ignore:
   - tools
   - README.md
   - CONTRIBUTING.md
+  - SECURITY.md
   - docs
   - .github
   - .editorconfig
   - .luacheckrc
   - .gitattributes
   - .gitignore
-  - YeahNahMate/Media/crestCut.xcf
 
 manual-changelog:
   filename: CHANGELOG.md

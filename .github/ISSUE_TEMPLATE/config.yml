@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions about using the addon
+    url: https://www.curseforge.com/projects/1795554
+    about: For "how do I..." questions, the comments on the CurseForge page are the best place.
+  - name: Security problem
+    url: https://github.com/zacslip/yeahnahmate/security/advisories/new
+    about: Please report security problems privately (see SECURITY.md).

@@ -28,17 +28,17 @@ jobs:
 
       - name: Package (dry run, no upload)
         if: github.event_name == 'workflow_dispatch'
-        uses: BigWigsMods/packager@v2
+        uses: BigWigsMods/packager@ac645e59158d7ad4ea4991bd62919ff50057d04f   # v2.7.0, pinned: this step sees the CurseForge key
         with:
           args: -d
 
       - name: Package and upload to CurseForge
         if: github.event_name == 'push'
-        uses: BigWigsMods/packager@v2
+        uses: BigWigsMods/packager@ac645e59158d7ad4ea4991bd62919ff50057d04f   # v2.7.0, pinned: this step sees the CurseForge key
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: YeahNahMate-zip
           path: .release/*.zip

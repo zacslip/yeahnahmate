@@ -94,4 +94,5 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 
 **Want to help build it?** The code is on [GitHub](https://github.com/zacslip/yeahnahmate); the [contributing guide](https://github.com/zacslip/yeahnahmate/blob/main/CONTRIBUTING.md) explains how to set up and send a change.
 
-Free and open source (MIT). Be decent, have a laugh, and work work.
+Built with help from Claude (Anthropic's AI), and tested in game by a real guild. Free and open source
+(MIT). Be decent, have a laugh, and work work.

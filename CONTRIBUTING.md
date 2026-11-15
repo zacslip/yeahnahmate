@@ -14,6 +14,11 @@ python tests/run.py              # every test (a minute or two)
 python tests/run.py voice board  # only tests whose file name contains one of the words
 ```
 
+The Tests workflow also runs [luacheck](https://github.com/lunarmodules/luacheck) (settings in
+`.luacheckrc`), which catches globals written by mistake and unused or shadowed names. To run it
+yourself you need Lua and LuaRocks: `luarocks install luacheck`, then `luacheck YeahNahMate`. If you
+don't have them, that's fine: the workflow runs it on your pull request and shows what it found.
+
 To try your change in the game, install from source (this also runs the tests first):
 
 ```
@@ -42,8 +47,10 @@ and the WoW Terms of Use:
 
 - **No automation.** Every invite, whisper, sign-up, trade or chat line is the player's own click or
   Enter. No auto-accept, no auto-invite, no auto-reply, nothing on a timer that plays the game for
-  them. The one deliberate exception is milestone posts in guild chat, which the guild's managers
-  switch on per card (`Milestones.lua`, tagged `[Yeah Nah Mate]`, rate-limited).
+  them. The one deliberate exception is milestone and welcome posts in guild chat, which the guild's
+  managers switch on per card (`Milestones.lua`, tagged `[Yeah Nah Mate]`, rate-limited). A welcome is
+  posted from an online officer's character; each player can stop the addon posting from theirs
+  with the Settings tick "Post milestones & welcomes from my character".
 - **No workarounds.** If the game blocks something (protected functions, hardware-event
   requirements, layer detection through GUIDs, secret values), the feature is dropped.
 - **Free and readable.** Plain Lua: no obfuscation, no minifying, no encoded blobs, no paid features.
@@ -100,6 +107,14 @@ to your change and copy its shape. Tests use made-up names only.
 (log in and out, events, requests, questions, milestones) and checks everyone ends up agreeing. Any
 change to how data is shared between guildmates must keep it passing. `run.py` runs eight short
 sessions; `python tests/multi.py 100 360` is the long soak.
+
+## Using AI tools
+
+Most of this addon was written with Claude (Anthropic's AI) in Claude Code, and the maintainer keeps
+working that way: commits made with it end with a `Co-Authored-By: Claude` line. Contributions made
+with AI tools are welcome on the same terms as any other: you understand the change and can explain
+it, it keeps the rules above, it comes with a test, and you tried it. Just say in the pull request
+that you used one (there's a tick box for it).
 
 ## Making a change
 

@@ -27,6 +27,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Milestones.lua` | Milestone and welcome cards (`BRD` kinds `ms`, `wel`), posting them (`MSF`, `MSW`). |
 | `Voice.lua` | Proximity voice: guildies' voice volume by distance, on Blizzard's voice chat (`VGRP`). |
 | `Breakdown.lua` | The guild breakdown page's numbers. |
+| `Bindings.xml` | The key binding for proximity voice on/off (Options > Keybindings > AddOns). |
 | `Sim.lua`, `Probe.lua`, `VoiceProbe.lua` | Developer tools (`/ynm dev ...`), left out of the CurseForge build. |
 | `UI/*.lua` | The window, one file per tab, the minimap button, pop-ups (`Toast`), the whisper box. |
 | `libs/` | Third-party libraries, unchanged (`libs/LIBRARIES.md`). |
@@ -61,8 +62,9 @@ Each guildie's addon holds a copy of the shared things per guild (`YeahNahMateDB
   otherwise the newer version wins. `ns.Future` refuses versions from the future (an author's own get
   10 minutes of slack, copies one minute).
 - **Logging in.** A guildie who logs in says `HI` to the guild. Others whisper back their own things
-  (and a hello). A little later the newcomer asks **one** online guildie for copies of everything they
-  hold (`REQ`), so things whose authors are offline still arrive. Copies are only accepted by whisper,
+  (and a hello). Over the next minute the newcomer asks one random online guildie for each kind of
+  data (recipe lists, events, the board, alt links, requests, questions; not always the same
+  guildie) for copies of everything they hold (`REQ`), so things whose authors are offline still arrive. Copies are only accepted by whisper,
   from a guildie we asked in the last few minutes.
 - **Catching up (`Sync.lua`).** The log-in `HI` carries, for each kind, the newest version, how many
   changed in the last 30 days and a checksum of those versions. Anyone already online who is behind
@@ -88,10 +90,17 @@ For the guild-wide settings (guild info, managers, moderator ranks), where the n
 whoever wrote it, it could hand out a fake managers list to the guildies who ask it for copies.
 
 What limits it: copies are only taken by whisper from a guildie we asked (one random online guildie
-at log-in), a copy can't run more than a minute ahead of the clock, and the next real change by the
+per kind of data at log-in), a copy can't run more than a minute ahead of the clock, and the next real change by the
 guild master or a manager replaces it for everyone. It takes someone in the guild running a modified
 addon on purpose. Fixing it properly would need signed messages, which WoW's addon API doesn't make
 practical.
+
+### Known limit: weekly events and daylight saving
+
+A weekly event happens every 7 x 24 hours after its first start, so every guildie's addon agrees on
+the exact moment of each week (answers are matched to that moment). Where clocks change for
+daylight saving, it shows an hour earlier or later in local time until they change back. Keeping it
+at the same local time instead would make players in different time zones disagree on the moment.
 
 ## Saved data
 

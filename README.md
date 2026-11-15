@@ -28,6 +28,13 @@ professions are shared, and can turn it off any time.
 |---|---|
 | ![Dungeons tab](docs/images/dungeons.jpg) | ![Voice panel](docs/images/voice.jpg) |
 
+## How it's made
+
+Yeah Nah Mate is designed, tested and run by zacslip for a real guild. Most of the code was written
+with Claude (Anthropic's AI) in [Claude Code](https://claude.com/claude-code); commits made that way
+end with a `Co-Authored-By: Claude` line. Every change is checked by the offline tests and in game
+before it's released.
+
 ## Contributing
 
 Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setting

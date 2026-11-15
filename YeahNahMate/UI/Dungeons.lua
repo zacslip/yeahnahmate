@@ -489,7 +489,7 @@ local function RefreshMyGroup(f)
     f.left:SetText(string.format(L.ENDS_IN, Duration(g.u - GetServerTime())))
     f.roles.Refresh()
     local shown = D.groups[ns.me .. ":" .. g.id]
-    if shown then f.inGroup:SetText(L.IN_GROUP_NOW .. " " .. RoleSlots(shown)) end
+    f.inGroup:SetText(shown and (L.IN_GROUP_NOW .. " " .. RoleSlots(shown)) or "")
     local apps = D.Applicants()
     f.noApps:SetShown(#apps == 0)
     for i, r in ipairs(f.apps) do

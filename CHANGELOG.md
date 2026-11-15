@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.17.2
+
+Fixes from a review of the whole addon before opening it up to contributors:
+
+- **Group voice pop-ups can be switched off**: a new tick in the voice panel ("Group voice pop-ups").
+- **Settings: the guild chat switch now says what it covers**: "Post milestones & welcomes from my character". Untick it and the addon never posts in guild chat from your character, including the welcome for new members (another officer posts it instead).
+- **Cancelling your own calendar event asks first** (click Remove twice), so a mis-click can't cancel it for the whole guild.
+- **Craft requests: up to five "who made it" ticks** when marking one done (was three), so everyone who helped can get their Crafty Bugger point.
+- **Accented letters and emoji are never cut in half** at the end of a long milestone, welcome or whisper (the game refuses a chat line that ends in half a letter), or in event titles, notes, guild info and streamer cards.
+- If the game refuses a whisper, the whisper box says so and keeps your text instead of showing an error.
+- The window comes to the front when you open it, even with other addons' windows open.
+- The two first-time questions (share your position? your professions?) now show when you join a guild, not only at the next login.
+- New request opens empty after a cancelled one; clicking Post twice on Ask no longer shows an error.
+- Players' copies no longer include the developer test tools (they only listened, but there's no reason for them to run).
+
 ## 0.17.1
 
 - Behind the scenes: if one part of the addon hits an error on a guildie's message, the other parts still get it (before, one error could stop the rest, e.g. a recipe list not arriving).

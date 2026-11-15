@@ -1,5 +1,5 @@
 -- Roster data for the UI: the game's guild roster joined with who has the addon (Comm.users).
--- Later phases add status and position from addon messages here.
+-- Status (Status.lua) and distance (Map.lua) from addon messages are added on top.
 local ADDON, ns = ...
 
 local Roster = {}

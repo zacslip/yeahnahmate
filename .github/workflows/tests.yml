@@ -5,7 +5,7 @@ name: Tests
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]          # pull requests are checked below (from forks and branches alike)
   pull_request:
 
 permissions:
@@ -32,6 +32,6 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: luacheck
-        uses: lunarmodules/luacheck@v1.2.0
+        uses: lunarmodules/luacheck@cc089e3f65acdd1ef8716cc73a3eca24a6b845e4   # v1.2.0
         with:
           args: YeahNahMate
