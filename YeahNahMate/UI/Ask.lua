@@ -516,6 +516,7 @@ local function BuildForm(p)
         f.already[i] = r
     end
     f.post = Button(f, L.Q_POST, 130, 0, -244, function()
+        if not p.form then return end       -- a second click before the redraw (it's posted already)
         local key, why = ns.Questions.Ask(f.text:GetText() or "", p.form.topic, p.form.links)
         if key then
             p.form = nil

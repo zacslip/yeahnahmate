@@ -535,6 +535,7 @@ local function CheckRiding()
 end
 
 -- Legendary items: my own loot lines with an orange (legendary) item link. Once per item per card.
+local lootPats
 local function LootPatterns()
     local list = {}
     for _, g in ipairs({ LOOT_ITEM_SELF or "You receive loot: %s", LOOT_ITEM_PUSHED_SELF or "You receive item: %s" }) do
@@ -602,7 +603,8 @@ local learnedStart = type(ERR_LEARN_SPELL_S) == "string" and ERR_LEARN_SPELL_S:m
 watch:SetScript("OnEvent", function(_, event, text)
     if event == "CHAT_MSG_LOOT" then
         if type(text) ~= "string" or Secret(text) then return end
-        for _, pat in ipairs(LootPatterns()) do
+        lootPats = lootPats or LootPatterns()     -- built once
+        for _, pat in ipairs(lootPats) do
             -- Just the link: the line can end with a stack count ("[item]x2").
             local rest = text:match(pat)
             local link = rest and rest:match("(|c%x+|Hitem:.-|h|r)")
@@ -648,6 +650,7 @@ ns.Listen("REQUESTS", function() if holds then ns.Safe(CheckTitles) end end)
 MS.MAX_WELCOMES_HOUR = 10
 local WELCOME_AGAIN = 24 * 3600
 
+local joinPat
 local function JoinPattern()
     local s = type(ERR_GUILD_JOIN_S) == "string" and ERR_GUILD_JOIN_S or "%s has joined the guild."
     s = s:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
@@ -762,6 +765,7 @@ local join = CreateFrame("Frame")
 join:RegisterEvent("CHAT_MSG_SYSTEM")
 join:SetScript("OnEvent", function(_, _, text)
     if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return end
-    local name = text:match(JoinPattern())
+    joinPat = joinPat or JoinPattern()      -- built once
+    local name = text:match(joinPat)
     if name then ns.Safe(MS.OnJoin, name) end
 end)

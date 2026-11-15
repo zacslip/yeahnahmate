@@ -59,7 +59,7 @@ end
 local function BuildSide(p)
     p.newBtn = Button(p, L.NEW_REQUEST, UI.SIDE_W, 0, 0, function()
         p.pickView(2)
-        p.form = { item = "" }
+        p.OpenForm({ item = "" })
     end, 34)
     if p.newBtn.SetNormalFontObject and GameFontNormalLarge then p.newBtn:SetNormalFontObject(GameFontNormalLarge) end
     -- The views as cards (like the Dungeons tab). The Crafty Bugger lives on the Legends tab.
@@ -193,7 +193,7 @@ local function BuildWho(p)
         r.title = Text(r, "", "GameFontNormal", 30, -8, 500)
         -- Request: post it for any crafter. Ask: whisper the first online crafter.
         r.request = Button(r, L.REQUEST, 62, 426, -4, function()
-            if r.rid then p.pickView(2); p.form = { rid = r.rid, item = r.recipe } end
+            if r.rid then p.pickView(2); p.OpenForm({ rid = r.rid, item = r.recipe }) end
         end, 22)
         -- Ask (let people pick who): one crafter online goes straight to the whisper box; more
         -- opens a list of them (highest skill first) to pick from.
@@ -324,13 +324,14 @@ local function BuildRequests(p)
             if p.picking and p.picking.key == c.key then p.picking = nil; UI.Dirty(); return end
             ns.Requests.Finish(c.key, "cancel")
         end, 20)
+        -- One tick per guildie on it, up to five (the most a request can credit, Requests.lua).
         c.makers = {}
-        for j = 1, 3 do
-            local box, label = UI.Check(c, "", 6 + (j - 1) * 110, -36, false, function(on)
+        for j = 1, 5 do
+            local box, label = UI.Check(c, "", 6 + (j - 1) * 78, -36, false, function(on)
                 local pick, name = p.picking, c.makers[j].name
                 if pick and name then pick.mk[name] = on or nil end
             end)
-            label:SetWidth(80)
+            label:SetWidth(48)
             label:SetWordWrap(false)
             label:SetJustifyH("LEFT")
             c.makers[j] = { box = box, label = label }
@@ -360,6 +361,13 @@ local function BuildRequests(p)
     f:SetAllPoints()
     f:Hide()
     p.formFrame = f
+    -- Opens it empty (a cancelled one's text doesn't come back), with the recipe if one was picked.
+    function p.OpenForm(form)
+        p.form = form
+        f.item:SetText(form.rid and "" or (form.item or ""))
+        f.note:SetText("")
+        UI.Dirty()
+    end
     Header(f, L.NEW_REQUEST, RX, -30, RW)
     Text(f, L.REQUEST_ITEM, "GameFontHighlightSmall", RX + 4, -58)
     f.item = CreateFrame("EditBox", nil, f, "InputBoxTemplate")

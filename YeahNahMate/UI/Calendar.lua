@@ -119,7 +119,12 @@ local function BuildDay(p)
             p.mode, p.editKey, p.formLoaded = "edit", b.key, false
             UI.Dirty()
         end, 18)
-        b.remove = Button(b, L.REMOVE, 48, 162, -24, function() ns.Calendar.Cancel(b.key) end, 18)
+        -- Cancelling my own event can't be undone (it's gone for the whole guild): click twice.
+        b.remove = Button(b, L.REMOVE, 48, 162, -24, function()
+            if b.sureOwn ~= b.key then b.sureOwn = b.key; UI.Dirty() return end
+            b.sureOwn = nil
+            ns.Calendar.Cancel(b.key)
+        end, 18)
         b.mute = Button(b, L.MUTE, 52, 212, -24, function() ns.Calendar.ToggleMute(b.key) end, 18)
         b.mute:SetScript("OnEnter", function(self)
             if not GameTooltip then return end
@@ -391,6 +396,8 @@ local function RefreshDetails(p, evs, past)
             end
             b.edit:SetShown(own and not over)
             b.remove:SetShown(own)
+            if b.sureOwn ~= b.key then b.sureOwn = nil end
+            b.remove:SetText(b.sureOwn and L.MS_SURE or L.REMOVE)
             local mod = not own and C.CanRemove()
             if b.sure ~= b.key then b.sure = nil end
             b.modRemove:SetShown(mod)

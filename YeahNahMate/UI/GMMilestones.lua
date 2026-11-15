@@ -218,7 +218,8 @@ local function BuildEditor(p, v)
         t.v = t.ty == "lvl" and tonumber(e.level:GetText()) or (t.ty == "prof" and tonumber(e.skill:GetText()) or nil)
         local card, why = MS.Save(t)
         if not card then
-            ns.Print(why == "full" and string.format(L.MS_FULL, MS.MAX_CARDS) or string.format(L.MS_BAD, MS.MAX_LEVEL))
+            ns.Print(why == "full" and string.format(L.MS_FULL, MS.MAX_CARDS) or why == "rank" and L.MS_NOT_MANAGER
+                or string.format(L.MS_BAD, MS.MAX_LEVEL))
             return
         end
         p.msEdit = nil
@@ -337,7 +338,7 @@ local function BuildWelcome(p, v)
             p.welT = nil
             UI.Dirty()
         else
-            ns.Print(string.format(L.MS_BAD, MS.MAX_LEVEL))
+            ns.Print(MS.CanEdit() and string.format(L.MS_BAD, MS.MAX_LEVEL) or L.MS_NOT_MANAGER)
         end
     end, 24)
 end

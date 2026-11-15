@@ -125,5 +125,9 @@ local function MaybeShow()
 end
 
 ns.Listen("LOGIN", function() C_Timer.After(8, function() ns.Safe(MaybeShow) end) end)
+-- Joining a guild during the session (installed while guildless): ask then, not at the next login.
+ns.OnEvent("PLAYER_GUILD_UPDATE", function()
+    if ns.me then C_Timer.After(5, function() ns.Safe(MaybeShow) end) end
+end)
 ns.OnEvent("PLAYER_REGEN_ENABLED", function() if waiting then ns.Safe(MaybeShow) end end)
 ns.Listen("ROSTER", function() if box and box:IsShown() then Refresh() end end)
