@@ -8,8 +8,6 @@ move-folders:
 ignore:
   - tests
   - tools
-  - PLAN.md
-  - CLAUDE.md
   - README.md
   - CONTRIBUTING.md
   - docs

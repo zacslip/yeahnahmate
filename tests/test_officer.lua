@@ -25,8 +25,8 @@ local UI = ns.UI
 local now = GetServerTime()
 
 -- Rank markers -----------------------------------------------------------------------------------
-local zac, bluey, chilli = ns.Guild.Get("Ned Jones"), ns.Guild.Get("Bluey Heeler"), ns.Guild.Get("Chilli Heeler")
-check(UI.RankIcon(zac) == UI.RANK_GM and UI.RankIcon(bluey) == UI.RANK_SECOND and UI.RankIcon(chilli) == nil,
+local ned, bluey, chilli = ns.Guild.Get("Ned Jones"), ns.Guild.Get("Bluey Heeler"), ns.Guild.Get("Chilli Heeler")
+check(UI.RankIcon(ned) == UI.RANK_GM and UI.RankIcon(bluey) == UI.RANK_SECOND and UI.RankIcon(chilli) == nil,
     "crown for the guild master, silver for the rank under, nothing for members")
 ns.UI.Open("roster")
 Tick(1)

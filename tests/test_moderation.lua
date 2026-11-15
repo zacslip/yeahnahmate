@@ -162,7 +162,7 @@ check(st["Bandit Heeler"].about == "Rogue things", "the owner's old card doesn't
 INJECT("YNM", Msg({ v = 1, t = "BRD", k = "strm", mo = "Bandit Heeler", tw = "hacked", ev = now + 5 }), "GUILD", "Chilli Heeler")
 Tick(1)
 check(st["Bandit Heeler"].tw == "bandit_plays", "a Member's change is dropped")
-B.SetStreamer("zac_streams", "Nights", "Shaman")
+B.SetStreamer("ned_streams", "Nights", "Shaman")
 INJECT("YNM", Msg({ v = 1, t = "BRD", k = "strm", mo = ns.me, x = true, ev = GetServerTime() + 1 }), "GUILD", "Bluey Heeler")
 Tick(1)
 check(B.Mine() == nil and Printed("Bluey Heeler removed your streamer card"), "my card removed by a moderator goes for me too")

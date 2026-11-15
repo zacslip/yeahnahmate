@@ -1,5 +1,5 @@
 -- Fake WoW API for testing Yeah Nah Mate outside the game (Lua 5.1, run through tests/run.py).
--- Grown from PixelBeacon's tests/wow_stub.lua. Differences that matter:
+-- Things that matter:
 --  * Frames behave like the real ones: an unknown method name (Capitalised) is a no-op, but an
 --    unknown field (lowercase, e.g. frame.sel) is nil, as in the game.
 --  * A game clock: Tick(seconds) advances GetTime/GetServerTime and runs OnUpdate scripts and
@@ -234,7 +234,7 @@ function UnitName(u)
     local k = i and FAKE.party[i]
     if k then return k:match("^(%S+)%s+(.+)$") end
 end
-function UnitGUID(u) if u == "player" then return "Player-6797-0000ZAC1" end end
+function UnitGUID(u) if u == "player" then return "Player-6797-0000NED1" end end
 function UnitFullName(u) if u == "player" then return PLAYER_NAME, PLAYER_SURNAME end end
 function UnitLevel(u) if u == "player" then return FAKE.level end return 1 end
 function UnitClass(u) if u == "player" then return "Shaman", FAKE.class, 7 end end
@@ -256,7 +256,7 @@ function GetGuildInfo(u) if u == "player" and FAKE.guild then return FAKE.guild,
 -- zone, note, officer note, online, status, class file. Names come with or without the realm.
 FAKE.roster = {
     -- (the 17th value is the GUID; the forms vary on purpose: plain, dashed, with the sub-realm)
-    { "Ned Jones",        "Guild Master", 0, 22, "Shaman",  "The Barrens", "", "", true,  0, "SHAMAN", 0, 0, false, false, 3, "Player-6797-0000ZAC1" },
+    { "Ned Jones",        "Guild Master", 0, 22, "Shaman",  "The Barrens", "", "", true,  0, "SHAMAN", 0, 0, false, false, 3, "Player-6797-0000NED1" },
     { "Bluey Heeler",    "Officer",      1, 23, "Warrior", "The Barrens", "tank", "", true, 0, "WARRIOR", 0, 0, false, false, 3, "Player-6797-00000001" },
     { "Bingo-Heeler",    "Member",       3, 20, "Priest",  "Durotar",     "", "", true,  1, "PRIEST", 0, 0, false, false, 3, "Player-6925-00000002" },
     { "Chilli Heeler-SERVER1Realm1PvE", "Member", 3, 40, "Mage", "Orgrimmar", "", "", true, 0, "MAGE", 0, 0, false, false, 3, "Player-6797-00000003" },

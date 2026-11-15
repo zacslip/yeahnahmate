@@ -8,7 +8,7 @@ local CLASSES = { "WARRIOR", "MAGE", "PRIEST", "ROGUE", "HUNTER", "SHAMAN", "WAR
 local ZONES = { "The Barrens", "Durotar", "Ashenvale", "Orgrimmar", "Stonetalon Mountains", "Hillsbrad Foothills" }
 local MAPS = { 1413, 1411, 1440, 1454, 1442, 1424 }
 local FIRST = { "Bluey", "Bingo", "Chilli", "Bandit", "Muffin", "Socks", "Rusty", "Calypso", "Lucky", "Indy" }
-FAKE.roster = { { "Ned Jones", "Guild Master", 0, 22, "Shaman", "The Barrens", "", "", true, 0, "SHAMAN", 0, 0, false, false, 3, "Player-6797-0000ZAC1" } }
+FAKE.roster = { { "Ned Jones", "Guild Master", 0, 22, "Shaman", "The Barrens", "", "", true, 0, "SHAMAN", 0, 0, false, false, 3, "Player-6797-0000NED1" } }
 for i = 1, 499 do
     FAKE.roster[#FAKE.roster + 1] = { FIRST[i % 10 + 1] .. " Member" .. i, i <= 5 and "Officer" or "Member", i <= 5 and 1 or 3,
         1 + (i * 7) % 60, "x", ZONES[i % 6 + 1], "", "", i <= 119, 0, CLASSES[i % 8 + 1] }

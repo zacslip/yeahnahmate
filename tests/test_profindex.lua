@@ -5,7 +5,7 @@ math.randomseed(11)
 YeahNahMateDB = nil
 local MEMBERS = 40
 local CLASSES = { "WARRIOR", "MAGE", "PRIEST", "ROGUE", "HUNTER", "SHAMAN", "WARLOCK", "DRUID" }
-FAKE.roster = { { "Ned Jones", "Guild Master", 0, 22, "Shaman", "The Barrens", "", "", true, 0, "SHAMAN", 0, 0, false, false, 3, "Player-6797-0000ZAC1" } }
+FAKE.roster = { { "Ned Jones", "Guild Master", 0, 22, "Shaman", "The Barrens", "", "", true, 0, "SHAMAN", 0, 0, false, false, 3, "Player-6797-0000NED1" } }
 local names = {}
 for i = 1, MEMBERS do
     names[i] = "Crafter Number" .. i

@@ -707,8 +707,8 @@ ns.devCommands.rank = function(arg)
     ns.Fire("CALENDAR"); ns.Fire("DUNGEONS"); ns.Fire("REQUESTS")
 end
 
--- The developer console: a separate addon on the author's PC only (never uploaded). It defines
--- YeahNahMateDev_Attach and asks for the addon's table through this command. For anyone without
+-- An optional developer add-on (not part of this addon or its download) can define
+-- YeahNahMateDev_Attach and get the addon's table through this command. For anyone without
 -- it, this only says so.
 ns.devCommands.console = function()
     local attach = _G.YeahNahMateDev_Attach

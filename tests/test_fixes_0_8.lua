@@ -118,7 +118,7 @@ Tick(1)
 check(seen == nextAt, "the pop-up is for the week answered")
 
 -- 10. "Go live" after the 6 hours ran out turns live back on (not off).
-B.SetStreamer("zac_slip", "", "")
+B.SetStreamer("ned_jones", "", "")
 B.SetLive(true)
 B.Mine().liveAt = GetServerTime() - 6 * 3600 - 10
 ns.UI.Open("streamers")

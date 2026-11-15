@@ -3,7 +3,7 @@
     python tests/run.py            all tests
     python tests/run.py libs ui    only tests whose name contains one of the words
 
-Exit code 0 when everything passes. No `lua` binary is needed (same approach as PixelBeacon).
+Exit code 0 when everything passes. No `lua` binary is needed.
 """
 import glob
 import os

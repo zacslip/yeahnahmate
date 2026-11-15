@@ -725,10 +725,10 @@ def simulate(seed, minutes):
     for name in ("Ned Jones", "Bluey Heeler", "Bingo Heeler"):
         w.login(name)
     w.run(SETTLE)
-    zac = w.online["Ned Jones"]
-    zac.ns.Board.SetManager("Bluey Heeler", True)       # the guild master names a manager
-    zac.ns.Milestones.SetWelcome(zac.lua.table_from({"m": "Welcome {name} 0", "on": True, "gc": True, "wr": 1}))
-    wel = zac.ns.Milestones.Store().wel
+    gm = w.online["Ned Jones"]
+    gm.ns.Board.SetManager("Bluey Heeler", True)       # the guild master names a manager
+    gm.ns.Milestones.SetWelcome(gm.lua.table_from({"m": "Welcome {name} 0", "on": True, "gc": True, "wr": 1}))
+    wel = gm.ns.Milestones.Store().wel
     w.record_slot("wel", None, {"v": wel.ev, "m": wel.m, "on": True, "wr": 1})
     w.run(10)
     end = minutes * 60

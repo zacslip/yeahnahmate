@@ -34,8 +34,8 @@ local FORBIDDEN = {
 local COMM_ONLY = { "SendAddonMessage", "SendCommMessage" }
 
 local files = {}
--- ../YeahNahMateDev: the author's private developer console (not in this repo); checked the same way
--- when it's there, skipped when it isn't.
+-- ../YeahNahMateDev: an optional developer add-on kept next to this repo (not part of it); checked the
+-- same way when it's there, skipped when it isn't.
 for _, dir in ipairs({ "YeahNahMate", "../YeahNahMateDev/YeahNahMateDev" }) do
     for _, f in ipairs(listLua(dir)) do
         if not f:find("/libs/", 1, true) then files[#files + 1] = f end
