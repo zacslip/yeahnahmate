@@ -90,6 +90,8 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 
 **Slash commands:** `/ynm` opens the window, `/ynm voice` turns proximity voice on or off (also `/ynm voice group`, `guild`, `leave`, or set a key under Keybindings > AddOns), `/ynm log` shows recent addon messages, `/ynm errors` shows any errors.
 
-**Feedback and bugs:** post in the comments. If something breaks, `/ynm errors` shows what went wrong, so include that.
+**Feedback and bugs:** post in the comments, or open an issue on [GitHub](https://github.com/zacslip/yeahnahmate/issues). If something breaks, `/ynm errors` shows what went wrong, so include that.
+
+**Want to help build it?** The code is on [GitHub](https://github.com/zacslip/yeahnahmate); the [contributing guide](https://github.com/zacslip/yeahnahmate/blob/main/CONTRIBUTING.md) explains how to set up and send a change.
 
 Free and open source (MIT). Be decent, have a laugh, and work work.
