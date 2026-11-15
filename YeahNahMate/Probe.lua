@@ -1,8 +1,11 @@
 -- /ynm dev probe: asks the game which functions and values later phases need, and writes the
 -- answers to YeahNahMateDB.probe, readable in the saved-variables file after a /reload. It only reads;
 -- the one thing it asks the server for is the guild calendar (which the calendar would do anyway).
+-- Dev only, all of it: the CurseForge build leaves the whole file out (BigWigs packager's
+-- do-not-package markers), including its event listeners. A copy installed from source keeps it.
 local ADDON, ns = ...
 local L = ns.L
+--@do-not-package@
 
 local out
 local rawSenders = {}           -- the sender name exactly as the game gives it, for our own prefix
@@ -189,14 +192,10 @@ f:SetScript("OnEvent", function(_, _, prefix, _, channel, sender)
     rawSenders[#rawSenders + 1] = s
 end)
 
--- Dev only: the CurseForge build leaves this out (BigWigs packager's do-not-package markers).
--- A copy installed from source keeps it.
---@do-not-package@
 ns.devCommands.probe = function()
     ns.Print(L.PROBE_START)
     ns.Safe(Run)
 end
---@end-do-not-package@
 
 ---------------------------------------------------------------------------------------------------
 -- Milestones probe. /ynm dev msprobe: reads what milestones need and keeps a
@@ -342,9 +341,6 @@ end)
 -- Who invited a new member: no hook (we never hook Blizzard functions). The inviter's own game says
 -- "You have invited X to join your guild." (ERR_GUILD_INVITE_S), which the recorder keeps above.
 
--- Dev only: the CurseForge build leaves this out (BigWigs packager's do-not-package markers).
--- A copy installed from source keeps it.
---@do-not-package@
 ns.devCommands.msprobe = function(arg)
     if arg == "off" then
         ns.settings.msprobe = nil
