@@ -5,3 +5,5 @@ __pycache__/
 tools/curseforge/screenshots/
 screenshots/
 tools/wow_path.txt
+# A maintainer's private notes, kept in their own repository inside this folder
+private/
