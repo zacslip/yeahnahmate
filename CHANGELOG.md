@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.1
+
+- Behind the scenes: if one part of the addon hits an error on a guildie's message, the other parts still get it (before, one error could stop the rest, e.g. a recipe list not arriving).
+- Tidied up for going open source: the code is now on GitHub (https://github.com/zacslip/yeahnahmate) for anyone who wants to report a bug or help build it. Nothing else changes in game.
+
 ## 0.17.0
 
 - **Proximity voice** (new, off until you tick it): hear guildies louder the closer they are, in Blizzard's own guild voice chat. The addon turns each guildie's volume up and down by how far away they are; Blizzard carries the voice.
