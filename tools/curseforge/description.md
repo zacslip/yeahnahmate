@@ -33,7 +33,7 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 **Calendar**
 - Guild events (social nights and dungeon runs; raids coming with the raid roster) with Going, Maybe or Can't, plus your role.
 - A reminder 15 minutes before.
-- **Meet at**: say where to meet, and pick the spot on the map (or use where you're standing). Guildies can pin it on their map and minimap.
+- **Meet at**: say where to meet, and save the spot where you're standing. Guildies can pin it on their map and minimap.
 - **Important events** from the guild master and officers: a reminder everyone gets (15, 30 and/or 60 minutes before), and a heads-up when it's posted.
 - **Gather**: when it's time, the organiser invites everyone who's going, one click at a time, so you all end up together.
 

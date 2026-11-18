@@ -11,7 +11,7 @@ Calendar events, round 2:
   - Important pop-ups wait until a fight is over, and other pop-ups don't cover them up.
   - Important events say so in gold on the calendar.
 - **Meeting places**: "Meet at" in the event form: a few words (like "Org bank") and, if you like, the exact spot.
-  - **Here** uses where you're standing. **Map**: open your map (M), go to the zone or city and left-click the spot (right-click still zooms out). **x** clears it.
+  - **Here** uses the spot where you're standing (the button gets a tick). **x** clears it.
   - The event shows "Meet at: Org bank (Orgrimmar)", and **Pin** puts a star on your world map and minimap (at the minimap's edge when you're further away). Click Unpin to take it off.
 - **The event form fits the event**: a Social event has no empty space where the Dungeon roles go.
 - **Longer notes**: the note box has three lines (150 letters). The calendar shows the title; hover over an event (or a day) to read its note.

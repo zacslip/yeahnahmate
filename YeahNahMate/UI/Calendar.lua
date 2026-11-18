@@ -48,7 +48,7 @@ local function Key(t) return date("%Y-%m-%d", t) end
 -- "Org bank (Orgrimmar)", "Orgrimmar", "Org bank", or nil: an event's meeting place in words.
 function UI.PlaceText(e)
     local pl, pm = ns.Calendar.Place(e)
-    local zone = pm and UI.MapPick.MapName(pm)
+    local zone = pm and UI.Place.MapName(pm)
     if pl and zone and pl ~= zone then return pl .. " (" .. zone .. ")" end
     return pl or zone
 end
@@ -197,9 +197,9 @@ local function BuildDay(p)
             local e = b.key and ns.Calendar.Store()[b.key]
             local pl, pm, x, y = ns.Calendar.Place(e)
             if not pm then return end
-            if UI.MapPick.PinnedKey() == b.key then UI.MapPick.Unpin() return end
-            UI.MapPick.Pin(b.key, pm, x, y, e.title, pl)
-            ns.Print(string.format(L.PIN_SHOWN, pl or UI.MapPick.MapName(pm) or "?"))
+            if UI.Place.PinnedKey() == b.key then UI.Place.Unpin() return end
+            UI.Place.Pin(b.key, pm, x, y, e.title, pl)
+            ns.Print(string.format(L.PIN_SHOWN, pl or UI.Place.MapName(pm) or "?"))
         end, 18)
         b.pin:SetScript("OnEnter", function(self)
             if not GameTooltip then return end
@@ -359,11 +359,11 @@ local function BuildForm(p)
     bg:EnableMouse(true)
     bg:SetScript("OnMouseDown", function() f.note:SetFocus() end)
 
-    -- Meet at: a few words, and a spot from where I'm standing (Here) or picked on the world map (Map).
+    -- Meet at: a few words, and (Here) the spot where I'm standing.
     f.placeBox = Block(28)
     Text(f.placeBox, L.PLACE, "GameFontHighlightSmall", 2, -4)
     f.place = CreateFrame("EditBox", nil, f.placeBox, "InputBoxTemplate")
-    f.place:SetSize(96, 20)
+    f.place:SetSize(140, 20)
     f.place:SetPoint("TOPLEFT", 52, 0)
     f.place:SetAutoFocus(false)
     f.place:SetMaxLetters(ns.Calendar.MAX_PLACE)
@@ -372,31 +372,26 @@ local function BuildForm(p)
     -- A spot was set: name the place after its map if nothing's written yet.
     local function SetSpot(mapID, x, y)
         f.spot = { mapID, x, y }
-        if (f.place:GetText() or "") == "" then f.place:SetText(UI.MapPick.MapName(mapID) or "") end
-        ns.Print(string.format(L.PLACE_SET, UI.MapPick.MapName(mapID) or "?"))
+        if (f.place:GetText() or "") == "" then f.place:SetText(UI.Place.MapName(mapID) or "") end
+        ns.Print(string.format(L.PLACE_SET, UI.Place.MapName(mapID) or "?"))
         UI.Dirty()
     end
-    f.here = Button(f.placeBox, L.PLACE_HERE, 40, 152, 0, function()
+    f.here = Button(f.placeBox, L.PLACE_HERE, 44, 196, 0, function()
         local m, x, y = ns.Map.MyPosition()
         if not m then ns.Print(L.PLACE_NO_HERE) return end
         SetSpot(m, math.floor(x * 1000 + 0.5), math.floor(y * 1000 + 0.5))
     end, 20)
-    Tip(f.here, nil, L.PLACE_HERE_TIP)
-    f.pick = Button(f.placeBox, L.PLACE_MAP, 44, 194, 0, function()
-        if UI.MapPick.Active() then UI.MapPick.Stop() return end
-        if UI.MapPick.Start(SetSpot) then ns.Print(L.PLACE_PICKING) else ns.Print(L.PLACE_NO_MAP) end
-    end, 20)
-    f.pick:SetScript("OnEnter", function(self)
+    f.here:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(L.PLACE_MAP_TIP, 1, 1, 1, true)
+        GameTooltip:AddLine(L.PLACE_HERE_TIP, 1, 1, 1, true)
         if f.spot then
-            GameTooltip:AddLine(string.format(L.PLACE_SPOT, UI.MapPick.MapName(f.spot[1]) or "?",
+            GameTooltip:AddLine(string.format(L.PLACE_SPOT, UI.Place.MapName(f.spot[1]) or "?",
                 math.floor(f.spot[2] / 10 + 0.5), math.floor(f.spot[3] / 10 + 0.5)), 0.4, 1, 0.4)
         end
         GameTooltip:Show()
     end)
-    f.pick:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    f.here:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     f.unspot = Button(f.placeBox, "x", 22, 240, 0, function()
         f.spot = nil
         f.place:SetText("")
@@ -434,13 +429,12 @@ local function BuildForm(p)
         if f.canImp then fields.im, fields.an = f.im, f.an end
         fields.pl = f.place:GetText() or ""
         if f.spot then fields.pm, fields.px, fields.py = f.spot[1], f.spot[2], f.spot[3] else fields.pm = 0 end
-        UI.MapPick.Stop()
         local key, why = ns.Calendar.Save(p.editKey, fields)
         if not key then ns.Print(L.EVENT_SAVE_FAILED[why] or L.EVENT_NEEDS_TITLE) return end
         p.mode = nil
         UI.Dirty()
     end, 24)
-    f.cancel = Button(f.saveBox, L.CANCEL, 90, 120, 0, function() UI.MapPick.Stop(); p.mode = nil; UI.Dirty() end, 24)
+    f.cancel = Button(f.saveBox, L.CANCEL, 90, 120, 0, function() p.mode = nil; UI.Dirty() end, 24)
     f.tip = Text(f.saveBox, L.EVENT_TIP, "GameFontDisableSmall", 2, -32, RIGHT_W)
     f.tip:SetWordWrap(true)
     f.tip:SetHeight(28)
@@ -532,9 +526,8 @@ local function RefreshForm(p)
         end
     end
     f.tip:SetShown(y + 80 - 32 - 28 >= -410)      -- the tip only where it fits
-    local picking = UI.MapPick.Active()
-    f.pick:SetText(picking and L.PLACE_PICKING_BTN or (f.spot and (L.PLACE_MAP .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12|t") or L.PLACE_MAP))
-    if picking then f.pick:LockHighlight() else f.pick:UnlockHighlight() end
+    -- Here gets a tick once the spot is set.
+    f.here:SetText(f.spot and (L.PLACE_HERE .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12|t") or L.PLACE_HERE)
     f.unspot:SetEnabled(f.spot ~= nil or (f.place:GetText() or "") ~= "")
 end
 
@@ -562,7 +555,7 @@ local function RefreshDetails(p, evs, past)
             b.place:SetText(placeText and (ns.GREY .. L.PLACE .. "|r " .. placeText) or "")
             local _, pm = C.Place(e)
             b.pin:SetShown(pm ~= nil)
-            b.pin:SetText(UI.MapPick.PinnedKey() == item.key and L.UNPIN or L.PIN)
+            b.pin:SetText(UI.Place.PinnedKey() == item.key and L.UNPIN or L.PIN)
             local dy = placeText and 18 or 0
             b.roles:SetPoint("TOPLEFT", 12, -48 - dy)
             b.going:SetPoint("TOPLEFT", 12, -66 - dy)
@@ -726,4 +719,4 @@ end
 UI.AddPage("calendar", Build, Refresh)
 ns.Listen("CALENDAR", UI.Dirty)
 ns.Listen("GATHER", UI.Dirty)
-ns.Listen("MAPPICK", UI.Dirty)
+ns.Listen("PLACE", UI.Dirty)

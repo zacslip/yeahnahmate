@@ -1,4 +1,4 @@
--- Meeting places: a few words and a spot (map + x, y), from where I stand or picked on the world map;
+-- Meeting places: a few words and a spot (map + x, y) from where I stand (Here);
 -- kept through older versions' copies (missing = keep), cleared on purpose (pm = 0, pl = ""), junk
 -- dropped; the card line, the hover text, and pinning it on the map.
 math.randomseed(43)
@@ -72,7 +72,7 @@ check(UI.PlaceText(store[bk]) == "Crossroads (Map 1413)", "place text names the 
 check(UI.PlaceText({ pm = 1413, px = 1, py = 1 }) == "Map 1413" and UI.PlaceText({ pl = "Org bank" }) == "Org bank"
     and UI.PlaceText({}) == nil, "zone alone, text alone, nothing")
 
--- The form: Here fills the spot (and the text, when it's empty); Save sends it; x clears.
+-- The form: Here fills the spot (and the text, when it's empty) and gets a tick; Save sends it; x clears.
 ns.UI.Open("calendar")
 local cal
 for _, o in ipairs(CREATED) do if o.form and o.dayPager then cal = o end end
@@ -85,6 +85,7 @@ FAKE.x, FAKE.y = 0.25, 0.75
 f.here:Click()
 Tick(1)
 check(f.spot and f.spot[1] == 1413 and f.spot[2] == 250 and f.spot[3] == 750 and f.place:GetText() == "Map 1413", "Here: my spot, named after the map")
+check(f.here:GetText():find("ReadyCheck", 1, true), "Here shows a tick")
 f.title:SetText("Here we go")
 before = #SENT
 f.save:Click()
@@ -98,38 +99,13 @@ Tick(1)
 f.here:Click()
 check(f.spot == nil, "Here inside a dungeon: no spot")
 FAKE.instance = nil
-
--- Picking on the map: our layer only over a zone map; a left click sets the spot and stops picking.
-local W = WorldMapFrame
-local sc = CreateFrame("Frame")
-sc.GetNormalizedCursorPosition = function() return 0.4, 0.6 end
-W.ScrollContainer = sc
-local shownMap = 1415
-W.GetMapID = function() return shownMap end
-f.place:SetText("")
-f.spot = nil
-f.pick:Click()
-check(UI.MapPick.Active(), "Map: picking")
-W:Show()
+f.place:SetText("Org bank")
+UI.Dirty()
 Tick(1)
-local layer
-for _, o in ipairs(CREATED) do if o._scripts and o._scripts.OnMouseUp and o:GetFrameStrata() == "FULLSCREEN_DIALOG" then layer = o end end
-check(layer and not layer:IsShown(), "on a continent map our layer isn't there (left-click goes into a zone)")
-shownMap = 1454
-Tick(1)
-check(layer:IsShown(), "on a zone map it is")
-layer._scripts.OnMouseUp(layer, "RightButton")
-check(UI.MapPick.Active(), "right-click doesn't pick")
-layer._scripts.OnMouseUp(layer, "LeftButton")
-Tick(1)
-check(not UI.MapPick.Active() and f.spot and f.spot[1] == 1454 and f.spot[2] == 400 and f.spot[3] == 600, "left-click: the spot, picking stops")
-check(f.place:GetText() == "Map 1454" and not layer:IsShown(), "named after the map; the layer's gone")
-f.pick:Click()
-Tick(200)
-check(not UI.MapPick.Active(), "picking stops by itself after 3 minutes")
 f.unspot:Click()
 check(f.spot == nil and f.place:GetText() == "", "x clears it")
 f.cancel:Click()
+
 
 -- The card: Meet at line, Pin / Unpin.
 local t = date("*t", store[bk].at)
@@ -142,9 +118,9 @@ for _, b in ipairs(cal.details) do if b.key == bk then card = b end end
 check(card and card.place:GetText():find("Crossroads", 1, true) and card.pin:IsShown(), "the card says where, with Pin")
 card.pin:Click()
 Tick(1)
-check(UI.MapPick.PinnedKey() == bk and card.pin:GetText() == ns.L.UNPIN, "pinned")
+check(UI.Place.PinnedKey() == bk and card.pin:GetText() == ns.L.UNPIN, "pinned")
 card.pin:Click()
 Tick(1)
-check(UI.MapPick.PinnedKey() == nil, "unpinned")
+check(UI.Place.PinnedKey() == nil, "unpinned")
 
 check(#ERRORS == 0, "no errors (" .. (ERRORS[1] or "none") .. ")")
