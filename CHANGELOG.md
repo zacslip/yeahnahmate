@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.18.0
+
+Calendar events, round 2:
+
+- **Event kinds are now Social, Dungeon and Raid.** New events start as Social. Levelling and Other are gone (they were only a different label); events made with them still show, as Social. **Raid** is greyed out for now: it arrives with the raid roster.
+- **Important events** (the guild master, managers and Calendar moderators only): two new rows in the event form.
+  - **Remind all: 15m / 30m / 60m**: tick any of them. Everyone in the guild with the addon gets a pop-up that long before the event, whatever their pop-up settings, and every week for a weekly event. Logging in late only shows the next one (no late "60 minutes" reminder 20 minutes before).
+  - **Tell everyone now**: a pop-up for everyone when you save it, and for guildies who were offline when they next log in (until it starts).
+  - Important pop-ups wait until a fight is over, and other pop-ups don't cover them up.
+  - Important events say so in gold on the calendar.
+- Saving an event that can't be saved now says why (no title, cancelled or removed, not yours to change).
+- Guildies still on an older version don't get the important pop-ups: everyone should update.
+
 ## 0.17.2
 
 Fixes from a review of the whole addon before opening it up to contributors:

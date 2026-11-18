@@ -117,7 +117,7 @@ check(store[quiet].mute == nil, "unticking Mute in the edit form turns it off")
 C.Cancel(quiet)
 
 -- Weekly events: next occurrence, and answers belong to one occurrence.
-local wkey = C.Save(nil, { title = "Levelling night", at = now - 86400, k = "l", w = true })
+local wkey = C.Save(nil, { title = "Levelling night", at = now - 86400, k = "s", w = true })
 local we = store[wkey]
 local nextAt = C.NextAt(we, now)
 check(nextAt == now - 86400 + 7 * 86400, "a weekly event's next one is a week on")

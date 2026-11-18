@@ -95,6 +95,13 @@ guild master or a manager replaces it for everyone. It takes someone in the guil
 addon on purpose. Fixing it properly would need signed messages, which WoW's addon API doesn't make
 practical.
 
+### Known limit: new event fields and older versions
+
+Fields added later (an important event's reminders, `im` and `an`) are unknown to older versions,
+which leave them out of the copies they pass on. A field missing from a message therefore means
+"keep what I have", never "switched off" (an updated owner always sends it, `0` / `false` when off).
+Older versions don't show important pop-ups at all.
+
 ### Known limit: weekly events and daylight saving
 
 A weekly event happens every 7 x 24 hours after its first start, so every guildie's addon agrees on

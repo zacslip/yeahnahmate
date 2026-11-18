@@ -282,7 +282,8 @@ function Sim.FakeGather()
     local at = now + 300
     local id = now + 7
     ns.Safe(FakeSend, byName["Bazza Stubbs"], { t = "EVT", id = id, ti = "Guild meeting", at = at, k = "s",
-        nt = 0, nh = 0, nd = 0, note = "Meet at the Orgrimmar bank. Ask for an invite to get on one layer.", ev = now })
+        nt = 0, nh = 0, nd = 0, note = "Meet at the Orgrimmar bank. Ask for an invite to get on one layer.",
+        im = 1, an = true, ev = now })                       -- important (Bazza's an officer): the pop-ups everyone gets
     ns.Safe(FakeSend, byName["Bazza Stubbs"], { t = "GTH", o = "Bazza Stubbs", id = id, at = at, on = true })
     ns.Print(L.SIM_GATHER)
 end
@@ -308,7 +309,8 @@ local function FakeBoard()
         about = "Priest healing, chill vibes" })
 end
 
--- Fake events: a dungeon run tonight, a weekly levelling night, a party in five days; with answers.
+-- Fake events: a dungeon run tonight, a weekly levelling night (kind "l", as older versions send it:
+-- it shows as social), a party in five days; with answers.
 local function LocalTime(daysAhead, hour, min)
     local t = date("*t")
     return time({ year = t.year, month = t.month, day = t.day + daysAhead, hour = hour, min = min, sec = 0 })

@@ -8,11 +8,13 @@ local Text, Button, Box = UI.Text, UI.Button, UI.Box
 local CELL_W, CELL_H = 64, 50
 local X = 474
 local RIGHT_W = 262
+-- Levelling and other (older versions) show as social (Calendar.ShownKind).
 local KIND = {
-    d = { "ffff9933", L.KIND_DUNGEON }, l = { "ff40ff40", L.KIND_LEVELLING },
-    s = { "ffff80ff", L.KIND_SOCIAL }, o = { "ff80c0ff", L.KIND_OTHER },
+    s = { "ffff80ff", L.KIND_SOCIAL }, d = { "ffff9933", L.KIND_DUNGEON }, r = { "ffff5050", L.KIND_RAID },
 }
-local KIND_ORDER = { "d", "l", "s", "o" }
+local function KindOf(e) return KIND[ns.Calendar.ShownKind(e.k)] or KIND.s end
+local KIND_ORDER = { "s", "d", "r" }
+local KIND_READY = { s = true, d = true }           -- raid waits for the raid roster
 local ROLE_ICON = {
     t = "|TInterface\\Icons\\INV_Shield_06:14|t",
     h = "|TInterface\\Icons\\Spell_Holy_Heal:14|t",
@@ -200,8 +202,9 @@ local function BuildForm(p)
     f:SetPoint("TOPLEFT", X, 0)
     f:SetSize(RIGHT_W, 410)
     p.form = f
-    f.hour, f.minute, f.pm, f.kind, f.weekly = 7, 30, true, "d", false
+    f.hour, f.minute, f.pm, f.kind, f.weekly = 7, 30, true, "s", false
     f.need = { t = 1, h = 1, d = 3 }
+    f.im, f.an = 0, false
 
     f.header = UI.Header(f, "", 0, -4, RIGHT_W)
     Text(f, L.EVENT_TITLE, "GameFontHighlightSmall", 2, -30)
@@ -225,9 +228,24 @@ local function BuildForm(p)
     f.pickPm = UI.Choice(f, { L.AM, L.PM }, 180, -54, 38, function(i) f.pm = (i == 2) end)
 
     Text(f, L.EVENT_KIND, "GameFontHighlightSmall", 2, -88)
-    f.pickKind = UI.Choice(f, { L.KIND_DUNGEON_SHORT, L.KIND_LEVELLING_SHORT, L.KIND_SOCIAL, L.KIND_OTHER }, 0, -102, 61, function(i)
-        f.kind = KIND_ORDER[i]; UI.Dirty()
+    local kindButtons
+    f.pickKind, kindButtons = UI.Choice(f, { L.KIND_SOCIAL, L.KIND_DUNGEON, L.KIND_RAID }, 0, -102, 84, function(i)
+        f.kind = KIND_ORDER[i] or "s"; UI.Dirty()
     end)
+    for i, k in ipairs(KIND_ORDER) do
+        if not KIND_READY[k] then
+            local b = kindButtons[i]
+            b:Disable()
+            b:SetMotionScriptsWhileDisabled(true)
+            b:SetScript("OnEnter", function(self)
+                if not GameTooltip then return end
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:AddLine(L.KIND_RAID_TIP, 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        end
+    end
     f.rolesLabel = Text(f, L.ROLES_WANTED, "GameFontHighlightSmall", 2, -130)
     f.roles = UI.RoleCounts(f, 0, -144, function(r) return f.need[r] end, function(r, n) f.need[r] = n; UI.Dirty() end)
     f.weeklyCheck = UI.Check(f, L.EVERY_WEEK, 0, -212, false, function(on) f.weekly = on end)
@@ -247,21 +265,50 @@ local function BuildForm(p)
     f.note:SetMaxLetters(100)
     f.note:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     f.note:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    -- Important (Calendar moderators only): remind everyone at any of 15 / 30 / 60 minutes before, and
+    -- tell everyone now. Shown only to those who can set it.
+    local function ImpTip(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L.IMPORTANT)
+        GameTooltip:AddLine(L.IMP_TIP, 1, 1, 1, true)
+        GameTooltip:Show()
+    end
+    local function NoTip() if GameTooltip then GameTooltip:Hide() end end
+    f.imp = {}
+    f.impLabel = Text(f, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -278)
+    f.impChecks = {}
+    for i, bt in ipairs(ns.Calendar.IM_TIMES) do
+        local c, fs = UI.Check(f, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, -272, false, function(on)
+            local has = math.floor(f.im / bt[1]) % 2 == 1
+            if on and not has then f.im = f.im + bt[1] elseif not on and has then f.im = f.im - bt[1] end
+        end)
+        c:SetScript("OnEnter", ImpTip); c:SetScript("OnLeave", NoTip)
+        f.impChecks[i] = c
+        f.imp[#f.imp + 1] = c; f.imp[#f.imp + 1] = fs
+    end
+    local an, anText = UI.Check(f, L.IMP_ANNOUNCE, 0, -296, false, function(on) f.an = on end)
+    an:SetScript("OnEnter", ImpTip); an:SetScript("OnLeave", NoTip)
+    f.anCheck = an
+    f.imp[#f.imp + 1] = f.impLabel; f.imp[#f.imp + 1] = an; f.imp[#f.imp + 1] = anText
+
     f.save = Button(f, L.SAVE, 110, 0, -272, function()
         local d = date("*t", p.formDay)
         local hour24 = (f.hour % 12) + (f.pm and 12 or 0)
         local at = time({ year = d.year, month = d.month, day = d.day, hour = hour24, min = f.minute, sec = 0 })
-        local key = ns.Calendar.Save(p.editKey, { title = f.title:GetText() or "", at = at, k = f.kind,
-            nt = f.need.t, nh = f.need.h, nd = f.need.d, note = f.note:GetText() or "", w = f.weekly, mute = f.mute })
-        if not key then ns.Print(L.EVENT_NEEDS_TITLE) return end
+        local fields = { title = f.title:GetText() or "", at = at, k = f.kind,
+            nt = f.need.t, nh = f.need.h, nd = f.need.d, note = f.note:GetText() or "", w = f.weekly, mute = f.mute }
+        if f.canImp then fields.im, fields.an = f.im, f.an end
+        local key, why = ns.Calendar.Save(p.editKey, fields)
+        if not key then ns.Print(L.EVENT_SAVE_FAILED[why] or L.EVENT_NEEDS_TITLE) return end
         p.mode = nil
         UI.Dirty()
     end, 24)
     f.cancel = Button(f, L.CANCEL, 90, 120, -272, function() p.mode = nil; UI.Dirty() end, 24)
-    local tip = Text(f, L.EVENT_TIP, "GameFontDisableSmall", 2, -304, RIGHT_W)
-    tip:SetWordWrap(true)
-    tip:SetHeight(56)
-    tip:SetJustifyV("TOP")
+    f.tip = Text(f, L.EVENT_TIP, "GameFontDisableSmall", 2, -304, RIGHT_W)
+    f.tip:SetWordWrap(true)
+    f.tip:SetHeight(42)
+    f.tip:SetJustifyV("TOP")
 end
 
 local function Build(p)
@@ -301,15 +348,17 @@ local function LoadForm(p)
         f.hour = t.hour % 12; if f.hour == 0 then f.hour = 12 end
         f.minute = t.min - t.min % 15
         f.pm = t.hour >= 12
-        f.kind = e.k
+        f.kind = ns.Calendar.ShownKind(e.k)
         f.need = { t = e.nt > 0 and e.nt or 1, h = e.nh > 0 and e.nh or 1, d = e.nd > 0 and e.nd or 3 }
         f.weekly = e.w and true or false
         f.mute = e.mute and true or false
+        f.im, f.an = e.im or 0, e.an and true or false
         f.title:SetText(e.title)
         f.note:SetText(e.note or "")
     else
-        f.hour, f.minute, f.pm, f.kind, f.weekly = 7, 30, true, "d", false
+        f.hour, f.minute, f.pm, f.kind, f.weekly = 7, 30, true, "s", false
         f.mute = false
+        f.im, f.an = 0, false
         f.need = { t = 1, h = 1, d = 3 }
         f.title:SetText("")
         f.note:SetText("")
@@ -318,6 +367,8 @@ local function LoadForm(p)
     for i, k in ipairs(KIND_ORDER) do if k == f.kind then f.pickKind(i) end end
     f.weeklyCheck:SetChecked(f.weekly)
     f.muteCheck:SetChecked(f.mute)
+    for i, bt in ipairs(ns.Calendar.IM_TIMES) do f.impChecks[i]:SetChecked(math.floor(f.im / bt[1]) % 2 == 1) end
+    f.anCheck:SetChecked(f.an)
 end
 
 local function RefreshForm(p)
@@ -330,6 +381,13 @@ local function RefreshForm(p)
     f.rolesLabel:SetShown(roles)
     f.roles.SetShown(roles)
     f.roles.Refresh()
+    -- The important rows only for Calendar moderators; Save moves up when they're hidden.
+    f.canImp = ns.Calendar.CanRemove()
+    for _, w in ipairs(f.imp) do w:SetShown(f.canImp) end
+    local y = f.canImp and -326 or -272
+    f.save:SetPoint("TOPLEFT", 0, y)
+    f.cancel:SetPoint("TOPLEFT", 120, y)
+    f.tip:SetPoint("TOPLEFT", 2, y - 32)
 end
 
 local function RefreshDetails(p, evs, past)
@@ -343,8 +401,9 @@ local function RefreshDetails(p, evs, past)
             local e, at = item.e, item.at
             if b.key ~= item.key then b.picking = false end
             b.key, b.at = item.key, at
-            local k = KIND[e.k] or KIND.o
-            b.title:SetText("|c" .. k[1] .. e.title .. "|r")
+            local k = KindOf(e)
+            -- Important: a gold "Important:" before the title (own events' time line has no room).
+            b.title:SetText((C.IsImportant(e) and (ns.GOLD .. L.IMP_MARK .. ":|r ") or "") .. "|c" .. k[1] .. e.title .. "|r")
             local leader = ns.Guild.Get(e.owner)
             local own = e.owner == ns.me
             b.when:SetWidth(own and 108 or 242)
@@ -445,8 +504,9 @@ local function Refresh(p)
                 if j == 2 and #evs > 2 then
                     fs:SetText(ns.GREY .. "+" .. (#evs - 1) .. " " .. L.MORE .. "|r")
                 elseif item then
-                    local kind = KIND[item.e.k] or KIND.o
-                    fs:SetText("|c" .. (past and "ff808080" or kind[1]) .. item.e.title .. "|r")
+                    local kind = KindOf(item.e)
+                    fs:SetText((ns.Calendar.IsImportant(item.e) and not past and (ns.GOLD .. "!|r") or "")
+                        .. "|c" .. (past and "ff808080" or kind[1]) .. item.e.title .. "|r")
                 else
                     fs:SetText("")
                 end

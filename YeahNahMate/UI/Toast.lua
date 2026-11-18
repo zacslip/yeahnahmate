@@ -10,6 +10,13 @@ local Toast = {}
 ns.Toast = Toast
 
 local frame, hideTimer
+local AfterHide                 -- below: what shows after a pop-up goes
+-- Important event pop-ups wait here (in a fight, or behind another important one). Each has valid(),
+-- false once its event has started (then it's dropped). While one shows, a normal pop-up waits too
+-- (only the latest) instead of replacing it.
+local important = {}
+local importantUp = false
+local deferred = nil
 
 -- The pop-up sounds to choose from (the game's own), and the volume slider each can follow. Addons
 -- can't set a sound's volume themselves; changing the game's volume settings for the player is
@@ -47,6 +54,11 @@ local function Build()
     frame.show:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -8)
     frame.close:ClearAllPoints()
     frame.close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
+    -- Not from inside OnHide itself: a moment later.
+    frame:SetScript("OnHide", function()
+        importantUp = false
+        C_Timer.After(0.5, function() if not frame:IsShown() then ns.Safe(AfterHide) end end)
+    end)
 end
 
 -- kind: which switch in Settings covers it (a key of settings.pop, or "remind"); nil always shows.
@@ -56,23 +68,67 @@ function Toast.Allowed(kind)
     return kind == nil or ns.settings.pop[kind] ~= false
 end
 
-function Toast.Show(title, text, kind, action)
-    if not Toast.Allowed(kind) then Toast.nextTab = nil; return end
+
+local function Display(title, text, action, tab, sound, secs)
     if not frame then Build() end
     frame.action = action and action[2] or nil
     frame.show:SetText(action and action[1] or L.SHOW)
     frame.show:SetWidth(action and 92 or 60)
-    frame.tab = Toast.nextTab or "dungeons"
-    Toast.nextTab = nil
+    frame.tab = tab or "dungeons"
     frame.title:SetText(title)
     frame.text:SetText(text)
     frame:Show()
-    if ns.settings.popupSound then Toast.PlaySound() end
+    if sound then Toast.PlaySound() end
     if hideTimer then hideTimer:Cancel() end
-    hideTimer = C_Timer.NewTimer(20, function() hideTimer = nil; frame:Hide() end)
+    hideTimer = C_Timer.NewTimer(secs or 20, function() hideTimer = nil; frame:Hide() end)
 end
 
+local function NextImportant()
+    if InCombatLockdown() then return false end
+    while #important > 0 do
+        local it = table.remove(important, 1)
+        if it.valid() then
+            Display(it.title, it.text, nil, "calendar", true, 40)
+            importantUp = true
+            return true
+        end
+    end
+    return false
+end
+
+-- After a pop-up goes: the next important one, else the normal one that waited.
+function AfterHide()
+    if NextImportant() then return end
+    local d = deferred
+    deferred = nil
+    if d and not InCombatLockdown() then Display(d[1], d[2], d[3], d[4], ns.settings.popupSound) end
+end
+
+function Toast.Show(title, text, kind, action)
+    if not Toast.Allowed(kind) then Toast.nextTab = nil; return end
+    local tab = Toast.nextTab
+    Toast.nextTab = nil
+    if importantUp and frame and frame:IsShown() then
+        deferred = { title, text, action, tab }
+        return
+    end
+    Display(title, text, action, tab, ns.settings.popupSound)
+end
+
+-- An important event's pop-up: no switch turns it off and it always plays the sound. In a fight it
+-- waits until the fight is over. valid() says whether it's still worth showing.
+function Toast.Important(title, text, valid)
+    important[#important + 1] = { title = ns.GOLD .. title .. "|r", text = text, valid = valid or function() return true end }
+    if importantUp and frame and frame:IsShown() then return end
+    NextImportant()                 -- takes the place of a normal pop-up that's showing
+end
+
+ns.OnEvent("PLAYER_REGEN_ENABLED", function()
+    if not (frame and frame:IsShown() and importantUp) then NextImportant() end
+end)
+
 function Toast.IsShown() return frame ~= nil and frame:IsShown() end
+function Toast.Title() return frame and frame:IsShown() and frame.title:GetText() or nil end
 
 local function Needs(g)
     local parts = {}
@@ -125,6 +181,19 @@ end)
 ns.Listen("REMIND", function(e, at)
     Toast.nextTab = "calendar"
     Toast.Show(L.REMIND_TITLE, e.title .. "  " .. ns.UI.TimeText(at), "remind")
+end)
+
+-- Important events (Calendar.lua): the reminders everyone gets, and "tell everyone now".
+ns.Listen("IMPORTANT", function(e, at, mins)
+    Toast.Important(string.format(L.TOAST_IMPORTANT_SOON, e.title),
+        string.format(L.TOAST_IMPORTANT_IN, mins, ns.UI.TimeText(at)),
+        function() return not e.x and GetServerTime() < at end)
+end)
+
+ns.Listen("IMPORTANT_NEW", function(e, at)
+    Toast.Important(string.format(L.TOAST_IMPORTANT_NEW, e.title),
+        ns.UI.DayText(at) .. " " .. ns.UI.TimeText(at),
+        function() return not e.x and GetServerTime() < at end)
 end)
 
 -- Someone said they're going to my event.

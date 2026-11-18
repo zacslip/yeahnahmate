@@ -3,10 +3,12 @@
 -- shown in each player's local time.
 --
 -- Messages
---   EVT  { id, ti, at, k, nt, nh, nd, note, w, ev }  my event: title, start (server time), kind
---                                                    (d dungeon, l levelling, s social, o other),
---                                                    roles wanted, note, weekly, version (edit time;
---                                                    not "v", which every message uses for the protocol)
+--   EVT  { id, ti, at, k, nt, nh, nd, note, w, im, an, ev }  my event: title, start (server time),
+--                                                    kind (s social, d dungeon; l levelling and o other
+--                                                    from older versions show as social), roles wanted,
+--                                                    note, weekly, important (below), version (edit
+--                                                    time; not "v", which every message uses for the
+--                                                    protocol)
 --   EVT  { id, ev, x = true }                        I cancelled it
 --   EVT  { o = owner, ..., rs = { [name] = "a|r|at|v" } }  a copy with its answers: only by WHISPER,
 --                                                    only from a guildie we asked (like recipe copies)
@@ -14,7 +16,7 @@
 --   REQ  { w = "CAL" }                               send me the events you know (WHISPER)
 --   EVR  { o = owner, id, ev }                       a Calendar moderator removes someone else's event
 --                                                    (GUILD; WHISPER to an owner who comes back with it)
---   EVM  { o = owner, id, ti, at, k, nt, nh, nd, note, w, ev }   a Calendar moderator edits it (same)
+--   EVM  { o = owner, id, ti, at, k, nt, nh, nd, note, w, im, an, ev }   a Calendar moderator edits it (same)
 --   EVT  { ..., x = true, rm = moderator }           a removed event, in copies and the owner's own
 -- Only the owner (the game's sender name) creates or cancels an event. Calendar moderators (Board.lua:
 -- the Calendar rank and above, managers, the guild master) can edit or remove anyone's
@@ -23,6 +25,13 @@
 -- edits still do. Everyone keeps a copy
 -- per guild so events show for guildies who weren't online when they were made. A newer version
 -- wins; the owner's own message beats a copy; versions from the future are refused.
+--
+-- Important events (only Calendar moderators set them): im = which "remind everyone" times are ticked
+-- (1 = 15 min, 2 = 30, 4 = 60 before), an = "tell everyone now" (a pop-up once, also at a later login
+-- while it hasn't started). Every guildie gets these pop-ups whatever their settings. Each reader
+-- checks the owner, or the moderator who last edited it, moderates the calendar on their own roster;
+-- a non-moderator owner's message never changes them. Older versions don't know these fields and
+-- leave them out of their copies, so a field missing from a message means "keep what I have".
 local ADDON, ns = ...
 local L = ns.L
 
@@ -38,12 +47,19 @@ local KEEP_CANCELLED = 30 * DAY -- a cancel is remembered this long (from when i
 local MAX_TITLE, MAX_NOTE = 40, 100
 local MAX_COPIES = 40
 local ASK_WINDOW = 300
-Cal.KINDS = { d = true, l = true, s = true, o = true }
+Cal.KINDS = { d = true, l = true, s = true, o = true }    -- accepted from others (older versions too)
+Cal.MAKE = { s = true, d = true }                         -- kinds an event can be made as (raid later)
+Cal.IM_TIMES = { { 1, 15 }, { 2, 30 }, { 4, 60 } }        -- im bit, minutes before
+local IM_MAX = 7
 Cal.ANSWERS = { y = true, m = true, n = true }
 
 local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub("[|\n\r]", "")), max) or "" end
 local function Count(n, max) n = tonumber(n); if not n then return 0 end return math.max(0, math.min(max, math.floor(n))) end
 local Future = ns.Future
+local function CleanIm(n) n = tonumber(n); if not n or n ~= math.floor(n) or n < 0 or n > IM_MAX then return nil end return n end
+
+-- The kind an event shows as: levelling and other (older versions) show as social.
+function Cal.ShownKind(k) return (k == "d" or k == "r") and k or "s" end
 
 function Cal.Store()
     local g = ns.GuildData()
@@ -133,7 +149,23 @@ end
 
 local function EventMessage(e)
     return { t = "EVT", id = e.id, ti = e.title, at = e.at, k = e.k, nt = e.nt, nh = e.nh, nd = e.nd,
-             note = e.note, w = e.w or nil, ev = e.v }
+             note = e.note, w = e.w or nil, im = e.im or 0, an = e.an and true or false, ev = e.v }
+end
+
+-- Is this event important, as I see it? Its owner, or the moderator who last edited it, must moderate
+-- the calendar on my own roster (anyone could send the flag; only their rank makes it count).
+function Cal.IsImportant(e)
+    if not e or e.x or not ((e.im or 0) > 0 or e.an) then return false end
+    return ns.Board.CanModerate(e.owner, "cal") or (e.md ~= nil and ns.Board.CanModerate(e.md, "cal"))
+end
+
+-- The important settings from the form, if I may set them (a Calendar moderator); else what it had.
+local function TakeImportant(e, fields)
+    if fields.im ~= nil and Cal.CanRemove() then
+        e.im = CleanIm(fields.im) or 0
+        e.an = fields.an and true or nil
+    end
+    e.im = e.im or 0
 end
 
 -- Answers for a copy: only those for the occurrence that's on or next (old weeks' answers are no use),
@@ -160,22 +192,26 @@ local function MoveAnswers(e, oldAt, newAt)
     for _, a in pairs(e.rs or {}) do a.at = a.at + delta end
 end
 
--- fields: title, at (server time), k, nt, nh, nd, note, w, mute. Returns the key, or nil.
+-- fields: title, at (server time), k, nt, nh, nd, note, w, mute, im, an. Returns the key, or nil and
+-- why ("title", "kind", "gone": removed or cancelled, "denied": not mine to change).
 function Cal.Save(key, fields)
     local store = Cal.Store()
-    if not store or not ns.me then return nil end
+    if not store or not ns.me then return nil, "denied" end
     local title = Clean(fields.title, MAX_TITLE)
-    if title == "" or type(fields.at) ~= "number" or not Cal.KINDS[fields.k] then return nil end
+    if title == "" then return nil, "title" end
+    if type(fields.at) ~= "number" or not Cal.MAKE[fields.k] then return nil, "kind" end
     local now = GetServerTime()
     local e = key and store[key]
-    if e and e.rm then return nil end                      -- removed by a moderator: final
+    if e and e.rm then return nil, "gone" end              -- removed by a moderator: final
     if e and e.owner ~= ns.me then                          -- a Calendar moderator edits it
-        if e.x or not Cal.CanRemove() then return nil end
+        if e.x then return nil, "gone" end
+        if not Cal.CanRemove() then return nil, "denied" end
         MoveAnswers(e, e.at, math.floor(fields.at))
         e.title, e.at, e.k = title, math.floor(fields.at), fields.k
         local roles = fields.k == "d"
         e.nt, e.nh, e.nd = roles and Count(fields.nt, 2) or 0, roles and Count(fields.nh, 2) or 0, roles and Count(fields.nd, 4) or 0
         e.note, e.w = Clean(fields.note, MAX_NOTE), fields.w and true or nil
+        TakeImportant(e, fields)
         e.v, e.direct, e.md = math.max(now, (e.v or 0) + 1), true, ns.me
         if RealMod() then
             local m = EventMessage(e)
@@ -201,6 +237,8 @@ function Cal.Save(key, fields)
     e.note = Clean(fields.note, MAX_NOTE)
     e.w = fields.w and true or nil
     e.mute = fields.mute and true or nil           -- my own switch, never sent (see ToggleMute)
+    TakeImportant(e, fields)
+    e.anSeen = true                                -- my own "tell everyone": no pop-up for me
     e.v = math.max(now, (e.v or 0) + 1)
     e.x = nil
     ns.Comm.Send(EventMessage(e), "GUILD")
@@ -317,6 +355,13 @@ local function TakeEvent(owner, msg, direct)
             e.nt, e.nh, e.nd = Count(msg.nt, 2), Count(msg.nh, 2), Count(msg.nd, 4)
             e.note, e.w, e.v, e.x = Clean(msg.note, MAX_NOTE), msg.w == true or nil, msg.ev, nil
             e.direct = direct or nil
+            -- Important: missing = keep (older versions); an owner who doesn't moderate the calendar
+            -- can't change it (only a moderator's edit can have set it).
+            if not direct or ns.Board.CanModerate(owner, "cal") then
+                if msg.im ~= nil then e.im = CleanIm(msg.im) or e.im end
+                if msg.an ~= nil then e.an = msg.an == true or nil end
+            end
+            e.im = e.im or 0
             store[key] = e
             kept = true
         end
@@ -420,6 +465,9 @@ ns.Comm.On("EVM", function(msg, from, channel, isSelf)
     e.title, e.at, e.k = title, math.floor(msg.at), msg.k
     e.nt, e.nh, e.nd = Count(msg.nt, 2), Count(msg.nh, 2), Count(msg.nd, 4)
     e.note, e.w = Clean(msg.note, MAX_NOTE), msg.w == true or nil
+    if msg.im ~= nil then e.im = CleanIm(msg.im) or e.im end
+    if msg.an ~= nil then e.an = msg.an == true or nil end
+    e.im = e.im or 0
     e.v, e.direct, e.md, e.x = msg.ev, true, from, nil
     store[key] = e
     if owner == ns.me then ns.Print(string.format(L.CAL_EDITED_MINE, from, title)) end
@@ -558,21 +606,65 @@ local function Tidy()
     if changed then Changed() end
 end
 
+-- Important events: each ticked time once per occurrence. Logging in (or the event moving) inside a
+-- window fires only the nearest ticked time, never a late 60 or 30. What's fired is kept on the event
+-- (imAt, imT: never sent) so a /reload doesn't fire it again.
+local function RemindImportant(now)
+    local store = Cal.Store()
+    if not store then return end
+    for _, e in pairs(store) do
+        if (e.im or 0) > 0 and Cal.IsImportant(e) and e.at then
+            local at = Cal.NextAt(e, now)
+            local left = at - now
+            if left > 0 then
+                local due
+                for _, bt in ipairs(Cal.IM_TIMES) do
+                    if math.floor(e.im / bt[1]) % 2 == 1 and left <= bt[2] * 60 then due = due or bt[2] end
+                end
+                local done = e.imAt == at and e.imT or nil
+                if due and (not done or due < done) then
+                    e.imAt, e.imT = at, due
+                    ns.Fire("IMPORTANT", e, at, math.ceil(left / 60))
+                end
+            end
+        end
+    end
+end
+
+-- "Tell everyone now": once, while the event hasn't started (not my own; anSeen is never sent).
+local function AnnounceImportant(now)
+    local store = Cal.Store()
+    if not store then return end
+    for key, e in pairs(store) do
+        if e.an and not e.anSeen and e.owner ~= ns.me and e.at and Cal.IsImportant(e) then
+            e.anSeen = true
+            local at = Cal.NextAt(e, now)
+            if at > now then ns.Fire("IMPORTANT_NEW", e, at, key) end
+        end
+    end
+end
+
+-- Does an important reminder at 15 minutes cover this event (so the normal one doesn't fire too)?
+local function Covered(e) return Cal.IsImportant(e) and (e.im or 0) % 2 == 1 end
+
 local reminded = {}
 local function Remind()
-    if not ns.settings.remind then return end
     local now = GetServerTime()
+    RemindImportant(now)
+    AnnounceImportant(now)
+    if not ns.settings.remind then return end
     for _, u in ipairs(Cal.Upcoming(10)) do
         local mine = Cal.MyAnswer(u.e, u.at)
         local going = mine == "y" or mine == "m" or u.e.owner == ns.me
         local left = u.at - now
         local id = u.key .. "@" .. u.at
-        if going and left > 0 and left <= 15 * 60 and not reminded[id] then
+        if going and left > 0 and left <= 15 * 60 and not reminded[id] and not Covered(u.e) then
             reminded[id] = true
             ns.Fire("REMIND", u.e, u.at)
         end
     end
 end
+Cal.CheckReminders = Remind
 
 ns.Listen("LOGIN", function()
     C_Timer.After(5, function() ns.Safe(Tidy) end)

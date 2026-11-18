@@ -110,7 +110,7 @@ check((os.clock() - t0) * 1000 / 5 < 20, string.format("listing %d requests: %.1
 -- 8. The "X is going" pop-up names the week they answered, not the first week.
 local seen
 ns.Listen("ANSWERED", function(_, _, _, when) seen = when end)
-local wkey = C.Save(nil, { title = "Levelling night", at = now - 14 * 86400, k = "l", w = true })
+local wkey = C.Save(nil, { title = "Levelling night", at = now - 14 * 86400, k = "s", w = true })
 local we = C.Store()[wkey]
 local nextAt = C.NextAt(we, GetServerTime())
 INJECT("YNM", Msg({ v = 1, t = "RSVP", o = "Ned Jones", id = we.id, at = nextAt, a = "y", rv = GetServerTime() }), "GUILD", "Bluey Heeler")

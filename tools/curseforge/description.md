@@ -31,8 +31,9 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - Every Forever dungeon, in level order.
 
 **Calendar**
-- Guild events (dungeon runs, raids, levelling nights, social nights) with Going, Maybe or Can't, plus your role.
+- Guild events (social nights and dungeon runs; raids coming with the raid roster) with Going, Maybe or Can't, plus your role.
 - A reminder 15 minutes before.
+- **Important events** from the guild master and officers: a reminder everyone gets (15, 30 and/or 60 minutes before), and a heads-up when it's posted.
 - **Gather**: when it's time, the organiser invites everyone who's going, one click at a time, so you all end up together.
 
 **Professions**

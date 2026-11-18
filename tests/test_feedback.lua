@@ -41,17 +41,18 @@ ns.Dungeons.Close()
 local _, _, _, _, yT = rows.t.minus:GetPoint()
 check(rows.t.label ~= rows.h.label, "separate rows")
 
--- Calendar form: role rows only for dungeon events.
+-- Calendar form: role rows only for dungeon events (a new event starts as social).
 ns.UI.Open("calendar")
 local cal
 for _, o in ipairs(CREATED) do if o.form and o.dayPager then cal = o end end
 cal.mode, cal.formLoaded = "new", false
 ns.UI.Select("calendar")
 Tick(1)
-check(cal.form.roles.rows.t.label:IsShown(), "dungeon event: role rows shown")
-cal.form.pickKind(3)
+check(cal.form.kind == "s" and not cal.form.roles.rows.t.label:IsShown(), "a new event is social: no role rows")
+cal.form.pickKind(2)
 Tick(1)
-check(not cal.form.roles.rows.t.label:IsShown(), "social event: no role rows")
+check(cal.form.roles.rows.t.label:IsShown(), "dungeon event: role rows shown")
+check(not cal.form.impLabel:IsShown(), "a Member doesn't see the important rows")
 
 -- Sounds: the chosen sound, on the chosen volume slider; off means silent; Test plays it.
 local Toast = ns.Toast
