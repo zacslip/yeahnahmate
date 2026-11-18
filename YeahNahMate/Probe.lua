@@ -411,9 +411,17 @@ local function MapPickStart()
             ns.Print(string.format("(dev) map %s (%s, type %s): %s", tostring(mapID), name, tostring(kind),
                 (ok and x) and string.format("%.3f, %.3f", x, y) or "no spot"))
         end)
+        -- Only over a zone or city map (type 3 and up): on the world and continent maps left-click
+        -- must reach the map to go into a zone.
+        local function ZoneMap()
+            local id = W.GetMapID and ns.Public(W:GetMapID(), "number")
+            local info = id and C_Map.GetMapInfo and C_Map.GetMapInfo(id)
+            local t = info and ns.Public(info.mapType, "number")
+            return t ~= nil and t >= 3
+        end
         pickDriver = CreateFrame("Frame", nil, UIParent)
         pickDriver:SetScript("OnUpdate", function()
-            local shown = W:IsShown()
+            local shown = W:IsShown() and ZoneMap()
             if shown and not pickLayer:IsShown() then
                 pickLayer:ClearAllPoints()
                 pickLayer:SetAllPoints(sc)
@@ -425,8 +433,8 @@ local function MapPickStart()
     end
     pickLayer:Hide()
     pickDriver:Show()
-    ns.Print("(dev) Map pick test on. Open your map (M), go to a city and a zone, and left-click a few spots."
-        .. " Check right-click still zooms out. Then /ynm dev mappick to stop, and /reload.")
+    ns.Print("(dev) Map pick test on. Open your map (M). On a zone or city map (gold tint) left-click a few spots;"
+        .. " on the world and continent maps clicks go to the map as usual. Then /ynm dev mappick to stop, and /reload.")
 end
 
 ns.devCommands.mappick = function()
