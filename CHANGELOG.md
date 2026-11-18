@@ -4,7 +4,7 @@
 
 Calendar events, round 2:
 
-- **Event kinds are now Social, Dungeon and Raid.** New events start as Social. Levelling and Other are gone (they were only a different label); events made with them still show, as Social. **Raid** is greyed out for now: it arrives with the raid roster.
+- **Event types are now Social, Dungeon and Raid** (picked at the top of the event form, above the time). New events start as Social. Levelling and Other are gone (they were only a different label); events made with them still show, as Social. **Raid** is greyed out for now: it arrives with the raid roster.
 - **Important events** (the guild master, managers and Calendar moderators only): two new rows in the event form.
   - **Remind all: 15m / 30m / 60m**: tick any of them. Everyone in the guild with the addon gets a pop-up that long before the event, whatever their pop-up settings, and every week for a weekly event. Logging in late only shows the next one (no late "60 minutes" reminder 20 minutes before).
   - **Tell everyone now**: a pop-up for everyone when you save it, and for guildies who were offline when they next log in (until it starts).

@@ -21,7 +21,7 @@ local ROLE_ICON = {
     d = "|TInterface\\Icons\\INV_Sword_04:14|t",
 }
 local MINUTES = { 0, 15, 30, 45 }
-local FIRST_Y = -102            -- the event form: where the rows under Kind start
+local FIRST_Y = -102            -- the event form: where the rows under Event type and Time start
 
 -- "7:30pm" in the player's local time.
 function UI.TimeText(at)
@@ -235,20 +235,21 @@ local function BuildForm(p)
     f.im, f.an = 0, false
 
     f.header = UI.Header(f, "", 0, -4, RIGHT_W)
-    Text(f, L.EVENT_TIME, "GameFontHighlightSmall", 2, -30)
-    f.hourStep = Stepper(f, "", 40, -26, function() return f.hour end, function(d)
+    -- Event type first (it decides what the form asks), then the time.
+    Text(f, L.EVENT_TIME, "GameFontHighlightSmall", 2, -78)
+    f.hourStep = Stepper(f, "", 40, -74, function() return f.hour end, function(d)
         f.hour = (f.hour + d - 1) % 12 + 1; UI.Dirty()
     end, 0)
-    f.minStep = Stepper(f, ":", 104, -26, function() return string.format("%02d", f.minute) end, function(d)
+    f.minStep = Stepper(f, ":", 104, -74, function() return string.format("%02d", f.minute) end, function(d)
         local i = 1
         for j, m in ipairs(MINUTES) do if m == f.minute then i = j end end
         f.minute = MINUTES[(i + d - 1) % #MINUTES + 1]; UI.Dirty()
     end, 8)
-    f.pickPm = UI.Choice(f, { L.AM, L.PM }, 180, -26, 38, function(i) f.pm = (i == 2) end)
+    f.pickPm = UI.Choice(f, { L.AM, L.PM }, 180, -74, 38, function(i) f.pm = (i == 2) end)
 
-    Text(f, L.EVENT_KIND, "GameFontHighlightSmall", 2, -60)
+    Text(f, L.EVENT_KIND, "GameFontHighlightSmall", 2, -30)
     local kindButtons
-    f.pickKind, kindButtons = UI.Choice(f, { L.KIND_SOCIAL, L.KIND_DUNGEON, L.KIND_RAID }, 0, -74, 84, function(i)
+    f.pickKind, kindButtons = UI.Choice(f, { L.KIND_SOCIAL, L.KIND_DUNGEON, L.KIND_RAID }, 0, -44, 84, function(i)
         f.kind = KIND_ORDER[i] or "s"; UI.Dirty()
     end)
     for i, k in ipairs(KIND_ORDER) do
