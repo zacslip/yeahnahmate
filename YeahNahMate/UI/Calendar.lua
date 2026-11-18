@@ -114,9 +114,9 @@ local function BuildGrid(p)
             self.hl:Show()
             if not (GameTooltip and self.evs and #self.evs > 0) then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            for i, item in ipairs(self.evs) do
+            for n, item in ipairs(self.evs) do
                 local k = KindOf(item.e)
-                if i > 1 then GameTooltip:AddLine(" ") end
+                if n > 1 then GameTooltip:AddLine(" ") end
                 GameTooltip:AddLine("|c" .. k[1] .. item.e.title .. "|r")
                 GameTooltip:AddLine(UI.TimeText(item.at) .. "   " .. k[2], 0.62, 0.62, 0.62)
                 if item.e.note and item.e.note ~= "" then GameTooltip:AddLine(item.e.note, 1, 1, 1, true) end
