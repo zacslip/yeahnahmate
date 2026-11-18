@@ -28,7 +28,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Voice.lua` | Proximity voice: guildies' voice volume by distance, on Blizzard's voice chat (`VGRP`). |
 | `Breakdown.lua` | The guild breakdown page's numbers. |
 | `Bindings.xml` | The key binding for proximity voice on/off (Options > Keybindings > AddOns). |
-| `Sim.lua`, `Probe.lua`, `VoiceProbe.lua` | Developer tools (`/ynm dev ...`), left out of the CurseForge build. |
+| `Sim.lua`, `Probe.lua`, `VoiceProbe.lua`, `ClanProbe.lua` | Developer tools (`/ynm dev ...`), left out of the CurseForge build. |
 | `UI/*.lua` | The window, one file per tab, the minimap button, pop-ups (`Toast`), the whisper box. |
 | `libs/` | Third-party libraries, unchanged (`libs/LIBRARIES.md`). |
 
