@@ -45,6 +45,14 @@ end
 local function Noon(y, m, d) return time({ year = y, month = m, day = d, hour = 12 }) end
 local function Key(t) return date("%Y-%m-%d", t) end
 
+-- "Org bank (Orgrimmar)", "Orgrimmar", "Org bank", or nil: an event's meeting place in words.
+function UI.PlaceText(e)
+    local pl, pm = ns.Calendar.Place(e)
+    local zone = pm and UI.MapPick.MapName(pm)
+    if pl and zone and pl ~= zone then return pl .. " (" .. zone .. ")" end
+    return pl or zone
+end
+
 -- An event's tooltip: its title, when, and the note (the card doesn't show the note).
 function UI.EventTip(owner, e, at)
     if not GameTooltip then return end
@@ -52,6 +60,8 @@ function UI.EventTip(owner, e, at)
     local k = KindOf(e)
     GameTooltip:AddLine("|c" .. k[1] .. e.title .. "|r")
     GameTooltip:AddLine(UI.DayText(at) .. " " .. UI.TimeText(at) .. "   " .. k[2], 0.62, 0.62, 0.62)
+    local place = UI.PlaceText(e)
+    if place then GameTooltip:AddLine(L.PLACE .. " " .. place, 0.4, 1, 0.4, true) end
     if e.note and e.note ~= "" then GameTooltip:AddLine(e.note, 1, 1, 1, true) end
     GameTooltip:Show()
 end
@@ -120,6 +130,8 @@ local function BuildGrid(p)
                 if n > 1 then GameTooltip:AddLine(" ") end
                 GameTooltip:AddLine("|c" .. k[1] .. item.e.title .. "|r")
                 GameTooltip:AddLine(UI.TimeText(item.at) .. "   " .. k[2], 0.62, 0.62, 0.62)
+                local place = UI.PlaceText(item.e)
+                if place then GameTooltip:AddLine(L.PLACE .. " " .. place, 0.4, 1, 0.4, true) end
                 if item.e.note and item.e.note ~= "" then GameTooltip:AddLine(item.e.note, 1, 1, 1, true) end
             end
             GameTooltip:Show()
@@ -179,6 +191,23 @@ local function BuildDay(p)
         b.modRemove:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         b.when = Text(b, "", "GameFontHighlightSmall", 12, -28, 242)
         -- The note isn't on the card: hovering over the event shows it (with the title).
+        -- Meet at (when there's a place) moves the rest down a line; Pin puts its spot on the map.
+        b.place = Text(b, "", "GameFontHighlightSmall", 12, -48, 190)
+        b.pin = Button(b, L.PIN, 50, RIGHT_W - 60, -44, function()
+            local e = b.key and ns.Calendar.Store()[b.key]
+            local pl, pm, x, y = ns.Calendar.Place(e)
+            if not pm then return end
+            if UI.MapPick.PinnedKey() == b.key then UI.MapPick.Unpin() return end
+            UI.MapPick.Pin(b.key, pm, x, y, e.title, pl)
+            ns.Print(string.format(L.PIN_SHOWN, pl or UI.MapPick.MapName(pm) or "?"))
+        end, 18)
+        b.pin:SetScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(L.PIN_TIP, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        b.pin:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         b.roles = Text(b, "", "GameFontHighlightSmall", 12, -48, 242)
         b.going = Text(b, "", "GameFontHighlightSmall", 12, -66, 242)
         b.going:SetWordWrap(true)
@@ -330,24 +359,69 @@ local function BuildForm(p)
     bg:EnableMouse(true)
     bg:SetScript("OnMouseDown", function() f.note:SetFocus() end)
 
+    -- Meet at: a few words, and a spot from where I'm standing (Here) or picked on the world map (Map).
+    f.placeBox = Block(28)
+    Text(f.placeBox, L.PLACE, "GameFontHighlightSmall", 2, -4)
+    f.place = CreateFrame("EditBox", nil, f.placeBox, "InputBoxTemplate")
+    f.place:SetSize(96, 20)
+    f.place:SetPoint("TOPLEFT", 52, 0)
+    f.place:SetAutoFocus(false)
+    f.place:SetMaxLetters(ns.Calendar.MAX_PLACE)
+    f.place:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    f.place:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    -- A spot was set: name the place after its map if nothing's written yet.
+    local function SetSpot(mapID, x, y)
+        f.spot = { mapID, x, y }
+        if (f.place:GetText() or "") == "" then f.place:SetText(UI.MapPick.MapName(mapID) or "") end
+        ns.Print(string.format(L.PLACE_SET, UI.MapPick.MapName(mapID) or "?"))
+        UI.Dirty()
+    end
+    f.here = Button(f.placeBox, L.PLACE_HERE, 40, 152, 0, function()
+        local m, x, y = ns.Map.MyPosition()
+        if not m then ns.Print(L.PLACE_NO_HERE) return end
+        SetSpot(m, math.floor(x * 1000 + 0.5), math.floor(y * 1000 + 0.5))
+    end, 20)
+    Tip(f.here, nil, L.PLACE_HERE_TIP)
+    f.pick = Button(f.placeBox, L.PLACE_MAP, 44, 194, 0, function()
+        if UI.MapPick.Active() then UI.MapPick.Stop() return end
+        if UI.MapPick.Start(SetSpot) then ns.Print(L.PLACE_PICKING) else ns.Print(L.PLACE_NO_MAP) end
+    end, 20)
+    f.pick:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L.PLACE_MAP_TIP, 1, 1, 1, true)
+        if f.spot then
+            GameTooltip:AddLine(string.format(L.PLACE_SPOT, UI.MapPick.MapName(f.spot[1]) or "?",
+                math.floor(f.spot[2] / 10 + 0.5), math.floor(f.spot[3] / 10 + 0.5)), 0.4, 1, 0.4)
+        end
+        GameTooltip:Show()
+    end)
+    f.pick:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    f.unspot = Button(f.placeBox, "x", 22, 240, 0, function()
+        f.spot = nil
+        f.place:SetText("")
+        UI.Dirty()
+    end, 20)
+    Tip(f.unspot, nil, L.PLACE_CLEAR_TIP)
+
     -- Important (Calendar moderators only): remind everyone at any of 15 / 30 / 60 minutes before, and
     -- tell everyone now.
-    f.impBox = Block(64)
+    f.impBox = Block(60)
     local line = f.impBox:CreateTexture(nil, "ARTWORK")      -- a line between the event and these
     line:SetColorTexture(0.9, 0.76, 0.36, 0.35)
-    line:SetPoint("TOPLEFT", 0, -2)
+    line:SetPoint("TOPLEFT", 0, -1)
     line:SetSize(RIGHT_W, 1)
-    f.impLabel = Text(f.impBox, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -16)
+    f.impLabel = Text(f.impBox, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -12)
     f.impChecks = {}
     for i, bt in ipairs(ns.Calendar.IM_TIMES) do
-        local c = UI.Check(f.impBox, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, -10, false, function(on)
+        local c = UI.Check(f.impBox, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, -6, false, function(on)
             local has = math.floor(f.im / bt[1]) % 2 == 1
             if on and not has then f.im = f.im + bt[1] elseif not on and has then f.im = f.im - bt[1] end
         end)
         Tip(c, L.IMPORTANT, L.IMP_TIP)
         f.impChecks[i] = c
     end
-    f.anCheck = UI.Check(f.impBox, L.IMP_ANNOUNCE, 0, -34, false, function(on) f.an = on end)
+    f.anCheck = UI.Check(f.impBox, L.IMP_ANNOUNCE, 0, -30, false, function(on) f.an = on end)
     Tip(f.anCheck, L.IMPORTANT, L.IMP_TIP)
 
     f.saveBox = Block(80)
@@ -358,12 +432,15 @@ local function BuildForm(p)
         local fields = { title = f.title:GetText() or "", at = at, k = f.kind,
             nt = f.need.t, nh = f.need.h, nd = f.need.d, note = f.note:GetText() or "", w = f.weekly, mute = not f.notify }
         if f.canImp then fields.im, fields.an = f.im, f.an end
+        fields.pl = f.place:GetText() or ""
+        if f.spot then fields.pm, fields.px, fields.py = f.spot[1], f.spot[2], f.spot[3] else fields.pm = 0 end
+        UI.MapPick.Stop()
         local key, why = ns.Calendar.Save(p.editKey, fields)
         if not key then ns.Print(L.EVENT_SAVE_FAILED[why] or L.EVENT_NEEDS_TITLE) return end
         p.mode = nil
         UI.Dirty()
     end, 24)
-    f.cancel = Button(f.saveBox, L.CANCEL, 90, 120, 0, function() p.mode = nil; UI.Dirty() end, 24)
+    f.cancel = Button(f.saveBox, L.CANCEL, 90, 120, 0, function() UI.MapPick.Stop(); p.mode = nil; UI.Dirty() end, 24)
     f.tip = Text(f.saveBox, L.EVENT_TIP, "GameFontDisableSmall", 2, -32, RIGHT_W)
     f.tip:SetWordWrap(true)
     f.tip:SetHeight(28)
@@ -414,6 +491,9 @@ local function LoadForm(p)
         f.im, f.an = e.im or 0, e.an and true or false
         f.title:SetText(e.title)
         f.note:SetText(e.note or "")
+        local pl, pm = ns.Calendar.Place(e)
+        f.place:SetText(pl or "")
+        f.spot = pm and { pm, e.px, e.py } or nil
     else
         f.hour, f.minute, f.pm, f.kind, f.weekly = 7, 30, true, "s", false
         f.notify = false
@@ -421,6 +501,8 @@ local function LoadForm(p)
         f.need = { t = 1, h = 1, d = 3 }
         f.title:SetText("")
         f.note:SetText("")
+        f.place:SetText("")
+        f.spot = nil
     end
     f.pickPm(f.pm and 2 or 1)
     for i, k in ipairs(KIND_ORDER) do if k == f.kind then f.pickKind(i) end end
@@ -443,13 +525,17 @@ local function RefreshForm(p)
     f.rolesBox:SetShown(roles)
     f.impBox:SetShown(f.canImp)
     local y = FIRST_Y
-    for _, b in ipairs({ f.rolesBox, f.ticksBox, f.titleBox, f.noteBox, f.impBox, f.saveBox }) do
+    for _, b in ipairs({ f.rolesBox, f.ticksBox, f.titleBox, f.noteBox, f.placeBox, f.impBox, f.saveBox }) do
         if b:IsShown() then
             b:SetPoint("TOPLEFT", 0, y)
             y = y - b.h
         end
     end
     f.tip:SetShown(y + 80 - 32 - 28 >= -410)      -- the tip only where it fits
+    local picking = UI.MapPick.Active()
+    f.pick:SetText(picking and L.PLACE_PICKING_BTN or (f.spot and (L.PLACE_MAP .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12|t") or L.PLACE_MAP))
+    if picking then f.pick:LockHighlight() else f.pick:UnlockHighlight() end
+    f.unspot:SetEnabled(f.spot ~= nil or (f.place:GetText() or "") ~= "")
 end
 
 local function RefreshDetails(p, evs, past)
@@ -471,6 +557,16 @@ local function RefreshDetails(p, evs, past)
             b.when:SetWidth(own and 108 or 242)
             b.when:SetText(UI.TimeText(at) .. "   " .. ns.GREY .. k[2] .. (e.w and (", " .. L.EVERY_WEEK_LOWER) or "")
                 .. "|r" .. (own and "" or ("   " .. (leader and UI.Name(leader) or e.owner))))
+            -- Meet at: a line of its own, the rest moves down.
+            local placeText = UI.PlaceText(e)
+            b.place:SetText(placeText and (ns.GREY .. L.PLACE .. "|r " .. placeText) or "")
+            local _, pm = C.Place(e)
+            b.pin:SetShown(pm ~= nil)
+            b.pin:SetText(UI.MapPick.PinnedKey() == item.key and L.UNPIN or L.PIN)
+            local dy = placeText and 18 or 0
+            b.roles:SetPoint("TOPLEFT", 12, -48 - dy)
+            b.going:SetPoint("TOPLEFT", 12, -66 - dy)
+            b.going:SetHeight(74 - dy)
             local ans = C.Answers(e, at)
             if (e.nt + e.nh + e.nd) > 0 then
                 local function R(r, need)
@@ -630,3 +726,4 @@ end
 UI.AddPage("calendar", Build, Refresh)
 ns.Listen("CALENDAR", UI.Dirty)
 ns.Listen("GATHER", UI.Dirty)
+ns.Listen("MAPPICK", UI.Dirty)

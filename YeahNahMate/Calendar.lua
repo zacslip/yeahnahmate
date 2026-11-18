@@ -3,10 +3,12 @@
 -- shown in each player's local time.
 --
 -- Messages
---   EVT  { id, ti, at, k, nt, nh, nd, note, w, im, an, ev }  my event: title, start (server time),
+--   EVT  { id, ti, at, k, nt, nh, nd, note, w, im, an, pl, pm, px, py, ev }  my event: title, start (server time),
 --                                                    kind (s social, d dungeon; l levelling and o other
 --                                                    from older versions show as social), roles wanted,
---                                                    note, weekly, important (below), version (edit
+--                                                    note, weekly, important (below), meeting place
+--                                                    (pl text; pm map, px/py 0-1000 on it; "" / 0 = none),
+--                                                    version (edit
 --                                                    time; not "v", which every message uses for the
 --                                                    protocol)
 --   EVT  { id, ev, x = true }                        I cancelled it
@@ -16,7 +18,7 @@
 --   REQ  { w = "CAL" }                               send me the events you know (WHISPER)
 --   EVR  { o = owner, id, ev }                       a Calendar moderator removes someone else's event
 --                                                    (GUILD; WHISPER to an owner who comes back with it)
---   EVM  { o = owner, id, ti, at, k, nt, nh, nd, note, w, im, an, ev }   a Calendar moderator edits it (same)
+--   EVM  { o = owner, id, ti, at, k, nt, nh, nd, note, w, im, an, pl, pm, px, py, ev }   a Calendar moderator edits it (same)
 --   EVT  { ..., x = true, rm = moderator }           a removed event, in copies and the owner's own
 -- Only the owner (the game's sender name) creates or cancels an event. Calendar moderators (Board.lua:
 -- the Calendar rank and above, managers, the guild master) can edit or remove anyone's
@@ -31,7 +33,8 @@
 -- while it hasn't started). Every guildie gets these pop-ups whatever their settings. Each reader
 -- checks the owner, or the moderator who last edited it, moderates the calendar on their own roster;
 -- a non-moderator owner's message never changes them. Older versions don't know these fields and
--- leave them out of their copies, so a field missing from a message means "keep what I have".
+-- leave them out of their copies, so a field missing from a message means "keep what I have" (the
+-- meeting place too).
 local ADDON, ns = ...
 local L = ns.L
 
@@ -45,10 +48,12 @@ local KEEP = 7 * DAY            -- past events are kept a week, then forgotten
 local KEEP_CANCELLED = 30 * DAY -- a cancel is remembered this long (from when it was cancelled), so
                                 -- a guildie still holding the event can't bring it back
 local MAX_TITLE, MAX_NOTE = 40, 150    -- a note fills three lines (older versions cut it at 100)
+local MAX_PLACE = 30
 local MAX_COPIES = 40
 local ASK_WINDOW = 300
 Cal.KINDS = { d = true, l = true, s = true, o = true }    -- accepted from others (older versions too)
 Cal.MAX_NOTE = MAX_NOTE
+Cal.MAX_PLACE = MAX_PLACE
 Cal.MAKE = { s = true, d = true }                         -- kinds an event can be made as (raid later)
 Cal.IM_TIMES = { { 1, 15 }, { 2, 30 }, { 4, 60 } }        -- im bit, minutes before
 local IM_MAX = 7
@@ -58,6 +63,34 @@ local function Clean(s, max) return type(s) == "string" and ns.CutBytes((s:gsub(
 local function Count(n, max) n = tonumber(n); if not n then return 0 end return math.max(0, math.min(max, math.floor(n))) end
 local Future = ns.Future
 local function CleanIm(n) n = tonumber(n); if not n or n ~= math.floor(n) or n < 0 or n > IM_MAX then return nil end return n end
+
+-- A meeting place's spot: a map id and x, y as 0-1000 on it; nil if any of it is wrong.
+local function CleanSpot(pm, px, py)
+    pm, px, py = tonumber(pm), tonumber(px), tonumber(py)
+    if not (pm and px and py) or pm ~= math.floor(pm) or pm < 1 or pm > 999999 then return nil end
+    if px ~= math.floor(px) or py ~= math.floor(py) or px < 0 or px > 1000 or py < 0 or py > 1000 then return nil end
+    return pm, px, py
+end
+
+-- The meeting place from a form or a message (pl, pm, px, py). A field left out keeps what we have;
+-- pm = 0 clears the spot, pl = "" the text.
+local function TakePlace(e, src)
+    if src.pl ~= nil then
+        local pl = Clean(src.pl, MAX_PLACE)
+        e.pl = pl ~= "" and pl or nil
+    end
+    if src.pm ~= nil then
+        local pm, px, py = CleanSpot(src.pm, src.px, src.py)
+        e.pm, e.px, e.py = pm, px, py                    -- 0 or anything wrong: no spot
+    end
+end
+
+-- The meeting place: text (or nil), and the spot (map id, x and y 0-1) or nil.
+function Cal.Place(e)
+    if not e then return nil end
+    if e.pm then return e.pl, e.pm, e.px / 1000, e.py / 1000 end
+    return e.pl
+end
 
 -- The kind an event shows as: levelling and other (older versions) show as social.
 function Cal.ShownKind(k) return (k == "d" or k == "r") and k or "s" end
@@ -150,7 +183,8 @@ end
 
 local function EventMessage(e)
     return { t = "EVT", id = e.id, ti = e.title, at = e.at, k = e.k, nt = e.nt, nh = e.nh, nd = e.nd,
-             note = e.note, w = e.w or nil, im = e.im or 0, an = e.an and true or false, ev = e.v }
+             note = e.note, w = e.w or nil, im = e.im or 0, an = e.an and true or false,
+             pl = e.pl or "", pm = e.pm or 0, px = e.pm and e.px or nil, py = e.pm and e.py or nil, ev = e.v }
 end
 
 -- Is this event important, as I see it? Its owner, or the moderator who last edited it, must moderate
@@ -193,7 +227,8 @@ local function MoveAnswers(e, oldAt, newAt)
     for _, a in pairs(e.rs or {}) do a.at = a.at + delta end
 end
 
--- fields: title, at (server time), k, nt, nh, nd, note, w, mute, im, an. Returns the key, or nil and
+-- fields: title, at (server time), k, nt, nh, nd, note, w, mute, im, an, pl, pm, px, py (px/py 0-1000).
+-- Returns the key, or nil and
 -- why ("title", "kind", "gone": removed or cancelled, "denied": not mine to change).
 function Cal.Save(key, fields)
     local store = Cal.Store()
@@ -213,6 +248,7 @@ function Cal.Save(key, fields)
         e.nt, e.nh, e.nd = roles and Count(fields.nt, 2) or 0, roles and Count(fields.nh, 2) or 0, roles and Count(fields.nd, 4) or 0
         e.note, e.w = Clean(fields.note, MAX_NOTE), fields.w and true or nil
         TakeImportant(e, fields)
+        TakePlace(e, fields)
         e.v, e.direct, e.md = math.max(now, (e.v or 0) + 1), true, ns.me
         if RealMod() then
             local m = EventMessage(e)
@@ -239,6 +275,7 @@ function Cal.Save(key, fields)
     e.w = fields.w and true or nil
     e.mute = fields.mute and true or nil           -- my own switch, never sent (see ToggleMute)
     TakeImportant(e, fields)
+    TakePlace(e, fields)
     e.anSeen = true                                -- my own "tell everyone": no pop-up for me
     e.v = math.max(now, (e.v or 0) + 1)
     e.x = nil
@@ -363,6 +400,7 @@ local function TakeEvent(owner, msg, direct)
                 if msg.an ~= nil then e.an = msg.an == true or nil end
             end
             e.im = e.im or 0
+            TakePlace(e, msg)
             store[key] = e
             kept = true
         end
@@ -469,6 +507,7 @@ ns.Comm.On("EVM", function(msg, from, channel, isSelf)
     if msg.im ~= nil then e.im = CleanIm(msg.im) or e.im end
     if msg.an ~= nil then e.an = msg.an == true or nil end
     e.im = e.im or 0
+    TakePlace(e, msg)
     e.v, e.direct, e.md, e.x = msg.ev, true, from, nil
     store[key] = e
     if owner == ns.me then ns.Print(string.format(L.CAL_EDITED_MINE, from, title)) end

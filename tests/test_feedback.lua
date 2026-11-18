@@ -57,7 +57,8 @@ Tick(1)
 check(cal.form.rolesBox:IsShown() and Y(cal.form.ticksBox) == -184, "dungeon event: role rows shown, the ticks under them")
 check(not cal.form.impBox:IsShown(), "a Member doesn't see the important rows")
 check(Y(cal.form.titleBox) == -214 and Y(cal.form.noteBox) == -242, "the title sits right on top of the note")
-check(Y(cal.form.saveBox) == -296 and cal.form.tip:IsShown(), "Save right under the note, with the tip")
+check(Y(cal.form.placeBox) == -296, "Meet at under the note")
+check(Y(cal.form.saveBox) == -324 and cal.form.tip:IsShown(), "Save under Meet at, with the tip")
 
 -- Sounds: the chosen sound, on the chosen volume slider; off means silent; Test plays it.
 local Toast = ns.Toast

@@ -54,6 +54,7 @@ UI\Dungeons.lua
 UI\Toast.lua
 UI\QAlert.lua
 UI\Gather.lua
+UI\MapPick.lua
 UI\Calendar.lua
 UI\Streamers.lua
 UI\Info.lua

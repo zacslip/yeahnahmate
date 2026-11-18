@@ -97,7 +97,8 @@ practical.
 
 ### Known limit: new event fields and older versions
 
-Fields added later (an important event's reminders, `im` and `an`) are unknown to older versions,
+Fields added later (an important event's reminders, `im` and `an`, and its meeting place, `pl`,
+`pm`, `px`, `py`) are unknown to older versions,
 which leave them out of the copies they pass on. A field missing from a message therefore means
 "keep what I have", never "switched off" (an updated owner always sends it, `0` / `false` when off).
 Older versions don't show important pop-ups at all.
