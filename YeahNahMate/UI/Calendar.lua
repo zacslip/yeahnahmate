@@ -44,6 +44,17 @@ end
 local function Noon(y, m, d) return time({ year = y, month = m, day = d, hour = 12 }) end
 local function Key(t) return date("%Y-%m-%d", t) end
 
+-- An event's tooltip: its title, when, and the note (the card doesn't show the note).
+function UI.EventTip(owner, e, at)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    local k = KindOf(e)
+    GameTooltip:AddLine("|c" .. k[1] .. e.title .. "|r")
+    GameTooltip:AddLine(UI.DayText(at) .. " " .. UI.TimeText(at) .. "   " .. k[2], 0.62, 0.62, 0.62)
+    if e.note and e.note ~= "" then GameTooltip:AddLine(e.note, 1, 1, 1, true) end
+    GameTooltip:Show()
+end
+
 local function Names(list)
     local out = {}
     for _, name in ipairs(list) do
@@ -98,8 +109,21 @@ local function BuildGrid(p)
         c.num = Text(c, "", "GameFontHighlightSmall", 4, -3)
         c.e1 = Text(c, "", "GameFontHighlightSmall", 4, -18, CELL_W - 6)
         c.e2 = Text(c, "", "GameFontHighlightSmall", 4, -32, CELL_W - 6)
-        c:SetScript("OnEnter", function(self) self.hl:Show() end)
-        c:SetScript("OnLeave", function(self) self.hl:Hide() end)
+        -- Hover: the day's events with their notes.
+        c:SetScript("OnEnter", function(self)
+            self.hl:Show()
+            if not (GameTooltip and self.evs and #self.evs > 0) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            for i, item in ipairs(self.evs) do
+                local k = KindOf(item.e)
+                if i > 1 then GameTooltip:AddLine(" ") end
+                GameTooltip:AddLine("|c" .. k[1] .. item.e.title .. "|r")
+                GameTooltip:AddLine(UI.TimeText(item.at) .. "   " .. k[2], 0.62, 0.62, 0.62)
+                if item.e.note and item.e.note ~= "" then GameTooltip:AddLine(item.e.note, 1, 1, 1, true) end
+            end
+            GameTooltip:Show()
+        end)
+        c:SetScript("OnLeave", function(self) self.hl:Hide(); if GameTooltip then GameTooltip:Hide() end end)
         c:SetScript("OnClick", function(self)
             if not self.day then return end
             p.sel, p.mode, p.dayOffset = self.day, nil, 0
@@ -127,11 +151,11 @@ local function BuildDay(p)
             b.sureOwn = nil
             ns.Calendar.Cancel(b.key)
         end, 18)
-        b.mute = Button(b, L.MUTE, 52, 212, -24, function() ns.Calendar.ToggleMute(b.key) end, 18)
+        b.mute = Button(b, L.NOTIFY_ON, 52, 212, -24, function() ns.Calendar.ToggleMute(b.key) end, 18)
         b.mute:SetScript("OnEnter", function(self)
             if not GameTooltip then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(L.MUTE_TIP, 1, 1, 1, true)
+            GameTooltip:AddLine(L.NOTIFY_TIP, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         b.mute:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -153,15 +177,18 @@ local function BuildDay(p)
         end)
         b.modRemove:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         b.when = Text(b, "", "GameFontHighlightSmall", 12, -28, 242)
-        b.note = Text(b, "", "GameFontHighlightSmall", 12, -44, 242)
-        b.note:SetWordWrap(true)
-        b.note:SetHeight(28)
-        b.note:SetJustifyV("TOP")
-        b.roles = Text(b, "", "GameFontHighlightSmall", 12, -76, 242)
-        b.going = Text(b, "", "GameFontHighlightSmall", 12, -94, 242)
+        -- The note isn't on the card: hovering over the event shows it (with the title).
+        b.roles = Text(b, "", "GameFontHighlightSmall", 12, -48, 242)
+        b.going = Text(b, "", "GameFontHighlightSmall", 12, -66, 242)
         b.going:SetWordWrap(true)
-        b.going:SetHeight(46)
+        b.going:SetHeight(74)
         b.going:SetJustifyV("TOP")
+        b:EnableMouse(true)
+        b:SetScript("OnEnter", function(self)
+            local e = self.key and ns.Calendar.Store()[self.key]
+            if e then UI.EventTip(self, e, self.at) end
+        end)
+        b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         b:EnableMouseWheel(true)
         b:SetScript("OnMouseWheel", function(_, delta) p.dayOffset = math.max(0, (p.dayOffset or 0) - delta); UI.Dirty() end)
         b.yes = Button(b, L.GOING, 78, 10, -148, function()
@@ -246,68 +273,91 @@ local function BuildForm(p)
             b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         end
     end
-    f.rolesLabel = Text(f, L.ROLES_WANTED, "GameFontHighlightSmall", 2, -130)
-    f.roles = UI.RoleCounts(f, 0, -144, function(r) return f.need[r] end, function(r, n) f.need[r] = n; UI.Dirty() end)
-    f.weeklyCheck = UI.Check(f, L.EVERY_WEEK, 0, -212, false, function(on) f.weekly = on end)
-    f.muteCheck = UI.Check(f, L.MUTE_ANSWERS, 120, -212, false, function(on) f.mute = on end)
-    f.muteCheck:SetScript("OnEnter", function(self)
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(L.MUTE_TIP, 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    f.muteCheck:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    Text(f, L.NOTE, "GameFontHighlightSmall", 2, -246)
-    f.note = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    f.note:SetSize(RIGHT_W - 50, 20)
-    f.note:SetPoint("TOPLEFT", 48, -242)
-    f.note:SetAutoFocus(false)
-    f.note:SetMaxLetters(100)
-    f.note:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    f.note:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    -- Important (Calendar moderators only): remind everyone at any of 15 / 30 / 60 minutes before, and
-    -- tell everyone now. Shown only to those who can set it.
-    local function ImpTip(self)
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(L.IMPORTANT)
-        GameTooltip:AddLine(L.IMP_TIP, 1, 1, 1, true)
-        GameTooltip:Show()
+    -- The rows under Kind sit in blocks that RefreshForm stacks: roles (dungeon only), the ticks, the
+    -- note, important (Calendar moderators only), Save. A social event leaves no gap for the roles.
+    local function Block(h)
+        local b = CreateFrame("Frame", nil, f)
+        b:SetSize(RIGHT_W, h)
+        b:SetPoint("TOPLEFT", 0, -130)
+        b.h = h
+        return b
     end
-    local function NoTip() if GameTooltip then GameTooltip:Hide() end end
-    f.imp = {}
-    f.impLabel = Text(f, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -278)
+    local function Tip(widget, title, text)
+        widget:SetScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            if title then GameTooltip:AddLine(title) end
+            GameTooltip:AddLine(text, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        widget:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end
+
+    f.rolesBox = Block(82)
+    f.rolesLabel = Text(f.rolesBox, L.ROLES_WANTED, "GameFontHighlightSmall", 2, 0)
+    f.roles = UI.RoleCounts(f.rolesBox, 0, -14, function(r) return f.need[r] end, function(r, n) f.need[r] = n; UI.Dirty() end)
+
+    -- "Tell me who's going": off for a new event (a big event would be a lot of pop-ups).
+    f.ticksBox = Block(30)
+    f.weeklyCheck = UI.Check(f.ticksBox, L.EVERY_WEEK, 0, 0, false, function(on) f.weekly = on end)
+    f.notifyCheck = UI.Check(f.ticksBox, L.NOTIFY_ANSWERS, 112, 0, false, function(on) f.notify = on end)
+    Tip(f.notifyCheck, nil, L.NOTIFY_TIP)
+
+    -- The note: three lines, shown when guildies hover over the event. No line breaks (they're cut).
+    f.noteBox = Block(54)
+    Text(f.noteBox, L.NOTE, "GameFontHighlightSmall", 2, -4)
+    local bg = Box(f.noteBox, 44, 0, RIGHT_W - 44, 50)
+    f.note = CreateFrame("EditBox", nil, bg)
+    f.note:SetPoint("TOPLEFT", 6, -5)
+    f.note:SetPoint("BOTTOMRIGHT", -6, 5)
+    f.note:SetMultiLine(true)
+    f.note:SetFontObject("GameFontHighlightSmall")
+    f.note:SetAutoFocus(false)
+    f.note:SetMaxLetters(ns.Calendar.MAX_NOTE)
+    f.note:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    f.note:SetScript("OnTextChanged", function(self, userInput)
+        local text = self:GetText() or ""
+        if userInput and text:find("[\r\n]") then
+            self:SetText((text:gsub("[\r\n]", "")))
+            self:ClearFocus()                       -- Enter finishes the note
+        end
+    end)
+    bg:EnableMouse(true)
+    bg:SetScript("OnMouseDown", function() f.note:SetFocus() end)
+
+    -- Important (Calendar moderators only): remind everyone at any of 15 / 30 / 60 minutes before, and
+    -- tell everyone now.
+    f.impBox = Block(54)
+    f.impLabel = Text(f.impBox, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -6)
     f.impChecks = {}
     for i, bt in ipairs(ns.Calendar.IM_TIMES) do
-        local c, fs = UI.Check(f, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, -272, false, function(on)
+        local c = UI.Check(f.impBox, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, 0, false, function(on)
             local has = math.floor(f.im / bt[1]) % 2 == 1
             if on and not has then f.im = f.im + bt[1] elseif not on and has then f.im = f.im - bt[1] end
         end)
-        c:SetScript("OnEnter", ImpTip); c:SetScript("OnLeave", NoTip)
+        Tip(c, L.IMPORTANT, L.IMP_TIP)
         f.impChecks[i] = c
-        f.imp[#f.imp + 1] = c; f.imp[#f.imp + 1] = fs
     end
-    local an, anText = UI.Check(f, L.IMP_ANNOUNCE, 0, -296, false, function(on) f.an = on end)
-    an:SetScript("OnEnter", ImpTip); an:SetScript("OnLeave", NoTip)
-    f.anCheck = an
-    f.imp[#f.imp + 1] = f.impLabel; f.imp[#f.imp + 1] = an; f.imp[#f.imp + 1] = anText
+    f.anCheck = UI.Check(f.impBox, L.IMP_ANNOUNCE, 0, -24, false, function(on) f.an = on end)
+    Tip(f.anCheck, L.IMPORTANT, L.IMP_TIP)
 
-    f.save = Button(f, L.SAVE, 110, 0, -272, function()
+    f.saveBox = Block(80)
+    f.save = Button(f.saveBox, L.SAVE, 110, 0, 0, function()
         local d = date("*t", p.formDay)
         local hour24 = (f.hour % 12) + (f.pm and 12 or 0)
         local at = time({ year = d.year, month = d.month, day = d.day, hour = hour24, min = f.minute, sec = 0 })
         local fields = { title = f.title:GetText() or "", at = at, k = f.kind,
-            nt = f.need.t, nh = f.need.h, nd = f.need.d, note = f.note:GetText() or "", w = f.weekly, mute = f.mute }
+            nt = f.need.t, nh = f.need.h, nd = f.need.d, note = f.note:GetText() or "", w = f.weekly, mute = not f.notify }
         if f.canImp then fields.im, fields.an = f.im, f.an end
         local key, why = ns.Calendar.Save(p.editKey, fields)
         if not key then ns.Print(L.EVENT_SAVE_FAILED[why] or L.EVENT_NEEDS_TITLE) return end
         p.mode = nil
         UI.Dirty()
     end, 24)
-    f.cancel = Button(f, L.CANCEL, 90, 120, -272, function() p.mode = nil; UI.Dirty() end, 24)
-    f.tip = Text(f, L.EVENT_TIP, "GameFontDisableSmall", 2, -304, RIGHT_W)
+    f.cancel = Button(f.saveBox, L.CANCEL, 90, 120, 0, function() p.mode = nil; UI.Dirty() end, 24)
+    f.tip = Text(f.saveBox, L.EVENT_TIP, "GameFontDisableSmall", 2, -32, RIGHT_W)
     f.tip:SetWordWrap(true)
-    f.tip:SetHeight(42)
+    f.tip:SetHeight(28)
     f.tip:SetJustifyV("TOP")
 end
 
@@ -351,13 +401,13 @@ local function LoadForm(p)
         f.kind = ns.Calendar.ShownKind(e.k)
         f.need = { t = e.nt > 0 and e.nt or 1, h = e.nh > 0 and e.nh or 1, d = e.nd > 0 and e.nd or 3 }
         f.weekly = e.w and true or false
-        f.mute = e.mute and true or false
+        f.notify = not e.mute
         f.im, f.an = e.im or 0, e.an and true or false
         f.title:SetText(e.title)
         f.note:SetText(e.note or "")
     else
         f.hour, f.minute, f.pm, f.kind, f.weekly = 7, 30, true, "s", false
-        f.mute = false
+        f.notify = false
         f.im, f.an = 0, false
         f.need = { t = 1, h = 1, d = 3 }
         f.title:SetText("")
@@ -366,7 +416,7 @@ local function LoadForm(p)
     f.pickPm(f.pm and 2 or 1)
     for i, k in ipairs(KIND_ORDER) do if k == f.kind then f.pickKind(i) end end
     f.weeklyCheck:SetChecked(f.weekly)
-    f.muteCheck:SetChecked(f.mute)
+    f.notifyCheck:SetChecked(f.notify)
     for i, bt in ipairs(ns.Calendar.IM_TIMES) do f.impChecks[i]:SetChecked(math.floor(f.im / bt[1]) % 2 == 1) end
     f.anCheck:SetChecked(f.an)
 end
@@ -378,16 +428,19 @@ local function RefreshForm(p)
     f.hourStep.Refresh()
     f.minStep.Refresh()
     local roles = f.kind == "d"
-    f.rolesLabel:SetShown(roles)
-    f.roles.SetShown(roles)
     f.roles.Refresh()
-    -- The important rows only for Calendar moderators; Save moves up when they're hidden.
+    -- Stack the blocks: roles only for a dungeon, important only for Calendar moderators.
     f.canImp = ns.Calendar.CanRemove()
-    for _, w in ipairs(f.imp) do w:SetShown(f.canImp) end
-    local y = f.canImp and -326 or -272
-    f.save:SetPoint("TOPLEFT", 0, y)
-    f.cancel:SetPoint("TOPLEFT", 120, y)
-    f.tip:SetPoint("TOPLEFT", 2, y - 32)
+    f.rolesBox:SetShown(roles)
+    f.impBox:SetShown(f.canImp)
+    local y = -130
+    for _, b in ipairs({ f.rolesBox, f.ticksBox, f.noteBox, f.impBox, f.saveBox }) do
+        if b:IsShown() then
+            b:SetPoint("TOPLEFT", 0, y)
+            y = y - b.h
+        end
+    end
+    f.tip:SetShown(y + 80 - 32 - 28 >= -410)      -- the tip only where it fits
 end
 
 local function RefreshDetails(p, evs, past)
@@ -409,7 +462,6 @@ local function RefreshDetails(p, evs, past)
             b.when:SetWidth(own and 108 or 242)
             b.when:SetText(UI.TimeText(at) .. "   " .. ns.GREY .. k[2] .. (e.w and (", " .. L.EVERY_WEEK_LOWER) or "")
                 .. "|r" .. (own and "" or ("   " .. (leader and UI.Name(leader) or e.owner))))
-            b.note:SetText(e.note or "")
             local ans = C.Answers(e, at)
             if (e.nt + e.nh + e.nd) > 0 then
                 local function R(r, need)
@@ -464,7 +516,7 @@ local function RefreshDetails(p, evs, past)
             b.modEdit:SetShown(mod and not over)
             b.title:SetWidth(mod and 130 or 242)
             b.mute:SetShown(own)
-            b.mute:SetText(e.mute and L.UNMUTE or L.MUTE)
+            b.mute:SetText(e.mute and L.NOTIFY_ON or L.NOTIFY_OFF)
             b:Show()
         else
             b.key = nil
@@ -497,6 +549,7 @@ local function Refresh(p)
             local t = Noon(y, m, d)
             local k = Key(t)
             local evs = C.OnDay(y, m, d)
+            c.evs = evs
             local past = k < todayKey
             c.num:SetText((past and ns.GREY or "") .. d .. "|r")
             for j, fs in ipairs({ c.e1, c.e2 }) do

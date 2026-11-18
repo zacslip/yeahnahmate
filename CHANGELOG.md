@@ -10,6 +10,9 @@ Calendar events, round 2:
   - **Tell everyone now**: a pop-up for everyone when you save it, and for guildies who were offline when they next log in (until it starts).
   - Important pop-ups wait until a fight is over, and other pop-ups don't cover them up.
   - Important events say so in gold on the calendar.
+- **The event form fits the event**: a Social event has no empty space where the Dungeon roles go.
+- **Longer notes**: the note box has three lines (150 letters). The calendar shows the title; hover over an event (or a day) to read its note.
+- **"Tell me who's going"** replaces "Mute answers", and it's off for new events: tick it to get a pop-up when someone says they're going. On your own events, Notify / Quiet switches it later. Events you've already made keep how they were.
 - Saving an event that can't be saved now says why (no title, cancelled or removed, not yours to change).
 - Guildies still on an older version don't get the important pop-ups: everyone should update.
 

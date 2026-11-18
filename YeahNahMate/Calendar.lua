@@ -44,10 +44,11 @@ local LIVE = 3 * 3600           -- an event still counts as "on" until 3 hours a
 local KEEP = 7 * DAY            -- past events are kept a week, then forgotten
 local KEEP_CANCELLED = 30 * DAY -- a cancel is remembered this long (from when it was cancelled), so
                                 -- a guildie still holding the event can't bring it back
-local MAX_TITLE, MAX_NOTE = 40, 100
+local MAX_TITLE, MAX_NOTE = 40, 150    -- a note fills three lines (older versions cut it at 100)
 local MAX_COPIES = 40
 local ASK_WINDOW = 300
 Cal.KINDS = { d = true, l = true, s = true, o = true }    -- accepted from others (older versions too)
+Cal.MAX_NOTE = MAX_NOTE
 Cal.MAKE = { s = true, d = true }                         -- kinds an event can be made as (raid later)
 Cal.IM_TIMES = { { 1, 15 }, { 2, 30 }, { 4, 60 } }        -- im bit, minutes before
 local IM_MAX = 7

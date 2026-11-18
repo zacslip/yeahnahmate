@@ -48,11 +48,15 @@ for _, o in ipairs(CREATED) do if o.form and o.dayPager then cal = o end end
 cal.mode, cal.formLoaded = "new", false
 ns.UI.Select("calendar")
 Tick(1)
-check(cal.form.kind == "s" and not cal.form.roles.rows.t.label:IsShown(), "a new event is social: no role rows")
+check(cal.form.kind == "s" and not cal.form.rolesBox:IsShown(), "a new event is social: no role rows")
+local function Y(w) local pt = w._pt; return pt and pt[#pt] end
+check(Y(cal.form.ticksBox) == -130, "social: the ticks move up into the roles' place (no gap)")
+check(not cal.form.notifyCheck:GetChecked(), "'Tell me who's going' is off for a new event")
 cal.form.pickKind(2)
 Tick(1)
-check(cal.form.roles.rows.t.label:IsShown(), "dungeon event: role rows shown")
-check(not cal.form.impLabel:IsShown(), "a Member doesn't see the important rows")
+check(cal.form.rolesBox:IsShown() and Y(cal.form.ticksBox) == -212, "dungeon event: role rows shown, the ticks under them")
+check(not cal.form.impBox:IsShown(), "a Member doesn't see the important rows")
+check(Y(cal.form.saveBox) == -296 and cal.form.tip:IsShown(), "Save right under the note, with the tip")
 
 -- Sounds: the chosen sound, on the chosen volume slider; off means silent; Test plays it.
 local Toast = ns.Toast

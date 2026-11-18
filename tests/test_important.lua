@@ -56,6 +56,10 @@ Tick(1)
 check(store["Chilli Heeler:1"] and store["Chilli Heeler:2"], "older versions' levelling and other events still arrive")
 check(C.ShownKind("l") == "s" and C.ShownKind("o") == "s" and C.ShownKind("d") == "d", "they show as social")
 
+-- Notes: up to 150 (three lines); a new event doesn't notify me of answers unless I tick it.
+local nk = C.Save(nil, { title = "Long note", at = now + 7200, k = "s", note = string.rep("n", 200), mute = true })
+check(nk and #store[nk].note == 150 and store[nk].mute, "a note keeps 150 letters; 'tell me who's going' off = muted")
+
 -- A Member can't make an important event: the ticks are ignored, nothing important is sent.
 check(not C.CanRemove(), "I'm a Member: no Calendar moderator")
 local before = #SENT
