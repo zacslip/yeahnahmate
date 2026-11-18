@@ -21,6 +21,7 @@ local ROLE_ICON = {
     d = "|TInterface\\Icons\\INV_Sword_04:14|t",
 }
 local MINUTES = { 0, 15, 30, 45 }
+local FIRST_Y = -102            -- the event form: where the rows under Kind start
 
 -- "7:30pm" in the player's local time.
 function UI.TimeText(at)
@@ -234,29 +235,20 @@ local function BuildForm(p)
     f.im, f.an = 0, false
 
     f.header = UI.Header(f, "", 0, -4, RIGHT_W)
-    Text(f, L.EVENT_TITLE, "GameFontHighlightSmall", 2, -30)
-    f.title = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    f.title:SetSize(RIGHT_W - 50, 20)
-    f.title:SetPoint("TOPLEFT", 48, -26)
-    f.title:SetAutoFocus(false)
-    f.title:SetMaxLetters(40)
-    f.title:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    f.title:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-
-    Text(f, L.EVENT_TIME, "GameFontHighlightSmall", 2, -58)
-    f.hourStep = Stepper(f, "", 40, -54, function() return f.hour end, function(d)
+    Text(f, L.EVENT_TIME, "GameFontHighlightSmall", 2, -30)
+    f.hourStep = Stepper(f, "", 40, -26, function() return f.hour end, function(d)
         f.hour = (f.hour + d - 1) % 12 + 1; UI.Dirty()
     end, 0)
-    f.minStep = Stepper(f, ":", 104, -54, function() return string.format("%02d", f.minute) end, function(d)
+    f.minStep = Stepper(f, ":", 104, -26, function() return string.format("%02d", f.minute) end, function(d)
         local i = 1
         for j, m in ipairs(MINUTES) do if m == f.minute then i = j end end
         f.minute = MINUTES[(i + d - 1) % #MINUTES + 1]; UI.Dirty()
     end, 8)
-    f.pickPm = UI.Choice(f, { L.AM, L.PM }, 180, -54, 38, function(i) f.pm = (i == 2) end)
+    f.pickPm = UI.Choice(f, { L.AM, L.PM }, 180, -26, 38, function(i) f.pm = (i == 2) end)
 
-    Text(f, L.EVENT_KIND, "GameFontHighlightSmall", 2, -88)
+    Text(f, L.EVENT_KIND, "GameFontHighlightSmall", 2, -60)
     local kindButtons
-    f.pickKind, kindButtons = UI.Choice(f, { L.KIND_SOCIAL, L.KIND_DUNGEON, L.KIND_RAID }, 0, -102, 84, function(i)
+    f.pickKind, kindButtons = UI.Choice(f, { L.KIND_SOCIAL, L.KIND_DUNGEON, L.KIND_RAID }, 0, -74, 84, function(i)
         f.kind = KIND_ORDER[i] or "s"; UI.Dirty()
     end)
     for i, k in ipairs(KIND_ORDER) do
@@ -274,11 +266,12 @@ local function BuildForm(p)
         end
     end
     -- The rows under Kind sit in blocks that RefreshForm stacks: roles (dungeon only), the ticks, the
-    -- note, important (Calendar moderators only), Save. A social event leaves no gap for the roles.
+    -- title and note, important (Calendar moderators only, under a line), Save. A social event leaves
+    -- no gap for the roles.
     local function Block(h)
         local b = CreateFrame("Frame", nil, f)
         b:SetSize(RIGHT_W, h)
-        b:SetPoint("TOPLEFT", 0, -130)
+        b:SetPoint("TOPLEFT", 0, FIRST_Y)
         b.h = h
         return b
     end
@@ -302,6 +295,17 @@ local function BuildForm(p)
     f.weeklyCheck = UI.Check(f.ticksBox, L.EVERY_WEEK, 0, 0, false, function(on) f.weekly = on end)
     f.notifyCheck = UI.Check(f.ticksBox, L.NOTIFY_ANSWERS, 112, 0, false, function(on) f.notify = on end)
     Tip(f.notifyCheck, nil, L.NOTIFY_TIP)
+
+    -- The title, right above the note.
+    f.titleBox = Block(28)
+    Text(f.titleBox, L.EVENT_TITLE, "GameFontHighlightSmall", 2, -4)
+    f.title = CreateFrame("EditBox", nil, f.titleBox, "InputBoxTemplate")
+    f.title:SetSize(RIGHT_W - 50, 20)
+    f.title:SetPoint("TOPLEFT", 48, 0)
+    f.title:SetAutoFocus(false)
+    f.title:SetMaxLetters(40)
+    f.title:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    f.title:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
     -- The note: three lines, shown when guildies hover over the event. No line breaks (they're cut).
     f.noteBox = Block(54)
@@ -327,18 +331,22 @@ local function BuildForm(p)
 
     -- Important (Calendar moderators only): remind everyone at any of 15 / 30 / 60 minutes before, and
     -- tell everyone now.
-    f.impBox = Block(54)
-    f.impLabel = Text(f.impBox, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -6)
+    f.impBox = Block(64)
+    local line = f.impBox:CreateTexture(nil, "ARTWORK")      -- a line between the event and these
+    line:SetColorTexture(0.9, 0.76, 0.36, 0.35)
+    line:SetPoint("TOPLEFT", 0, -2)
+    line:SetSize(RIGHT_W, 1)
+    f.impLabel = Text(f.impBox, ns.GOLD .. L.IMP_REMIND .. "|r", "GameFontHighlightSmall", 2, -16)
     f.impChecks = {}
     for i, bt in ipairs(ns.Calendar.IM_TIMES) do
-        local c = UI.Check(f.impBox, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, 0, false, function(on)
+        local c = UI.Check(f.impBox, string.format(L.IMP_MINUTES, bt[2]), 66 + (i - 1) * 60, -10, false, function(on)
             local has = math.floor(f.im / bt[1]) % 2 == 1
             if on and not has then f.im = f.im + bt[1] elseif not on and has then f.im = f.im - bt[1] end
         end)
         Tip(c, L.IMPORTANT, L.IMP_TIP)
         f.impChecks[i] = c
     end
-    f.anCheck = UI.Check(f.impBox, L.IMP_ANNOUNCE, 0, -24, false, function(on) f.an = on end)
+    f.anCheck = UI.Check(f.impBox, L.IMP_ANNOUNCE, 0, -34, false, function(on) f.an = on end)
     Tip(f.anCheck, L.IMPORTANT, L.IMP_TIP)
 
     f.saveBox = Block(80)
@@ -433,8 +441,8 @@ local function RefreshForm(p)
     f.canImp = ns.Calendar.CanRemove()
     f.rolesBox:SetShown(roles)
     f.impBox:SetShown(f.canImp)
-    local y = -130
-    for _, b in ipairs({ f.rolesBox, f.ticksBox, f.noteBox, f.impBox, f.saveBox }) do
+    local y = FIRST_Y
+    for _, b in ipairs({ f.rolesBox, f.ticksBox, f.titleBox, f.noteBox, f.impBox, f.saveBox }) do
         if b:IsShown() then
             b:SetPoint("TOPLEFT", 0, y)
             y = y - b.h
