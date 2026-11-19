@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.0 (not released yet)
+## 0.20.0
 
 - **Guildies near you keep up on the minimap**: while a guildie with the addon is close by (about minimap range), you both send your position every 3 seconds while moving instead of every 15 or more, and their dot glides smoothly the way they're going instead of standing still and jumping. In a crowd (more than 15 close by, like a guild meeting) it all works as before, so the guild's traffic doesn't grow.
 - **Materials on the Professions tab**: hover a recipe to see what it needs and how many of each you're carrying (green when you have enough). Works for every recipe in the list, not just your own.

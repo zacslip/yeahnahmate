@@ -18,6 +18,8 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 **Map**
 - Guildies with the addon show as class-coloured dots on your world map and minimap.
 - Hover a dot for their name, level, zone and how far away they are.
+- Guildies close by keep up on your minimap: their dot glides along the way they're heading instead of jumping.
+- **Guildies stand out on their nameplates**: corner brackets in their clan's colour, with crowns for the guild's top two ranks (needs friendly nameplates on; switch it off in Settings).
 - Your dot is hidden inside dungeons, and you can turn sharing off any time.
 
 **Roster**
@@ -39,6 +41,7 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 
 **Professions**
 - Everyone's professions and recipes in one searchable list: *who in the guild can make this?*
+- Hover a recipe to see the materials it needs and how many you're carrying.
 - **Craft requests**: post "I need 20 Wool Bandages", and guildies who know the recipe can say "I'll make it".
 - A 30-day history, so everyone can see the work's shared around.
 
