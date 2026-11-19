@@ -1,5 +1,6 @@
 -- Guildies' nameplates: corner brackets round a guildie's nameplate (its name and health bar), in
--- their clan's colour, so guildies stand out in a crowd. Settings switch (on by default).
+-- their clan's colour, so guildies stand out in a crowd; the guild's top two ranks (guild master and
+-- the rank under it) get a crown to the left. Settings switch (on by default).
 --
 -- Only our own frames: each marker is a small frame of ours (parent UIParent) anchored to the
 -- nameplate the game gives for the unit (C_NamePlate.GetNamePlateForUnit). Nothing of Blizzard's
@@ -32,6 +33,8 @@ local ARM, THICK = 10, 2          -- bracket arm length and thickness
 Plates.FIT = { x = 3, y = 3, top = 14 }
 local markers, spare = {}, {}     -- unit token -> marker frame; unused frames to reuse
 local live = {}                   -- unit tokens with a nameplate showing now (from the game's events)
+local CROWN = "Interface\\GroupFrame\\UI-Group-LeaderIcon"
+Plates.CROWN_RANKS = 1            -- ranks 0 .. this get the crown
 
 function Plates.On() return ns.settings and ns.settings.guildPlates ~= false end
 
@@ -52,11 +55,16 @@ local function NewMarker()
     f:SetFrameStrata("BACKGROUND")
     f.bars = {}
     Corner(f, "TOPLEFT"); Corner(f, "TOPRIGHT"); Corner(f, "BOTTOMLEFT"); Corner(f, "BOTTOMRIGHT")
+    f.crown = f:CreateTexture(nil, "OVERLAY")
+    f.crown:SetSize(14, 14)
+    f.crown:SetPoint("RIGHT", f, "LEFT", -2, 0)
+    f.crown:SetTexture(CROWN)
+    f.crown:Hide()
     return f
 end
 
--- Is this unit a guildie? Returns their roster key (or true when only the game's check says so), and
--- their race file name if known.
+-- Is this unit a guildie? Returns their roster key (or true when only the game's check says so),
+-- their race file name if known, and their guild rank index if known.
 local function Guildie(unit)
     local isPlayer = ns.Public(UnitIsPlayer and UnitIsPlayer(unit), "boolean")
     if not isPlayer then return nil end
@@ -71,7 +79,12 @@ local function Guildie(unit)
         local _, file = UnitRace(unit)
         race = ns.Clans.CleanRace(ns.Public(file, "string"))
     end
-    return member and key or true, race
+    local rank = member and ns.Guild.Get(key) and ns.Guild.Get(key).rankIndex or nil
+    if rank == nil and GetGuildInfo then
+        local _, _, index = GetGuildInfo(unit)
+        rank = ns.Public(index, "number")
+    end
+    return member and key or true, race, rank
 end
 
 local function Hide(unit)
@@ -103,13 +116,14 @@ end
 local function Show(unit)
     local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
     if not plate or (plate.IsForbidden and plate:IsForbidden()) then return end
-    local who, race = Guildie(unit)
+    local who, race, rank = Guildie(unit)
     if not who then Hide(unit) return end
     local f = markers[unit] or table.remove(spare) or NewMarker()
     markers[unit] = f
     local c = (race and Plates.COLOURS[race]) or Plates.GOLD
     f.colour = c
     for _, b in ipairs(f.bars) do b:SetColorTexture(c[1], c[2], c[3], 0.95) end
+    f.crown:SetShown(type(rank) == "number" and rank <= Plates.CROWN_RANKS)
     Place(f, plate)
     f:Show()
 end

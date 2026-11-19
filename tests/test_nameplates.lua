@@ -20,6 +20,7 @@ local units = {
     nameplate3 = { name = "Grunt", player = false },                                                 -- NPC
     nameplate4 = { name = "Bingo", surname = "Heeler", player = true, race = "Orc", forbidden = true }, -- guildie, locked plate
     nameplate5 = { name = "Alt", surname = "Unlisted", player = true, race = "Tauren", guild = true }, -- the game says guild
+    nameplate6 = { name = "Bluey", surname = "Heeler", player = true, race = "Orc" },               -- guildie, rank 1
 }
 local plates = {}
 C_NamePlate = {
@@ -44,7 +45,9 @@ check(chilli._pt and chilli._pt[2] == plates.nameplate1, "anchored to their name
 check(P.MarkerFor("nameplate2") == nil and P.MarkerFor("nameplate3") == nil, "no marker on a stranger or an NPC")
 check(P.MarkerFor("nameplate4") == nil, "a forbidden nameplate is left alone")
 check(P.MarkerFor("nameplate5") and P.MarkerFor("nameplate5").colour == P.COLOURS.Tauren, "the game's own guild check counts too (race from the unit)")
-check(P.Count() == 2, "two markers")
+check(P.Count() == 3, "three markers")
+check(P.MarkerFor("nameplate6").crown:IsShown() and not chilli.crown:IsShown() and not P.MarkerFor("nameplate5").crown:IsShown(),
+    "a crown left of the brackets for the top two ranks (Bluey, rank 1) only")
 
 -- Gone when the nameplate goes; reused for the next one.
 FireEvent("NAME_PLATE_UNIT_REMOVED", "nameplate1")
@@ -56,7 +59,7 @@ check(P.MarkerFor("nameplate1") == chilli, "the frame is reused")
 -- nameplate list has no unit tokens on it.
 for _, pl in pairs(plates) do pl.namePlateUnitToken = nil end
 FireEvent("GUILD_ROSTER_UPDATE"); Tick(2)
-check(P.MarkerFor("nameplate1") == chilli and chilli:IsShown() and P.Count() == 2, "a roster read doesn't take markers away")
+check(P.MarkerFor("nameplate1") == chilli and chilli:IsShown() and P.Count() == 3, "a roster read doesn't take markers away")
 
 -- Tight round the health bar (room above for the name) when the nameplate has one.
 local bar = CreateFrame("StatusBar")
@@ -84,7 +87,7 @@ check(ns.settings.guildPlates == false and P.Count() == 0, "off: every marker go
 FireEvent("NAME_PLATE_UNIT_ADDED", "nameplate1")
 check(P.Count() == 0, "off: new nameplates get none")
 page.plates:SetChecked(true); page.plates:Click(); Tick(1)
-check(P.Count() == 2, "on again: back on the guildies showing")
+check(P.Count() == 3, "on again: back on the guildies showing")
 
 -- Dev preview: every player, coloured by race; strangers' unknown races gold.
 SlashCmdList.YEAHNAHMATE("dev platepreview on")
