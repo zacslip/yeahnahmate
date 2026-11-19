@@ -24,6 +24,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Dungeons.lua` | Group posts, sign-ups and "I'm available" (`GRP`, `SIGN`, `ANS`, `AVL`, `DMX`). |
 | `Calendar.lua`, `Gather.lua` | Guild events and answers (`EVT`, `RSVP`, `EVR`, `EVM`); gathering for an event (`GTH`, `GAK`). |
 | `Board.lua` | Guild info, managers, which ranks moderate each tab, streamer cards (`BRD`). |
+| `Clans.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`). |
 | `Milestones.lua` | Milestone and welcome cards (`BRD` kinds `ms`, `wel`), posting them (`MSF`, `MSW`). |
 | `Voice.lua` | Proximity voice: guildies' voice volume by distance, on Blizzard's voice chat (`VGRP`). |
 | `Breakdown.lua` | The guild breakdown page's numbers. |
@@ -102,6 +103,9 @@ Fields added later (an important event's reminders, `im` and `an`, and its meeti
 which leave them out of the copies they pass on. A field missing from a message therefore means
 "keep what I have", never "switched off" (an updated owner always sends it, `0` / `false` when off).
 Older versions don't show important pop-ups at all.
+
+The same goes for the moderator ranks: an older version's edit has no Clans entry, so a tab missing
+from that message keeps the ticks we hold.
 
 ### Known limit: weekly events and daylight saving
 

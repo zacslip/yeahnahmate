@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.19.0 (not released yet)
+
+Clans:
+
+- **A new Clans tab.** The guild by race: each character is in the clan of its own race. Pick a clan at the top to see its members, their roles, level and where they are (hover a name for more).
+- **Clan leaders come from the guild ranks.** On the GM tab (Moderators, then Clan leaders), the guild master or a manager picks which rank leads each clan. Whoever holds that rank is shown as the leader, with a crown.
+- **Your roles**: pick up to two of Tank, Healer and DPS on the Clans tab. They show next to your name and in your tooltip for guildies with the addon.
+- Guildies' tooltips say which clan they're in and their roles.
+- GM tab: a Clans column for moderator ranks (for clan meetings and challenges, coming next).
+- The tab row is a little tighter to fit the new tab.
+
 ## 0.18.0
 
 Calendar events, round 2:

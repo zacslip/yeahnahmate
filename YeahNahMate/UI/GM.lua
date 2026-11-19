@@ -148,14 +148,107 @@ end
 
 -- Moderators: tick which ranks moderate each tab. One row per guild rank (the guild
 -- master's always ticked), one column per tab; the column heading's tooltip says what they can do.
-local MOD_ORDER = { "cal", "dun", "prof", "ask", "strm", "info" }
+-- A second page on the same view (the switch at the top right): Clan leaders, which guild rank
+-- leads each clan (Clans.lua).
+local MOD_ORDER = { "cal", "dun", "prof", "ask", "strm", "info", "clan" }
 local MOD_ROWS = 10
-local COL_W = 64
+local COL_W = 56
+
+-- The clans a rank can lead: my faction's races, and any other race seen in the guild.
+local FACTION_RACES = { Horde = { "Orc", "Troll", "Tauren", "Scourge" }, Alliance = { "Human", "Dwarf", "NightElf", "Gnome" } }
+local function ClanChoices()
+    local out, seen = {}, {}
+    local faction = UnitFactionGroup and UnitFactionGroup("player")
+    for _, r in ipairs(FACTION_RACES[faction] or FACTION_RACES.Horde) do out[#out + 1] = r; seen[r] = true end
+    for _, c in ipairs((ns.Clans.List())) do
+        if not seen[c.race] then out[#out + 1] = c.race; seen[c.race] = true end
+    end
+    return out
+end
+
+local function BuildClanRanks(p, v)
+    local f = CreateFrame("Frame", nil, v)
+    f:SetAllPoints()
+    f:Hide()
+    p.clanRanks = f
+    local intro = Text(f, L.GM_CLAN_INTRO, "GameFontDisableSmall", RX + 4, -28, RW - 8)
+    intro:SetWordWrap(true)
+    intro:SetHeight(28)
+    intro:SetJustifyV("TOP")
+    p.clanMenu = UI.PickMenu(f, 170, 12)
+    p.clanRows = {}
+    for i = 1, MOD_ROWS do
+        local r = Row(f, RX, -62 - (i - 1) * 26, RW, 24)
+        r.name = Text(r, "", "GameFontHighlightSmall", 8, -6, 180)
+        r.pick = Button(r, "", 170, 196, -1, nil, 22)
+        r.pick:SetScript("OnClick", function(self)
+            if not r.index or not ns.Clans.CanLinkRanks() then return end
+            local races = ClanChoices()
+            local items = { L.GM_CLAN_NO }
+            for _, race in ipairs(races) do items[#items + 1] = string.format(L.CLAN_NAME, ns.Clans.RaceName(race)) end
+            p.clanMenu.Open(self, items, function(k)
+                if k == 1 then
+                    local cur = ns.Clans.RaceForRank(r.index)
+                    if cur then ns.Clans.SetRank(cur, nil) end
+                else
+                    ns.Clans.SetRank(races[k - 1], r.index)
+                end
+                UI.Dirty()
+            end)
+        end)
+        r.pick:SetScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L.GM_CLAN_TIP, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        r.pick:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        r.warn = Text(r, "", "GameFontHighlightSmall", 374, -6, RW - 380)
+        p.clanRows[i] = r
+    end
+end
+
+local function RefreshClanRanks(p)
+    local B, Cl = ns.Board, ns.Clans
+    local can = Cl.CanLinkRanks()
+    local holders = {}
+    for _, m in ipairs(ns.Guild.list) do
+        if not m.sim and m.rankIndex then holders[m.rankIndex] = (holders[m.rankIndex] or 0) + 1 end
+    end
+    local ranks = B.Ranks()
+    for i, r in ipairs(p.clanRows) do
+        local rk = ranks[i]
+        r.index = rk and rk.index
+        if rk then
+            r.name:SetText(rk.name ~= "" and rk.name or ("#" .. rk.index))
+            local race = Cl.RaceForRank(rk.index)
+            r.pick:SetShown(rk.index ~= 0)
+            r.pick:SetEnabled(can)
+            r.pick:SetText((race and string.format(L.GM_CLAN_PICK, Cl.RaceName(race)) or (ns.GREY .. L.GM_CLAN_NONE .. "|r")) .. "  v")
+            local n = holders[rk.index] or 0
+            r.warn:SetText((race and n > 1) and ("|cffff8040" .. string.format(L.GM_CLAN_TWO, rk.name, n) .. "|r") or "")
+            r.stripe:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.04 or 0)
+            r:Show()
+        else
+            r:Hide()
+        end
+    end
+end
 
 local function BuildModerators(p)
-    local v = CreateFrame("Frame", nil, p)
+    local holder = CreateFrame("Frame", nil, p)
+    holder:SetAllPoints()
+    p.modView = holder
+    p.modSub = 1
+    p.modSwitch = UI.Choice(holder, { L.GM_RANKS_MOD, L.GM_RANKS_CLANS }, RX + RW - 212, 0, { 100, 108 }, function(i)
+        p.modSub = i
+        UI.Dirty()
+    end)
+    p.modSwitch(1)
+    BuildClanRanks(p, holder)
+    local v = CreateFrame("Frame", nil, holder)
     v:SetAllPoints()
-    p.modView = v
+    p.modTicks = v
     local intro = Text(v, L.GM_MOD_INTRO, "GameFontDisableSmall", RX + 4, -28, RW - 8)
     intro:SetWordWrap(true)
     intro:SetHeight(28)
@@ -198,6 +291,9 @@ local function BuildModerators(p)
 end
 
 local function RefreshModerators(p)
+    p.modTicks:SetShown(p.modSub ~= 2)
+    p.clanRanks:SetShown(p.modSub == 2)
+    if p.modSub == 2 then RefreshClanRanks(p) return end
     local B = ns.Board
     local ranks = B.Ranks()
     local can = B.CanSetRank()

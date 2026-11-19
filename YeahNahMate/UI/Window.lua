@@ -8,14 +8,14 @@ local UI = ns.UI
 local W, H = 760, 552               -- the guild header adds 52 to the mock-up's 500
 
 -- Tabs in order (Calendar before Dungeons; Legends; a GM tab), each as wide as its
--- word so eleven fit in one row. The GM tab only shows for the guild master and their managers.
+-- word so twelve fit in one row (12 + widths + 4 between = 724 of 760). The GM tab only shows for the guild master and their managers.
 -- Each page file calls UI.AddPage(key, build, refresh).
 local function Managing() return ns.Board ~= nil and ns.Board.CanManage() end
 local TABS = {
-    { "home", L.TAB_HOME, 52 }, { "roster", L.TAB_ROSTER, 58 }, { "calendar", L.TAB_CALENDAR, 70 },
-    { "dungeons", L.TAB_DUNGEONS, 74 }, { "professions", L.TAB_PROFESSIONS, 88 }, { "ask", L.TAB_ASK, 44 },
-    { "legends", L.TAB_LEGENDS, 68 }, { "streamers", L.TAB_STREAMERS, 78 }, { "info", L.TAB_INFO, 44 },
-    { "gm", L.TAB_GM, 44, Managing }, { "settings", L.TAB_SETTINGS, 70 },
+    { "home", L.TAB_HOME, 46 }, { "roster", L.TAB_ROSTER, 52 }, { "clans", L.TAB_CLANS, 50 },
+    { "calendar", L.TAB_CALENDAR, 64 }, { "dungeons", L.TAB_DUNGEONS, 68 }, { "professions", L.TAB_PROFESSIONS, 80 },
+    { "ask", L.TAB_ASK, 38 }, { "legends", L.TAB_LEGENDS, 62 }, { "streamers", L.TAB_STREAMERS, 70 },
+    { "info", L.TAB_INFO, 38 }, { "gm", L.TAB_GM, 36, Managing }, { "settings", L.TAB_SETTINGS, 64 },
 }
 
 local pages = {}                -- key -> { build, refresh, frame }

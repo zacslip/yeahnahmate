@@ -36,6 +36,17 @@ local ZONE_MAP = {
     ["Hillsbrad Foothills"] = 1424, ["Stonetalon Mountains"] = 1442, ["Ashenvale"] = 1440,
     ["Thousand Needles"] = 1441, ["Desolace"] = 1443, ["Stranglethorn Vale"] = 1434, ["Tanaris"] = 1446,
 }
+-- Clans (Clans.lua): race, roles, and who leads their clan. Fakes without the addon have no race
+-- (like real guildies whose race the game doesn't say).
+local CLAN = {
+    ["Bazza Stubbs"] = { "Orc", "t", true },     ["Shazza Kettle"] = { "Troll", "h", true },
+    ["Davo Thongs"] = { "Tauren", "d" },        ["Kezza Galah"] = { "Scourge", "d", true },
+    ["Macca Ute"] = { "Tauren", "hd", true },   ["Tezza Brolly"] = { "Orc", "d" },
+    ["Johnno Snag"] = { "Tauren", "th" },       ["Gazza Billabong"] = { "Troll", "t" },
+    ["Trev Drongo"] = { "Scourge", "h" },       ["Woody Stubby"] = { "Troll", "d" },
+    ["Mick Larrikin"] = { "Scourge", "" },
+}
+
 -- What some of them are up to (status codes, Status.lua).
 local DOING = { ["Davo Thongs"] = { "g", 3 }, ["Kezza Galah"] = { "t" }, ["Trev Drongo"] = { "t" },
     ["Macca Ute"] = { "g", 2 } }
@@ -399,7 +410,7 @@ end
 -- A fake guildie's status message fields.
 local function StatusOf(m)
     local d = DOING[m.name] or {}
-    return { l = m.level, z = m.zone, st = d[1] or "", n = d[2] }
+    return { l = m.level, z = m.zone, st = d[1] or "", n = d[2], ra = m.race, ro = m.roles }
 end
 
 -- Give a fake guildie a spot: near me if they're in my zone (so they show on the minimap),
@@ -429,6 +440,8 @@ local function Build()
             zone = (p[4] == "@zone") and zone or p[4], note = "", online = p[5], status = 0,
             sim = true, addon = p[6],
         }
+        local c = p[6] and CLAN[name]
+        if c then m.race, m.roles, m.simLeader = c[1], c[2], c[3] or nil end
         list[#list + 1] = m
         byName[name] = m
     end

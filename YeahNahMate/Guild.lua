@@ -83,6 +83,7 @@ function Guild.Scan()
                 m.online = Public(online) and true or false
                 m.status = tonumber(Public(status)) or 0     -- 0 none, 1 away, 2 busy
                 m.class = Public(class, "string")
+                m.guid = Public(guid, "string")             -- for their race (Clans.lua)
                 -- Days since they were last on (0 = online), for the breakdown's "active this week".
                 -- nil when the game doesn't say.
                 m.offDays = nil

@@ -61,7 +61,7 @@ Board.kinds = {}
 -- Ranks
 
 -- The tabs with their own moderator rank.
-Board.TABS = { "cal", "dun", "prof", "ask", "strm", "info" }
+Board.TABS = { "cal", "dun", "prof", "ask", "strm", "info", "clan" }
 local IS_TAB = {}
 for _, t in ipairs(Board.TABS) do IS_TAB[t] = true end
 Board.IS_TAB = IS_TAB
@@ -485,8 +485,12 @@ local function Take(author, msg, direct)
         end
         if type(msg.er) ~= "number" or msg.er < 0 or msg.er > 9 or not Newer(b.rank, msg.ev, direct, true) then return false end
         local tm = {}
+        local old = b.rank and type(b.rank.tm) == "table" and b.rank.tm or {}
         for _, t in ipairs(Board.TABS) do
-            tm[t] = CleanMask(type(msg.tm) == "table" and msg.tm[t]) or UpTo(msg.er)
+            local v = type(msg.tm) == "table" and msg.tm[t]
+            -- A tab missing from the message (an older version that doesn't know it) keeps what I hold.
+            if v == nil and type(old[t]) == "number" then v = old[t] end
+            tm[t] = CleanMask(v) or UpTo(msg.er)
         end
         b.rank = { er = math.floor(msg.er), tm = tm, by = author, ev = msg.ev, direct = direct or nil }
         return true

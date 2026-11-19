@@ -205,6 +205,50 @@ UI.SIDE_W = 168
 UI.RX = 184
 UI.RW = 736 - UI.RX
 
+-- Role icons (UI.ROLE_ICON, further down) as one string: UI.RoleIcons("hd") -> both icons.
+function UI.RoleIcons(roles)
+    if type(roles) ~= "string" or roles == "" then return "" end
+    local out = {}
+    for _, r in ipairs({ "t", "h", "d" }) do if roles:find(r, 1, true) then out[#out + 1] = UI.ROLE_ICON[r] end end
+    return table.concat(out, " ")
+end
+
+-- A drop-down list whose items change: one per parent, opened under any button.
+-- menu.Open(anchor, items, onPick): items = { label, ... }, onPick(i). A second click on the same
+-- button shuts it.
+function UI.PickMenu(parent, w, maxRows, rowH)
+    rowH = rowH or 20
+    local menu = UI.Box(parent, 0, 0, w, 8 + maxRows * rowH)
+    menu:SetFrameLevel((parent:GetFrameLevel() or 1) + 30)
+    menu:SetBackdropColor(0, 0, 0, 0.97)
+    menu:EnableMouse(true)
+    menu:Hide()
+    menu.rows = {}
+    for i = 1, maxRows do
+        local r = UI.Row(menu, 4, -4 - (i - 1) * rowH, w - 8, rowH - 1)
+        r.text = UI.Text(r, "", "GameFontHighlightSmall", 6, -3, w - 20)
+        r:SetScript("OnClick", function()
+            menu:Hide()
+            if menu.onPick then menu.onPick(i) end
+        end)
+        menu.rows[i] = r
+    end
+    function menu.Open(anchor, items, onPick)
+        if menu:IsShown() and menu.anchor == anchor then menu:Hide() return end
+        menu.anchor, menu.onPick = anchor, onPick
+        local n = math.min(#items, maxRows)
+        for i, r in ipairs(menu.rows) do
+            r.text:SetText(items[i] or "")
+            r:SetShown(i <= n)
+        end
+        menu:SetHeight(8 + n * rowH)
+        menu:ClearAllPoints()
+        menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
+        menu:Show()
+    end
+    return menu
+end
+
 -- Builds the sidebar on parent. action = { label, onClick } or nil (the views then start at the top).
 -- Returns s: s.action (the button), s.rows[i] (.label, .count, .bar), s.y (under the last row),
 -- s.Set(picked, counts) to light the picked row and fill the counts.
@@ -449,6 +493,21 @@ function UI.MemberTooltip(owner, m)
     end
     if ns.Requests and ns.Requests.IsCraftyBugger(m.name) then
         GameTooltip:AddLine(UI.CRAFTY_ICON .. " " .. L.CRAFTY_BUGGER, 1, 0.82, 0)
+    end
+    if ns.Clans then
+        local race, roles = ns.Clans.Race(m.name), ns.Clans.Roles(m.name)
+        if race then
+            local lead = ns.Clans.IsLeader(m.name, race)
+            GameTooltip:AddLine(string.format(lead and L.CLAN_LEADER_TIP or "%s", string.format(L.TIP_CLAN, ns.Clans.RaceName(race))),
+                0.8, 0.8, 0.8)
+        end
+        if roles ~= "" then
+            local names = {}
+            for _, r in ipairs(ns.Clans.ROLES) do
+                if roles:find(r, 1, true) then names[#names + 1] = UI.ROLE_ICON[r] .. " " .. ({ t = L.ROLE_TANK, h = L.ROLE_HEALER, d = L.ROLE_DPS })[r] end
+            end
+            GameTooltip:AddLine(string.format(L.TIP_ROLES, table.concat(names, "  ")), 0.8, 0.8, 0.8)
+        end
     end
     local chars = ns.Alts and ns.Alts.Characters(m.name) or { m.name }
     if #chars > 1 then

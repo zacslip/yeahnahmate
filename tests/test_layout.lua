@@ -13,12 +13,22 @@ Tick(16)
 local UI, L = ns.UI, ns.L
 
 -- Everything on a page sits inside the content area (736 wide): the sidebar 0-168, the right 184-736.
-local function Inside(page, what)
+-- shownOnly: only what's showing now (frames and their parents up to the page), for pages with other
+-- views' hidden parts laid out somewhere else.
+local function Showing(o, page)
+    local f = o
+    while f and f ~= page do
+        if f.IsShown and not f:IsShown() then return false end
+        f = f._parent
+    end
+    return true
+end
+local function Inside(page, what, shownOnly)
     local bad = {}
     for _, o in ipairs(CREATED) do
         local parent, depth = o._parent, 0
         while parent and parent ~= page and depth < 6 do parent, depth = parent._parent, depth + 1 end
-        if parent == page and o._pt and o._w and type(o._pt[2]) == "number" and o._pt[1] == "TOPLEFT" then
+        if parent == page and (not shownOnly or Showing(o, page)) and o._pt and o._w and type(o._pt[2]) == "number" and o._pt[1] == "TOPLEFT" then
             -- x relative to the page: add up the TOPLEFT offsets of the frames in between.
             local x, f = o._pt[2], o._parent
             while f and f ~= page do
@@ -209,5 +219,31 @@ check(ns.settings.pop.group == false and dp.groupAlert.text:GetText():find(L.Q_A
 dp.groupAlert:Click(); Tick(1)
 check(ns.settings.pop.group == true, "and back on")
 Inside(dp, "Dungeons")
+
+-- Clans (sim on: fake guildies have races, roles and leaders).
+UI.Open("clans")
+Tick(1)
+local cp
+for _, o in ipairs(CREATED) do if o.roleBtns and o.leaderCard then cp = o end end
+cp.race = "Troll"; UI.Dirty(); Tick(1)
+check(cp.rows[1]:IsShown() and cp.rows[1].m.name == "Shazza Kettle" and cp.leaderCard.text:GetText() == "Shazza",
+    "Clans (sim): Shazza leads the Troll clan, listed first")
+local unknownNote = cp.note:GetText() or ""
+check(unknownNote ~= "", "Clans (sim): fakes without the addon counted as race not known")
+Inside(cp, "Clans")
+cp.pickBtn:Click(); Tick(1)
+Inside(cp, "Clans picker")
+
+-- GM tab: the moderator ticks (seven columns) and the Clan leaders page fit.
+SlashCmdList.YEAHNAHMATE("dev gm on")
+UI.Open("gm")
+Tick(1)
+local gp
+for _, o in ipairs(CREATED) do if o.clanRows and o.modSwitch then gp = o end end
+gp.pickView(2); Tick(1)
+Inside(gp, "GM moderators", true)
+gp.modSwitch(2); Tick(1)
+Inside(gp, "GM clan leaders", true)
+SlashCmdList.YEAHNAHMATE("dev gm off")
 
 check(#ERRORS == 0, "no errors", ERRORS[1])

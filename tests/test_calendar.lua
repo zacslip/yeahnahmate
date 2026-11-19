@@ -253,6 +253,7 @@ do
     ns.UI.Open("calendar")
     local cal
     for _, o in ipairs(CREATED) do if o.raidBox then cal = o end end
+    Tick(4)             -- the click-everything sweep above also picked roles on the Clans tab (sent 3 s later)
     local before = #SENT
     cal.raidBtn:Click()
     Tick(1)
