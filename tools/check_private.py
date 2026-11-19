@@ -35,7 +35,9 @@ def words():
 
 
 def guildies():
-    """Full names from the saved guild roster: lines like ["Name"] = { ... rankIndex ... } under members."""
+    """Full names from the saved data: every two-word key like ["First Surname"] in it (guildies show
+    up as keys across many tables). A two-word key that isn't a name would also be refused: add it to
+    ALLOWED below."""
     try:
         import install
         wow = install.wow_folder()
@@ -47,7 +49,7 @@ def guildies():
             text = open(f, encoding="utf-8", errors="replace").read()
         except OSError:
             continue
-        for m in re.finditer(r'\["([A-Z][a-z]+ [A-Z][a-z]+)"\]', text):
+        for m in re.finditer(r'\["([A-Z][\w\'-]+ [A-Z][\w\'-]+)"\]', text):
             names.add(m.group(1))
     return names
 

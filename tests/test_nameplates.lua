@@ -16,11 +16,15 @@ Tick(2)
 -- The game's side: units on nameplates. Forever gives the surname where the realm usually goes.
 local units = {
     nameplate1 = { name = "Chilli", surname = "Heeler", player = true, race = "Troll" },            -- guildie (roster)
-    nameplate2 = { name = "Random", surname = "Stranger", player = true, race = "Orc" },            -- stranger
+    nameplate2 = { name = "Random", surname = "Stranger", player = true, race = "Orc", guild = false }, -- stranger
     nameplate3 = { name = "Grunt", player = false },                                                 -- NPC
     nameplate4 = { name = "Bingo", surname = "Heeler", player = true, race = "Orc", forbidden = true }, -- guildie, locked plate
     nameplate5 = { name = "Alt", surname = "Unlisted", player = true, race = "Tauren", guild = true }, -- the game says guild
     nameplate6 = { name = "Bluey", surname = "Heeler", player = true, race = "Orc" },               -- guildie, rank 1
+    -- Someone else with a guildie's name: the game says not in my guild, and that wins.
+    nameplate7 = { name = "Bluey", surname = "Heeler", player = true, race = "Orc", guild = false },
+    -- My own plate (the personal resource display): never marked.
+    nameplate8 = { name = "Me", surname = "Myself", player = true, race = "Orc", guild = true, me = true },
 }
 local plates = {}
 C_NamePlate = {
@@ -35,7 +39,8 @@ C_NamePlate = {
 }
 function UnitIsPlayer(u) return units[u] and units[u].player or false end
 function UnitName(u) return units[u] and units[u].name, units[u] and units[u].surname end
-function UnitIsInMyGuild(u) return units[u] and units[u].guild == true or false end
+function UnitIsInMyGuild(u) return units[u] and units[u].guild end      -- nil: the game won't say
+function UnitIsUnit(u, other) return other == "player" and units[u] ~= nil and units[u].me == true end
 function UnitRace(u) local r = units[u] and units[u].race return r, r, 1 end
 
 for u in pairs(units) do FireEvent("NAME_PLATE_UNIT_ADDED", u) end
@@ -44,6 +49,8 @@ check(chilli and chilli:IsShown() and chilli.colour == P.COLOURS.Troll, "a guild
 check(chilli._pt and chilli._pt[2] == plates.nameplate1, "anchored to their nameplate (our own frame)")
 check(P.MarkerFor("nameplate2") == nil and P.MarkerFor("nameplate3") == nil, "no marker on a stranger or an NPC")
 check(P.MarkerFor("nameplate4") == nil, "a forbidden nameplate is left alone")
+check(P.MarkerFor("nameplate7") == nil, "someone with a guildie's name the game says isn't in my guild: no marker")
+check(P.MarkerFor("nameplate8") == nil, "my own plate: no marker")
 check(P.MarkerFor("nameplate5") and P.MarkerFor("nameplate5").colour == P.COLOURS.Tauren, "the game's own guild check counts too (race from the unit)")
 check(P.Count() == 3, "three markers")
 check(P.MarkerFor("nameplate6").crown:IsShown() and P.MarkerFor("nameplate6").crown2:IsShown() and not chilli.crown:IsShown() and not chilli.crown2:IsShown() and not P.MarkerFor("nameplate5").crown:IsShown(),

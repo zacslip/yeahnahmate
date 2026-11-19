@@ -145,4 +145,17 @@ check(table.concat(lines, "\n"):find("Linen Cloth x2", 1, true), "tried again: t
 row._scripts.OnLeave(row)
 row.rid = 3755
 
+-- The game's answer is empty at first (still loading): asked again a moment later, not cached as none.
+local filled = false
+C_TradeSkillUI.GetRecipeSchematic = function()
+    if not filled then return { reagentSlotSchematics = {} } end
+    return { reagentSlotSchematics = { { quantityRequired = 4, reagents = { { itemID = 2589 } } } } }
+end
+check(P.Materials(3758) == nil, "an empty answer: nothing yet")
+filled = true
+check(P.Materials(3758) == nil, "asked again at once: not asked yet")
+Tick(0.3)
+local later = P.Materials(3758)
+check(later and later[1].n == 4, "an empty answer is asked again later: the materials come")
+
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))

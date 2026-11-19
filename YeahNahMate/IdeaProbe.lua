@@ -152,7 +152,8 @@ local function OnAdded(unit)
     local name = UnitName and UnitName(unit)
     Count(p.name, How(name, "string"))
     local inGuild = UnitIsInMyGuild and UnitIsInMyGuild(unit)
-    Count(p.myGuild, inGuild == nil and "nil" or (Secret(inGuild) and "secret" or tostring(inGuild)))
+    if Secret(inGuild) then Count(p.myGuild, "secret"); inGuild = nil
+    else Count(p.myGuild, inGuild == nil and "nil" or tostring(inGuild)) end
     local gname = GetGuildInfo and GetGuildInfo(unit)
     Count(p.guildName, How(gname, "string"))
     -- A guildie: by the game's own check, or by the name on my roster.
@@ -166,6 +167,8 @@ local function OnAdded(unit)
         p.guildies = p.guildies + 1
         Count(p.guildieWhere, where)
         if plate and not forbidden then
+            local old = owls[unit]                  -- added again: free the old owl first
+            if old then old:Hide(); old:ClearAllPoints(); free[#free + 1] = old; owls[unit] = nil end
             local ok, owl = pcall(Owl, plate)
             if ok then owls[unit] = owl; p.owls = p.owls + 1 else Count(p.owlErrors, tostring(owl)) end
         end

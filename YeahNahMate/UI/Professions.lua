@@ -146,9 +146,11 @@ local RecipeTooltip
 local function Ours(r)
     return tipRow == r and r:IsShown() and GameTooltip and GameTooltip:IsShown() and GameTooltip:GetOwner() == r
 end
-local function Redraw(r, why)
-    if not Ours(r) or redraws >= MAX_REDRAWS then return end
-    redraws = redraws + 1
+-- free: a redraw for names that loaded (bounded by the materials shown, once each), not counted
+-- against MAX_REDRAWS, so a few names arriving together can't use up the "lines gone" redraws.
+local function Redraw(r, why, free)
+    if not Ours(r) or (not free and redraws >= MAX_REDRAWS) then return end
+    if not free then redraws = redraws + 1 end
     ns.Log("materials tooltip drawn again (" .. why .. ")")
     ns.Safe(RecipeTooltip, r)
 end
@@ -204,12 +206,19 @@ function RecipeTooltip(r)
     CheckLater(r, 0.3)
     if first then CheckLater(r, 1) end
 end
--- A material shown as loading arrived: draw again on the next frame (once per material).
+-- A material shown as loading arrived: draw again on the next frame (once per material; names
+-- arriving in the same frame share one redraw).
+local namePending = false
 ns.Listen("ITEM_LOADED", function(id)
     if waiting[id] ~= true or not tipRow then return end
     waiting[id] = false
+    if namePending then return end
+    namePending = true
     local r = tipRow
-    C_Timer.After(0, function() Redraw(r, "a name loaded") end)
+    C_Timer.After(0, function()
+        namePending = false
+        Redraw(r, "a name loaded", true)
+    end)
 end)
 
 local function BuildWho(p)

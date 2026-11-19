@@ -63,6 +63,15 @@ Pos(0.6); Tick(3); Pos(0.63); Tick(1.5)
 check(next(M.near) == nil, "a crowd: nobody glides")
 for i = 1, 16 do ns.Map.pos["Crowd " .. i] = nil end
 
+-- Only sim fakes near: they glide, but my position isn't sent faster for them.
+local realFake = ns.Sim.IsFake
+ns.Sim.IsFake = function(n) return n == "Bluey Heeler" end
+M.FindNear()
+check(M.near["Bluey Heeler"] and M.nearReal == 0, "a fake near: glides, but doesn't start the near lane")
+ns.Sim.IsFake = realFake
+M.FindNear()
+check(M.nearReal == 1, "a real guildie near: starts the near lane")
+
 -- Guildies elsewhere (another map) aren't near.
 INJECT("YNM", Msg({ v = 1, t = "POS", m = 1411, x = 0.5, y = 0.5 }), "GUILD", "Bluey Heeler")
 Tick(1.5)

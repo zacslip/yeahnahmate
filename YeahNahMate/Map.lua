@@ -187,7 +187,8 @@ function Map.Place(name)
             Pins:AddMinimapIconMap(REF, f, p.m, p.x, p.y, false, false)
         end
     elseif miniDots[name] then
-        Pins:RemoveMinimapIcon(REF, miniDots[name]); miniDots[name]:Hide(); miniDots[name].placed = nil
+        local f = miniDots[name]
+        Pins:RemoveMinimapIcon(REF, f); f:Hide(); f.placed, f.gliding, f.sm = nil, nil, nil
     end
 end
 
@@ -275,6 +276,7 @@ local found = {}                -- reused: { name, yards } of everyone near
 function Map.FindNear()
     wipe(Map.near)
     local count = 0
+    Map.nearReal = 0                -- the near ones who aren't sim fakes (only they start the near lane)
     local mm, mx, my = Map.MyPosition()
     local now = GetTime()
     if mm then
@@ -284,6 +286,7 @@ function Map.FindNear()
                 local d = HBD:GetZoneDistance(mm, mx, my, p.m, p.x, p.y)
                 if d and d <= NEAR then
                     count = count + 1
+                    if not (ns.Sim and ns.Sim.IsFake(name)) then Map.nearReal = Map.nearReal + 1 end
                     local e = found[count] or {}
                     e.name, e.yards = name, d
                     found[count] = e
@@ -418,7 +421,7 @@ ns.Listen("LOGIN", function()
         -- The near lane: a guildie close by gets my position every 3 s while I move.
         C_Timer.NewTicker(1, function()
             local ok, count = ns.Safe(Map.FindNear)
-            if ok and count and count > 0 and Map.Sharing() then
+            if ok and count and count > 0 and (Map.nearReal or 0) > 0 and Map.Sharing() then
                 local iv = Map.NearInterval(count)
                 if iv < Map.Interval() then ns.Safe(Map.Tick, iv, "NORMAL") end
             end

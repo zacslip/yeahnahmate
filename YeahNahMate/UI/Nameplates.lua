@@ -73,10 +73,15 @@ end
 local function Guildie(unit)
     local isPlayer = ns.Public(UnitIsPlayer and UnitIsPlayer(unit), "boolean")
     if not isPlayer then return nil end
+    -- My own plate (the personal resource display) never gets brackets.
+    if UnitIsUnit and ns.Public(UnitIsUnit(unit, "player"), "boolean") then return nil end
     local name, surname = UnitName(unit)
     name, surname = ns.Public(name, "string"), ns.Public(surname, "string")
     local key = name and ((surname and surname ~= "") and (name .. " " .. surname) or name) or nil
     local inGuild = ns.Public(UnitIsInMyGuild and UnitIsInMyGuild(unit), "boolean")
+    -- The game's own answer wins when it's readable: someone else with a guildie's name isn't marked.
+    -- The roster name is only used when the game won't say (nil or secret).
+    if inGuild == false and not Plates.preview then return nil end
     local member = key and ns.Guild.IsMember(key)
     if not (member or inGuild or Plates.preview) then return nil end
     local race = member and ns.Clans.Race(key) or nil
@@ -120,7 +125,7 @@ end
 
 local function Show(unit)
     local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
-    if not plate or (plate.IsForbidden and plate:IsForbidden()) then return end
+    if not plate or (plate.IsForbidden and plate:IsForbidden()) then Hide(unit) return end
     local who, race, rank = Guildie(unit)
     if not who then Hide(unit) return end
     local f = markers[unit] or table.remove(spare) or NewMarker()

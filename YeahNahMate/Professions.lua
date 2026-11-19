@@ -777,11 +777,15 @@ ns.Listen("LOGIN", function() dirty = true end)
 -- yet: the game is asked for them, and ITEM_DATA_LOAD_RESULT says when one arrives.
 
 local matCache = {}             -- recipe id -> { { id, n }, ... } (false: the game had none)
+local matTries = {}             -- recipe id -> { n = empty answers so far, at = when last asked }
+local MAT_TRIES, MAT_RETRY = 3, 0.25   -- an empty answer may be data still loading: ask again later
 
 function Prof.Materials(rid)
     if type(rid) ~= "number" then return nil end
     local cached = matCache[rid]
     if cached ~= nil then return cached or nil end
+    local t = matTries[rid]
+    if t and GetTime() - t.at < MAT_RETRY then return nil end
     local api = C_TradeSkillUI
     if not (api and api.GetRecipeSchematic) then return nil end
     local ok, s = pcall(api.GetRecipeSchematic, rid, false)
@@ -793,8 +797,16 @@ function Prof.Materials(rid)
         local n = ns.Public(slot.quantityRequired, "number")
         if id and n and n > 0 and slot.required ~= false then out[#out + 1] = { id = id, n = n } end
     end
-    matCache[rid] = #out > 0 and out or false
-    return #out > 0 and out or nil
+    if #out > 0 then
+        matCache[rid], matTries[rid] = out, nil
+        return out
+    end
+    -- None: maybe the game is still loading the recipe. Asked again after MAT_RETRY, up to MAT_TRIES.
+    local t = matTries[rid] or { n = 0 }
+    t.n, t.at = t.n + 1, GetTime()
+    matTries[rid] = t
+    if t.n >= MAT_TRIES then matCache[rid], matTries[rid] = false, nil end
+    return nil
 end
 
 -- An item's name, or nil while the game loads it (asked for here).
