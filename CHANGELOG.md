@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.19.0 (not released yet)
+## 0.19.0
 
 Clans:
 
