@@ -118,7 +118,7 @@ local function Board() return ns.Board.Store() end
 C.FIRST_CLAN_RANK = 2               -- ranks 0 and 1 lead the whole guild
 
 -- Ranks found by itself: race -> rank index (see the top of this file). Real guildies only.
-local autoCache = nil
+local autoCache, clashCache = nil, nil
 local function AutoRanks()
     if autoCache then return autoCache end
     local holders = {}
@@ -129,14 +129,17 @@ local function AutoRanks()
             holders[m.rankIndex] = h
         end
     end
-    local auto = {}
+    -- Two such ranks held by the same race: the higher one (lower index) leads; the other is a clash
+    -- the GM tab warns about.
+    local auto, clash = {}, {}
     for index = C.FIRST_CLAN_RANK, 9 do
         local h = holders[index]
         if not h or #h ~= 1 then break end
         local race = C.Race(h[1])
-        if race and not auto[race] then auto[race] = index end
+        if race and not auto[race] then auto[race] = index
+        elseif race then clash[index] = { race = race, winner = auto[race], who = h[1] } end
     end
-    autoCache = auto
+    autoCache, clashCache = auto, clash
     return auto
 end
 ns.Listen("ROSTER", function() autoCache = nil end)
@@ -160,6 +163,26 @@ end
 
 function C.RankFor(race)
     return race and Ranks()[race] or nil
+end
+
+-- The guild rank's own title for a clan's leader rank ("" if no rank leads it).
+function C.RankTitle(race)
+    local index = C.RankFor(race)
+    if not index then return "" end
+    for _, r in ipairs(ns.Board.Ranks()) do if r.index == index then return r.name or "" end end
+    return ""
+end
+
+-- Is this rank found as a second leader for a clan another rank already leads? { race, winner, who }
+-- or nil. Not a clash any more once the rank is linked to a clan by hand, or its clan's leader rank
+-- changes (GM tab).
+function C.Clash(index)
+    AutoRanks()
+    local c = clashCache and clashCache[index]
+    if not c or C.RaceForRank(index) ~= nil then return nil end
+    local lead = C.RankFor(c.race)
+    if not lead or lead == index then return nil end
+    return { race = c.race, winner = lead, who = c.who }
 end
 
 -- Which clan does this rank lead? (nil if none)
@@ -235,17 +258,33 @@ function C.List()
     return list, unknown
 end
 
--- A clan's members (roster entries): leaders first, then online, then by name.
-function C.Members(race)
+-- Sorting by roles: Tank, then Healer, then DPS (two roles after one of them); no roles last.
+local ROLE_RANK = { t = "1", h = "2", d = "3" }
+function C.RoleSortValue(name)
+    local s = C.Roles(name)
+    local out = {}
+    for _, r in ipairs({ "t", "h", "d" }) do if s:find(r, 1, true) then out[#out + 1] = ROLE_RANK[r] end end
+    return #out > 0 and table.concat(out) or "9"
+end
+
+-- A clan's members (roster entries). Usual order: leaders first, then online, then by name. With a
+-- sort ("roles" or "name", desc = reversed): online first, then by that, then by name.
+function C.Members(race, sortKey, desc)
     local list = {}
     for _, m in ipairs(ns.Guild.list) do
         if C.Race(m.name) == race then list[#list + 1] = m end
     end
     local lead = {}
     for _, n in ipairs(C.Leaders(race)) do lead[n] = true end
+    local value = (sortKey == "roles" and function(m) return C.RoleSortValue(m.name) end)
+        or (sortKey == "name" and function(m) return strlower(m.name) end) or nil
     table.sort(list, function(a, b)
-        if (lead[a.name] or false) ~= (lead[b.name] or false) then return lead[a.name] == true end
+        if not value and (lead[a.name] or false) ~= (lead[b.name] or false) then return lead[a.name] == true end
         if a.online ~= b.online then return a.online == true end
+        if value then
+            local va, vb = value(a), value(b)
+            if va ~= vb then if desc then return va > vb end return va < vb end
+        end
         return a.name < b.name
     end)
     return list

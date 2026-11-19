@@ -166,6 +166,13 @@ local function ClanChoices()
     return out
 end
 
+local function RankName(index)
+    for _, r in ipairs(ns.Board.Ranks()) do
+        if r.index == index then return r.name ~= "" and r.name or ("#" .. index) end
+    end
+    return "#" .. tostring(index)
+end
+
 local function BuildClanRanks(p, v)
     local f = CreateFrame("Frame", nil, v)
     f:SetAllPoints()
@@ -206,6 +213,19 @@ local function BuildClanRanks(p, v)
         end)
         r.pick:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         r.warn = Text(r, "", "GameFontHighlightSmall", 374, -6, RW - 380)
+        -- Hover the row for what a clash means.
+        r:SetScript("OnEnter", function(self)
+            self.hl:Show()
+            local c = self.clash
+            if not (c and GameTooltip) then return end
+            local who = c.who:match("^%S+") or c.who
+            local race = ns.Clans.RaceName(c.race)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(string.format(L.GM_CLAN_CLASH, race, RankName(c.winner)), 1, 0.5, 0.25)
+            GameTooltip:AddLine(string.format(L.GM_CLAN_CLASH_TIP, who, race, RankName(c.winner), race), 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function(self) self.hl:Hide(); if GameTooltip then GameTooltip:Hide() end end)
         p.clanRows[i] = r
     end
 end
@@ -229,7 +249,15 @@ local function RefreshClanRanks(p)
             local how = race and (Cl.LinkedByHand(rk.index) and "" or (ns.GREY .. " " .. L.GM_CLAN_FOUND .. "|r")) or ""
             r.pick:SetText((race and (string.format(L.GM_CLAN_PICK, Cl.RaceName(race)) .. how) or (ns.GREY .. L.GM_CLAN_NONE .. "|r")) .. "  v")
             local n = holders[rk.index] or 0
-            r.warn:SetText((race and n > 1) and ("|cffff8040" .. string.format(L.GM_CLAN_TWO, rk.name, n) .. "|r") or "")
+            local clash = Cl.Clash(rk.index)
+            r.clash = clash
+            if race and n > 1 then
+                r.warn:SetText("|cffff8040" .. string.format(L.GM_CLAN_TWO, rk.name, n) .. "|r")
+            elseif clash then
+                r.warn:SetText("|cffff8040" .. string.format(L.GM_CLAN_CLASH, Cl.RaceName(clash.race), RankName(clash.winner)) .. "|r")
+            else
+                r.warn:SetText("")
+            end
             r.stripe:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.04 or 0)
             r:Show()
         else

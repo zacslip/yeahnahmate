@@ -1,15 +1,17 @@
--- Roster tab: the real guild roster with four filters, scrolled with the mouse wheel.
+-- Roster tab: the real guild roster with four filters, scrolled with the mouse wheel. Each name has
+-- the guildie's role icons in front; Race is a column (both from the Clans tab).
 local ADDON, ns = ...
 local L = ns.L
 local UI = ns.UI
 local Text, Button, Row = UI.Text, UI.Button, UI.Row
 
 local ROWS = 14
--- label, x, width, sort key. The first column is the addon tick.
+-- label, x, width, sort key. The first column is the addon tick; the name has the guildie's role
+-- icons (Clans tab) in front of it.
 local COLS = {
-    { UI.TICK, 4, 18, "addon" }, { L.COL_NAME, 24, 148, "name" }, { L.COL_LEVEL, 176, 32, "level" },
-    { L.COL_CLASS, 210, 60, "class" }, { L.COL_ZONE, 274, 122, "zone" }, { L.COL_STATUS, 400, 92, "status" },
-    { L.COL_RANK, 496, 100, "rank" },
+    { UI.TICK, 4, 18, "addon" }, { L.COL_NAME, 24, 150, "name" }, { L.COL_LEVEL, 178, 30, "level" },
+    { L.COL_CLASS, 210, 58, "class" }, { L.COL_RACE, 270, 62, "race" }, { L.COL_ZONE, 334, 100, "zone" },
+    { L.COL_STATUS, 436, 68, "status" }, { L.COL_RANK, 506, 92, "rank" },
 }
 local NAME_COL = 2
 local UP = " |TInterface\\Buttons\\Arrow-Up-Up:12:12:0:-2|t"
@@ -151,17 +153,21 @@ local function Refresh(p)
             local dim = m.online and "" or ns.GREY
             r.cells[1]:SetText(ns.Roster.HasAddon(m) and UI.TICK or "")
             local icon = UI.RankIcon(m)
-            r.cells[2]:SetText(UI.Name(m, true) .. (icon and (" " .. icon) or "") .. (isMe and (ns.GREY .. " (" .. L.YOU .. ")|r") or ""))
+            local roles = UI.RoleIcons(ns.Clans.Roles(m.name))
+            r.cells[2]:SetText((roles ~= "" and (roles .. " ") or "") .. UI.Name(m, true) .. (icon and (" " .. icon) or "")
+                .. (isMe and (ns.GREY .. " (" .. L.YOU .. ")|r") or ""))
             r.cells[3]:SetText((near and ns.GREEN or dim) .. m.level .. "|r")
             r.cells[4]:SetText(dim .. ns.ClassName(m.class) .. "|r")
+            local race = ns.Clans.Race(m.name)
+            r.cells[5]:SetText(dim .. (race and ns.Clans.RaceName(race) or "") .. "|r")
             if m.online then
-                r.cells[5]:SetText(((m.zone == zone) and ns.GREEN or "") .. m.zone .. "|r")
-                r.cells[6]:SetText(ns.Status.Text(m))
+                r.cells[6]:SetText(((m.zone == zone) and ns.GREEN or "") .. m.zone .. "|r")
+                r.cells[7]:SetText(ns.Status.Text(m))
             else
-                r.cells[5]:SetText(ns.GREY .. L.OFFLINE .. "|r")
-                r.cells[6]:SetText("")
+                r.cells[6]:SetText(ns.GREY .. L.OFFLINE .. "|r")
+                r.cells[7]:SetText("")
             end
-            r.cells[7]:SetText(dim .. m.rank .. "|r")
+            r.cells[8]:SetText(dim .. m.rank .. "|r")
             if near then r.stripe:SetColorTexture(0.25, 1, 0.25, 0.10)
             else r.stripe:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.04 or 0) end
             local canAct = m.online and not isMe

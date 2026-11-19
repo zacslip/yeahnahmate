@@ -14,6 +14,10 @@ Clans:
 - **Right-click any name** on the Clans tab: Invite, Whisper, and whatever else you may do.
 - **Your roles**: pick up to two of Tank, Healer and DPS on the Clans tab. They show next to your name and in your tooltip for guildies with the addon.
 - Guildies' tooltips say which clan they're in and their roles.
+- Under each clan's name: the guild rank title that leads it.
+- **Sort the clan lists** by **Roles** (Tank, Healer, DPS) or **Name**: click the title over any list (it sorts them all), again to reverse, a third time for the usual order (leaders first). Online guildies stay on top.
+- **Roster tab**: role icons in front of each name, and a new **Race** column (click it to sort).
+- GM tab, Clan leaders: a warning when two ranks would lead the same clan (e.g. "2 leaders for Troll: Warband leads"); hover the row for what to do.
 - GM tab: a Clans column for moderator ranks: those ranks can run any clan's meeting.
 - The tab row is a little tighter to fit the new tab.
 

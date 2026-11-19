@@ -1,5 +1,5 @@
--- Clans tab: every clan side by side (Clans.lua), one list each: the clan's name, how many (online),
--- its leader; then its members, online first, each with their role badges on the left and their name
+-- Clans tab: every clan side by side (Clans.lua), one list each: the clan's name, its leader rank's
+-- guild title, how many (online), its leader, Roles / Name sort titles; then its members, online first, each with their role badges on the left and their name
 -- in class colour (offline ones grey). Mouse wheel scrolls a list. Hover a name for the usual guildie
 -- tooltip.
 -- During my clan meeting (ClanMeet.lua) that clan's list is the invite list: green = asked (ready to
@@ -20,7 +20,10 @@ local COL_W, GAP = 140, 9            -- 5 x 140 + 4 x 9 = 736, the whole page
 local COL_H = 372
 local BAR_H = 32                     -- the bar along the top (24) and a gap; the lists start under it
 local ROW_H = 17
-local ROWS = 17
+local ROWS = 16
+local TOP = 82                       -- where a list's rows start, under its title, rank, counts, leader and sort titles
+local UP = " |TInterface\\Buttons\\Arrow-Up-Up:10:10:0:-2|t"
+local DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:10:10:0:2|t"
 local SURE_FOR = 5                   -- seconds a "Sure? Disband" waits for the second click
 local LEADER_ICON = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t"
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
@@ -62,7 +65,7 @@ local function BuildColumn(p, i)
     c.wash:Hide()
     c.band = c:CreateTexture(nil, "BORDER")
     c.band:SetPoint("TOPLEFT", 3, -3)
-    c.band:SetSize(COL_W - 6, 54)
+    c.band:SetSize(COL_W - 6, 60)
     c.band:SetColorTexture(1, 0.82, 0, 0.18)
     c.band:Hide()
     -- The clan's name: a click picks it for the bar (for those who may run its meetings).
@@ -102,11 +105,31 @@ local function BuildColumn(p, i)
         Tip(self, lines)
     end)
     c.chal:SetScript("OnLeave", NoTip)
-    c.count = Text(c, "", "GameFontDisableSmall", 8, -26, COL_W - 16)
-    c.leader = Text(c, "", "GameFontHighlightSmall", 8, -41, COL_W - 16)
+    c.rankTitle = Text(c, "", "GameFontHighlightSmall", 8, -23, COL_W - 16)
+    c.count = Text(c, "", "GameFontDisableSmall", 8, -37, COL_W - 16)
+    c.leader = Text(c, "", "GameFontHighlightSmall", 8, -50, COL_W - 16)
+    -- Sort titles over the list: Roles, Name (shared by every clan's list; see ClickSort).
+    c.heads = {}
+    for k, h in ipairs({ { "roles", L.CLAN_SORT_ROLES, 2, 40 }, { "name", L.COL_NAME, 44, COL_W - 56 } }) do
+        local b = CreateFrame("Button", nil, c)
+        b:SetPoint("TOPLEFT", 4 + h[3], -64)
+        b:SetSize(h[4], 14)
+        b.label = Text(b, h[2], "GameFontNormalSmall", 0, -1, h[4])
+        b.key, b.base = h[1], h[2]
+        b:SetScript("OnClick", function() if not c.meeting then p.ClickSort(h[1]) end end)
+        b:SetScript("OnEnter", function(self)
+            self.label:SetTextColor(1, 1, 1)
+            Tip(self, { h[2], c.meeting and L.CLAN_SORT_MEET or L.CLAN_SORT_TIP })
+        end)
+        b:SetScript("OnLeave", function(self)
+            if c.meeting then self.label:SetTextColor(0.5, 0.5, 0.5) else self.label:SetTextColor(1, 0.82, 0) end
+            NoTip()
+        end)
+        c.heads[k] = b
+    end
     local line = c:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(0.9, 0.76, 0.36, 0.5)
-    line:SetPoint("TOPLEFT", 6, -57)
+    line:SetPoint("TOPLEFT", 6, -TOP + 3)
     line:SetSize(COL_W - 12, 1)
     c.rows = {}
     local function Wheel(_, d)
@@ -116,7 +139,7 @@ local function BuildColumn(p, i)
     c:EnableMouseWheel(true)
     c:SetScript("OnMouseWheel", Wheel)
     for j = 1, ROWS do
-        local r = Row(c, 4, -61 - (j - 1) * ROW_H, COL_W - 8, ROW_H - 1)
+        local r = Row(c, 4, -TOP - (j - 1) * ROW_H, COL_W - 8, ROW_H - 1)
         r.tint = r:CreateTexture(nil, "BORDER")
         r.tint:SetAllPoints()
         r.tint:Hide()
@@ -156,11 +179,11 @@ local function BuildColumn(p, i)
         r:SetScript("OnMouseWheel", Wheel)
         c.rows[j] = r
     end
-    c.empty = Text(c, L.CLAN_EMPTY, "GameFontDisableSmall", 8, -64, COL_W - 16)
+    c.empty = Text(c, L.CLAN_EMPTY, "GameFontDisableSmall", 8, -TOP - 3, COL_W - 16)
     c.empty:SetWordWrap(true)
     c.empty:SetHeight(42)
     c.empty:SetJustifyV("TOP")
-    c.shown = Text(c, "", "GameFontDisableSmall", 8, -61 - ROWS * ROW_H - 2, COL_W - 16, "RIGHT")
+    c.shown = Text(c, "", "GameFontDisableSmall", 8, -TOP - ROWS * ROW_H - 2, COL_W - 16, "RIGHT")
     return c
 end
 
@@ -253,6 +276,15 @@ end
 
 local function Build(p)
     thePage = p
+    -- Click a sort title: sort every list by it; again: reversed; a third time: the usual order.
+    -- Not kept after /reload.
+    function p.ClickSort(key)
+        if p.sortKey ~= key then p.sortKey, p.sortDesc = key, false
+        elseif not p.sortDesc then p.sortDesc = true
+        else p.sortKey, p.sortDesc = nil, nil end
+        for _, c in ipairs(p.cols) do c.offset = 0 end
+        UI.Dirty()
+    end
     p.cols = {}
     for i = 1, COLS do p.cols[i] = BuildColumn(p, i) end
     BuildBar(p)
@@ -267,8 +299,15 @@ local function RefreshColumn(p, c, info, picked)
     c.race = race
     local mineClan = race == Cl.MyRace()
     c.title:SetText(string.format(L.CLAN_NAME, Cl.RaceName(race)) .. (mineClan and (ns.GREY .. "  " .. L.CLAN_YOU .. "|r") or ""))
+    c.rankTitle:SetText(Cl.RankTitle(race))
     local meeting = CM.Mine()
     local myMeeting = meeting and meeting.race == race
+    c.meeting = myMeeting or nil
+    for _, h in ipairs(c.heads) do
+        local on = not myMeeting and p.sortKey == h.key
+        h.label:SetText(h.base .. (on and (p.sortDesc and DOWN or UP) or ""))
+        if myMeeting then h.label:SetTextColor(0.5, 0.5, 0.5) else h.label:SetTextColor(1, 0.82, 0) end
+    end
     local active = CM.ActiveFor(race)
     if myMeeting then
         c.count:SetText(ns.GREEN .. string.format(L.CLAN_MEETING_MINE, CM.Counts()) .. "|r")
@@ -305,7 +344,7 @@ local function RefreshColumn(p, c, info, picked)
     if myMeeting then
         rows = CM.List()
     else
-        for _, m in ipairs(Cl.Members(race)) do rows[#rows + 1] = { m = m } end
+        for _, m in ipairs(Cl.Members(race, p.sortKey, p.sortDesc)) do rows[#rows + 1] = { m = m } end
     end
     local off = math.min(c.offset, math.max(0, #rows - ROWS))
     c.offset = off

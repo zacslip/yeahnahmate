@@ -237,7 +237,7 @@ for i = 1, 30 do
     ns.Guild.list[#ns.Guild.list + 1] = m
 end
 UI.Dirty(); Tick(1)
-check(trollCol.shown:GetText() ~= "" and trollCol.rows[17]:IsShown(), "a long list says how many are shown")
+check(trollCol.shown:GetText() ~= "" and trollCol.rows[#trollCol.rows]:IsShown(), "a long list says how many are shown")
 trollCol.rows[1]._scripts.OnMouseWheel(trollCol.rows[1], -1); Tick(1)
 check(trollCol.offset == 3 and trollCol.rows[1].m.name ~= "Shazza Kettle", "the mouse wheel scrolls it")
 Inside(cp, "Clans")

@@ -36,6 +36,7 @@ local SORT_VALUE = {
     rank  = function(m) return m.rankIndex end,
     status = function(m) local t = ns.Status.Text(m); return t == "" and "~" or strlower(t) end,
     addon = function(m) return Roster.HasAddon(m) and 0 or 1 end,
+    race  = function(m) local r = ns.Clans.Race(m.name); return r and strlower(ns.Clans.RaceName(r)) or "~" end,
 }
 Roster.SORTS = SORT_VALUE
 
