@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.0 (not released yet)
+
+- **Guildies stand out on their nameplates**: corner brackets in their clan's colour (Orc red, Troll teal, Tauren orange, Undead purple, Skyborne blue) and the guild owl on top. Needs the game's friendly nameplates on (Ctrl+V). The game locks nameplates in some places (like dungeons); there they show as normal. Switch it off in Settings (Minimap, Mark guildies' nameplates).
+
 ## 0.19.0
 
 Clans:
