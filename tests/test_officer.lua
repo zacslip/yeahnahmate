@@ -33,7 +33,7 @@ Tick(1)
 local roster
 for _, o in ipairs(CREATED) do if o.rows and o.heads and o.ranks then roster = o end end
 local shown = {}
-for _, r in ipairs(roster.rows) do if r:IsShown() and r.m then shown[r.m.name] = r.cells[2]:GetText() end end
+for _, r in ipairs(roster.rows) do if r:IsShown() and r.m then shown[r.m.name] = r.cells[3]:GetText() end end
 check(shown["Ned Jones"]:find("LeaderIcon", 1, true) and shown["Bluey Heeler"]:find("AssistantIcon", 1, true)
     and not shown["Chilli Heeler"]:find("|T", 1, true), "the Roster shows them by the names")
 check(roster.ranks:GetText():find("Guild Master", 1, true) and roster.ranks:GetText():find("Officer", 1, true),

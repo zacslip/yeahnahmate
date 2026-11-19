@@ -90,7 +90,7 @@ ns.ClanMeet.Stop(); Tick(1)
 nameHead:Click(); Tick(1)
 check(page.sortKey == nil, "off again")
 
--- The Roster: role icons in front of the name, a Race column, sortable.
+-- The Roster: Roles and Race columns, both sortable.
 UI.Open("roster"); Tick(1)
 local roster
 for _, o in ipairs(CREATED) do if o.rows and o.heads and o.search then roster = o end end
@@ -98,15 +98,22 @@ local function RosterRow(name)
     for _, r in ipairs(roster.rows) do if r:IsShown() and r.m and r.m.name == name then return r end end
 end
 local bluey = RosterRow("Bluey Heeler")
-check(bluey and bluey.cells[2]:GetText():find("|TInterface", 1, true) == 1 and bluey.cells[2]:GetText():find("INV_Shield", 1, true) and bluey.cells[2]:GetText():find("Bluey Heeler", 1, true),
-    "Roster: Bluey's tank icon in front of the name", bluey and bluey.cells[2]:GetText())
-check(bluey.cells[5]:GetText():find("Orc", 1, true) and RosterRow("Chilli Heeler").cells[5]:GetText():find("Troll", 1, true),
+check(bluey and bluey.cells[2]:GetText():find("INV_Shield", 1, true) and not bluey.cells[3]:GetText():find("INV_Shield", 1, true)
+    and bluey.cells[3]:GetText():find("Bluey Heeler", 1, true), "Roster: Bluey's tank icon in its own Roles column")
+check(bluey.cells[6]:GetText():find("Orc", 1, true) and RosterRow("Chilli Heeler").cells[6]:GetText():find("Troll", 1, true),
     "Roster: Race column")
+local rolesHead
+for _, h in ipairs(roster.heads) do if h.key == "roles" then rolesHead = h end end
+rolesHead._scripts.OnClick(rolesHead); Tick(1)
+local first
+for _, r in ipairs(roster.rows) do if r:IsShown() and r.m then first = r.m.name; break end end
+check(first == "Bluey Heeler", "sorted by roles: the tank first", first)
+rolesHead._scripts.OnClick(rolesHead); rolesHead._scripts.OnClick(rolesHead); Tick(1)
 local raceHead
 for _, h in ipairs(roster.heads) do if h.key == "race" then raceHead = h end end
 raceHead._scripts.OnClick(raceHead); Tick(1)
 local races = {}
-for _, r in ipairs(roster.rows) do if r:IsShown() and r.m and r.m.online then races[#races + 1] = (r.cells[5]:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end end
+for _, r in ipairs(roster.rows) do if r:IsShown() and r.m and r.m.online then races[#races + 1] = (r.cells[6]:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end end
 check(table.concat(races, ",") == "Orc,Orc,Orc,Troll", "sorted by race (online first)", table.concat(races, ","))
 
 check(#ns.db.errors == 0, "no errors", ns.db.errors[1] and ns.db.errors[1].msg)
