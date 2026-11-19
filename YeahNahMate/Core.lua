@@ -11,6 +11,9 @@ ns.NAME = "Yeah Nah Mate"
 ns.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version")) or "dev"
 ns.PROTOCOL = 1        -- bump when a message format changes incompatibly
 ns.PREFIX = "YNM"      -- addon message prefix
+-- Positions every second (the near lane) go on their own prefix: the game allows each prefix about one
+-- message a second, so on "YNM" they would hold up everything else.
+ns.PREFIX_POS = "YNMP"
 
 ns.GOLD = "|cffe6c35c"
 ns.GREY = "|cff9d9d9d"

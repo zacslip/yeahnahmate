@@ -79,23 +79,34 @@ end
 local function MyPositions(fn)
     local before = #SENT
     fn()
-    local mine = 0
+    local mine, old = 0, 0
     for i = before + 1, #SENT do
         local ok, m = Ser:Deserialize(SENT[i].text)
-        if ok and type(m) == "table" and m.t == "POS" then mine = mine + 1 end
+        if ok and type(m) == "table" and m.t == "POS" then
+            mine = mine + 1
+            if SENT[i].prefix == ns.PREFIX then old = old + 1 end
+        end
     end
-    return mine
+    return mine, old
 end
 local saved = ns.Map.pos
 ns.Map.pos = {}
 local mine = MyPositions(function() for i = 1, 60 do FAKE.x = 0.3 + i * 0.005; Tick(1) end end)
 check(mine <= 4, "positions I send per minute while moving, nobody near: " .. mine .. " (every " .. ns.Map.Interval() .. " s)")
--- One guildie with the addon within 400 yd: the near lane, every 3 s while I move.
+-- One guildie with the addon within 400 yd: the near lane, every 1 s while I move (1 yd a second on
+-- the stub's 1000 yd map), one in three on the old prefix for 0.20.0 and older.
 ns.Map.pos = { [users[1]] = { m = 1413, x = 0.62, y = 0.5, at = GetTime() } }
-mine = MyPositions(function()
-    for i = 1, 60 do FAKE.x = 0.6 + i * 0.0005; ns.Map.pos[users[1]].at = GetTime(); Tick(1) end
+local old
+mine, old = MyPositions(function()
+    for i = 1, 60 do FAKE.x = 0.6 + i * 0.001; ns.Map.pos[users[1]].at = GetTime(); Tick(1) end
 end)
-check(mine >= 15 and mine <= 21, "with a guildie near: every 3 s (" .. mine .. " a minute)")
+check(mine >= 50 and mine <= 61, "with a guildie near: every 1 s (" .. mine .. " a minute)")
+check(old >= 15 and old <= 21, "of those, every 3 s on the old prefix (" .. old .. " a minute)")
+-- Standing still with a guildie near: only the keep-alive.
+mine = MyPositions(function()
+    for _ = 1, 60 do ns.Map.pos[users[1]].at = GetTime(); Tick(1) end
+end)
+check(mine <= 3, "near but standing still: next to nothing (" .. mine .. " a minute)")
 ns.Map.pos = saved
 
 -- A busy evening: 20 roster events in a burst make one scan.

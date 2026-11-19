@@ -8,10 +8,14 @@
 -- Cadence: when I've moved, at most every 15 s (slower when many guildies have the addon); standing
 -- still, once a minute so my dot stays; nothing when no other guildmate with the addon is online.
 -- Near lane: while a guildie with the addon is within NEAR yards (about the minimap's reach), every
--- 3 s while moving, so their minimap dot of me keeps up (proximity voice uses the same lane).
+-- 1 s while moving (slower with 7-15 near, as usual in a crowd), so their minimap dot of me keeps up.
+-- These go on their own prefix (ns.PREFIX_POS: the game allows each prefix about one message a
+-- second); one every 3 s still goes on "YNM" for 0.20.0 and older, which don't hear the new prefix.
 -- A dot goes after 150 s without a POS, or at once when the roster says they went offline.
--- Nearby minimap dots glide: between positions they move smoothly towards where the guildie is
--- heading (Map.Estimate) instead of standing still and jumping.
+-- Nearby minimap dots move every frame, drawn by us rather than the map library: from where the dot
+-- is towards the newest position, over the time the last gap between positions took, so they run
+-- smoothly about one position (1 s) behind and never overshoot. A guildie in my group is read from
+-- the game itself (UnitPosition works for party and raid members), so their dot is live.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -24,8 +28,10 @@ ns.Map = Map
 local REF = "YeahNahMate"
 local EXPIRE = 150
 local KEEPALIVE = 60
-local NEAR, FAST = 400, 3          -- yards for the near lane and gliding; seconds between its positions
-local GLIDE_EVERY, GLIDE_RATE, SNAP = 0.2, 0.45, 0.03   -- glide tick (s), share of the gap closed per tick, gap (map units) to jump instead
+local NEAR, FAST = 400, 1          -- yards for the near lane and gliding; seconds between its positions
+local OLD_EVERY = 3                -- the near lane still sends on "YNM" this often, for 0.20.0 and older
+local SNAP = 60                    -- yards: a jump bigger than this (a teleport) goes straight there
+local GLIDE_MIN, GLIDE_LONGEST = 0.3, 3   -- seconds a glide to the next position takes, at least / at most
 local GLIDE_MAX, CROWD = 8, 15     -- only the closest few glide; in a crowd (a meeting) none do: dots
                                    -- that close together can't be followed one by one, and it costs
 local DOT_SIZES = { 10, 14, 18 }
@@ -181,14 +187,15 @@ function Map.Place(name)
         miniDots[name] = f
         Style(f, m)
         f.placed = true
-        -- A gliding dot moves on its own (Glide); everyone else's goes straight to the new spot.
-        if not f.gliding then
-            f.sm, f.sx, f.sy = p.m, p.x, p.y
+        -- A gliding dot is ours to move (Map.Step); everyone else's goes straight to the new spot.
+        if f.gliding then
+            Map.GlideTo(name)
+        else
             Pins:AddMinimapIconMap(REF, f, p.m, p.x, p.y, false, false)
         end
     elseif miniDots[name] then
         local f = miniDots[name]
-        Pins:RemoveMinimapIcon(REF, f); f:Hide(); f.placed, f.gliding, f.sm = nil, nil, nil
+        Pins:RemoveMinimapIcon(REF, f); f:Hide(); f.placed, f.gliding = nil, nil
     end
 end
 
@@ -236,6 +243,8 @@ ns.Comm.On("POS", function(msg, from, channel, isSelf)
     -- The one before, for guessing where they're heading (Map.Estimate).
     if p.at then p.pm, p.px, p.py, p.pat = p.m, p.x, p.y, p.at end
     p.m, p.x, p.y, p.at = m, x, y, GetTime()
+    -- How long the last gap was: a gliding dot takes that long to reach this position.
+    p.gap = p.pat and (p.at - p.pat) or nil
     Heading(p)
     Map.Place(from)
     ns.Fire("POSITIONS")
@@ -306,55 +315,158 @@ function Map.FindNear()
             Map.near[found[i].name] = true
         end
     end
-    -- Dots no longer near stop gliding: straight to their last spot.
+    -- Near dots become ours to move every frame; dots no longer near go back to the map library.
+    local s = ns.settings
+    for name in pairs(Map.near) do
+        local f = miniDots[name]
+        if f and f.placed and not f.gliding and s.showMinimap then
+            Pins:RemoveMinimapIcon(REF, f)
+            f:SetParent(Pins.Minimap or Minimap)
+            f.gliding, f.wx, f.wy, f.winst = true, nil, nil, nil
+            Map.GlideTo(name)
+        end
+    end
     for name, f in pairs(miniDots) do
         if f.gliding and not Map.near[name] then
             f.gliding = nil
             Map.Place(name)
         end
     end
+    if Map.stepper then Map.stepper:SetShown(next(Map.near) ~= nil) end
     return count
 end
 
--- Seconds between my positions while someone's near: 3 with up to 6 around, slower with more, and as
--- usual in a crowd (more than CROWD: a guild meeting), so the guild's traffic stays as it was.
+-- Seconds between my positions while someone's near: 1 with up to 6 around, slower with 7-15 (so a
+-- group of up to 15 sends about 6 a second in all), and as usual in a crowd (more than CROWD: a guild
+-- meeting), so the guild's traffic stays as it was.
 function Map.NearInterval(count)
     if count > CROWD then return Map.Interval() end        -- a crowd: as usual
     if count <= 6 then return FAST end
     return math.min(Map.Interval(), FAST * count / 6)
 end
 
--- Five times a second, near minimap dots only: a step towards where they probably are now.
-function Map.Glide()
+-- Group members: name -> "party1".."raid40", rebuilt when the group changes.
+local groupUnit = {}
+local function ReadGroup()
+    wipe(groupUnit)
+    if not (IsInGroup and IsInGroup()) then return end
+    local raid = IsInRaid and IsInRaid()
+    for i = 1, raid and 40 or 4 do
+        local unit = (raid and "raid" or "party") .. i
+        local key = ns.UnitKey(unit)
+        if key and key ~= ns.me then groupUnit[key] = unit end
+    end
+end
+ns.OnEvent("GROUP_ROSTER_UPDATE", function() ns.Safe(ReadGroup) end)
+Map.groupUnit = groupUnit
+
+-- Where the game says a group member is right now (world yards), or nil (not grouped, in an
+-- instance, a hidden value).
+local function LivePosition(name)
+    local unit = groupUnit[name]
+    if not unit or not UnitPosition then return nil end
+    -- Checked here first: the map library would do sums on a hidden value.
+    local a, b, _, i = UnitPosition(unit)
+    if not ns.Public(a, "number") or not ns.Public(b, "number") or not ns.Public(i, "number") then return nil end
+    local x, y, inst = HBD:GetUnitWorldPosition(unit)
+    if not x or not y or not inst then return nil end
+    return x, y, inst
+end
+
+-- A new position for a near dot: glide from where it is now to there, taking as long as the last gap
+-- between their positions took, so it arrives about when the next one comes. A first position, a
+-- new map or a jump of more than SNAP yards (a teleport): straight there.
+function Map.GlideTo(name)
+    local f, p = miniDots[name], Map.pos[name]
+    if not f or not p then return end
+    local tx, ty, inst = HBD:GetWorldCoordinatesFromZone(p.x, p.y, p.m)
+    if not tx then return end
+    local now = GetTime()
+    if f.wx and f.winst == inst and math.abs(tx - f.wx) + math.abs(ty - f.wy) <= SNAP then
+        f.fx, f.fy = f.wx, f.wy
+        f.dur = math.max(GLIDE_MIN, math.min(GLIDE_LONGEST, p.gap or FAST))
+    else
+        f.fx, f.fy, f.wx, f.wy, f.dur = tx, ty, tx, ty, 0
+    end
+    f.tx, f.ty, f.winst, f.t0 = tx, ty, inst, now
+end
+
+local rotateCVar, minimapRadius = nil, nil
+-- The minimap's view radius in yards (the game says; the map library's table on older clients).
+local OUTDOOR = { [0] = 466 + 2 / 3, 400, 333 + 1 / 3, 266 + 2 / 6, 200, 133 + 1 / 3 }
+local function MinimapRadius(mm)
+    if C_Minimap and C_Minimap.GetViewRadius then
+        local r = ns.Public(C_Minimap.GetViewRadius(), "number")
+        if r and r > 0 then return r end
+    end
+    return (OUTDOOR[mm.GetZoom and mm:GetZoom() or 0] or 466) / 2
+end
+
+-- Put one dot on the minimap at world spot x, y (the same sums the map library does for its pins).
+local function Draw(f, mm, px, py, x, y, sin, cos, square)
+    local xd, yd = px - x, py - y
+    if sin then xd, yd = xd * cos - yd * sin, xd * sin + yd * cos end
+    local dx, dy = xd / minimapRadius, yd / minimapRadius
+    local dist = (square and math.max(dx * dx, dy * dy) or (dx * dx + dy * dy)) / 0.81
+    if dist > 1 then f:Hide() return end
+    f:ClearAllPoints()
+    f:SetPoint("CENTER", mm, "CENTER", dx * mm:GetWidth() / 2, -dy * mm:GetHeight() / 2)
+    f:Show()
+end
+
+-- Every frame, near minimap dots only (up to GLIDE_MAX): live for group members, gliding otherwise.
+function Map.Step()
     if not ns.settings.showMinimap then return end
+    local mm = Pins.Minimap or Minimap
+    if not mm or not mm:IsVisible() then return end
+    local px, py, pinst = HBD:GetPlayerWorldPosition()
+    if not px then return end
+    minimapRadius = MinimapRadius(mm)
+    local sin, cos
+    if rotateCVar == nil then rotateCVar = GetCVar and GetCVar("rotateMinimap") == "1" or false end
+    if rotateCVar then
+        local facing = ns.Public(GetPlayerFacing and GetPlayerFacing(), "number")
+        if not facing then return end
+        sin, cos = math.sin(facing), math.cos(facing)
+    end
+    local square = GetMinimapShape and GetMinimapShape() == "SQUARE"
+    local now = GetTime()
     for name in pairs(Map.near) do
         local f = miniDots[name]
-        local p = Map.pos[name]
-        -- Only someone on the move glides (a heading from their last two positions); a dot standing
-        -- still, or one that jumped (a teleport), is placed the usual way.
-        if p and p.headAt ~= p.at then Heading(p) end
-        local moving = p and p.vx ~= nil and GetTime() - p.at <= STALE
-        if f and f.placed and not moving and f.gliding then
-            f.gliding = nil
-            Map.Place(name)
-        elseif f and f.placed and moving then
-            local m, x, y = Map.Estimate(name)
-            if m then
-                -- A big gap (a teleport, a new map): straight there. In map units, no library call.
-                local far = not f.sm or f.sm ~= m or not f.sx or math.abs(x - f.sx) + math.abs(y - f.sy) > SNAP
-                local moved = true
-                if far then
-                    f.sm, f.sx, f.sy = m, x, y
-                else
-                    local dx, dy = (x - f.sx) * GLIDE_RATE, (y - f.sy) * GLIDE_RATE
-                    moved = math.abs(dx) + math.abs(dy) > 0.000002     -- about a tenth of a yard
-                    f.sx, f.sy = f.sx + dx, f.sy + dy
-                end
-                f.gliding = true
-                if moved then Pins:AddMinimapIconMap(REF, f, f.sm, f.sx, f.sy, false, false) end
+        if f and f.gliding then
+            local x, y, inst = LivePosition(name)
+            f.live = x ~= nil
+            if x then
+                f.wx, f.wy, f.winst = x, y, inst
+            elseif f.tx then
+                local k = f.dur > 0 and math.min(1, (now - f.t0) / f.dur) or 1
+                f.wx, f.wy = f.fx + (f.tx - f.fx) * k, f.fy + (f.ty - f.fy) * k
             end
+            if f.wx and f.winst == pinst then Draw(f, mm, px, py, f.wx, f.wy, sin, cos, square) else f:Hide() end
         end
     end
+end
+ns.OnEvent("CVAR_UPDATE", function() rotateCVar = nil end)
+
+-- For the dev console: one line on nearby dots and my near lane.
+function Map.NearStatus()
+    local n, live, glide = 0, 0, 0
+    for name in pairs(Map.near) do
+        n = n + 1
+        local f = miniDots[name]
+        if f and f.live then live = live + 1 elseif f and f.gliding then glide = glide + 1 end
+    end
+    local pace = n > 0 and Map.nearReal and Map.nearReal > 0 and Map.NearInterval(n)
+    return string.format("%d near (%d gliding, %d live from my group). %s Sent this session: %d positions, %d of them on the fast prefix.",
+        n, glide, live, pace and string.format("I send every %.1f s while moving.", pace)
+            or "Near lane off (nobody real near, or sharing off).", Map.sentCount or 0, Map.sentFast or 0)
+end
+
+-- For tests and the dev console: where a near dot is drawn (world yards), and whether it's live.
+function Map.GlideSpot(name)
+    local f = miniDots[name]
+    if not (f and f.gliding) then return nil end
+    return f.wx, f.wy, f.live == true
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -384,7 +496,10 @@ function Map.Tick(interval, prio)
     end
     if ns.Comm.OthersOnline() == 0 and not (ns.Sim and ns.Sim.IsOn()) then return end
     local now = GetTime()
-    local moved = m ~= last.m or math.abs(x - last.x) + math.abs(y - last.y) > 0.002
+    -- Moved: 0.002 of the map is about 8 yd in a big zone, more than a second's run, so the near lane
+    -- (every 1 s) counts a much smaller step (about 1 yd).
+    local step = (interval and interval < OLD_EVERY) and 0.0003 or 0.002
+    local moved = m ~= last.m or math.abs(x - last.x) + math.abs(y - last.y) > step
     local gap = now - last.at
     local iv = interval or Map.Interval()
     -- Fast lane only: one more when I stop, so guildies' guesses stop too (Map.Estimate).
@@ -392,7 +507,11 @@ function Map.Tick(interval, prio)
     local slack = interval and 0.05 or 0   -- fast lane: allow for timer jitter (3 s, not 4)
     if ((moved or stopped) and gap >= iv - slack) or gap >= KEEPALIVE then
         x, y = Round(x), Round(y)
-        if ns.Comm.Send({ t = "POS", m = m, x = x, y = y }, "GUILD", nil, prio or "BULK") then
+        -- The near lane goes on its own prefix, except one every OLD_EVERY seconds on "YNM" so
+        -- guildies on 0.20.0 and older still get theirs (newer ones hear both).
+        local fast = interval ~= nil and interval < OLD_EVERY and now - (Map.oldAt or -1000) < OLD_EVERY - slack
+        if ns.Comm.Send({ t = "POS", m = m, x = x, y = y }, "GUILD", nil, prio or "BULK", fast) then
+            if not fast then Map.oldAt = now else Map.sentFast = (Map.sentFast or 0) + 1 end
             last = { m = m, x = x, y = y, at = now, moving = moved }
             sentReal = true
             Map.sentCount = (Map.sentCount or 0) + 1
@@ -425,7 +544,11 @@ ns.Listen("LOGIN", function()
                 if iv < Map.Interval() then ns.Safe(Map.Tick, iv, "NORMAL") end
             end
         end)
-        C_Timer.NewTicker(GLIDE_EVERY, function() if next(Map.near) then ns.Safe(Map.Glide) end end)
+        -- Near dots move every frame; the frame is only shown while someone's near (FindNear).
+        ns.Safe(ReadGroup)
+        Map.stepper = Map.stepper or CreateFrame("Frame")
+        Map.stepper:SetScript("OnUpdate", function() ns.Safe(Map.Step) end)
+        Map.stepper:SetShown(next(Map.near) ~= nil)
     end)
 end)
 

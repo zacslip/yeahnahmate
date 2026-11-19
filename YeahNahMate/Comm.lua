@@ -143,8 +143,10 @@ local function Count(t, n)
 end
 
 -- Send a message table on GUILD, or WHISPER to one guildmate. Returns true if handed to AceComm.
-function Comm.Send(msg, channel, target, prio)
+-- fast: positions of the near lane only, on their own prefix (ns.PREFIX_POS).
+function Comm.Send(msg, channel, target, prio, fast)
     if channel ~= "GUILD" and channel ~= "WHISPER" then return false end
+    if fast and msg.t ~= "POS" then return false end
     if channel == "WHISPER" and type(target) ~= "string" then return false end
     if channel == "WHISPER" and ns.Sim and ns.Sim.IsFake(target) then
         ns.Log("(sim) would whisper " .. msg.t .. " to " .. target)
@@ -177,7 +179,7 @@ function Comm.Send(msg, channel, target, prio)
         ns.Log("not sent, too big: " .. msg.t .. " (" .. #text .. " bytes)")
         return false
     end
-    Comm:SendCommMessage(ns.PREFIX, text, channel, target, prio or "NORMAL")
+    Comm:SendCommMessage(fast and ns.PREFIX_POS or ns.PREFIX, text, channel, target, prio or "NORMAL")
     Comm.sent[msg.t] = (Comm.sent[msg.t] or 0) + 1
     ns.Log("sent my " .. Describe(msg) .. (channel == "GUILD" and " to the guild" or (" to " .. target)))
     ns.Fire("SENT", msg, channel, target)
@@ -196,7 +198,7 @@ local function TooMany(sender)
 end
 
 -- Every received message comes through here: real ones from AceComm, fake ones from Sim.lua.
-function Comm.Receive(text, channel, sender)
+function Comm.Receive(text, channel, sender, fast)
     local from = ns.Key(sender)
     if not from then return end
     if channel ~= "GUILD" and channel ~= "WHISPER" then
@@ -219,6 +221,10 @@ function Comm.Receive(text, channel, sender)
     local ok, msg = Ser:Deserialize(text)
     if not ok or type(msg) ~= "table" or type(msg.v) ~= "number" or type(msg.t) ~= "string" or #msg.t > 8 then
         ns.Log("dropped: unreadable message from " .. from)
+        return
+    end
+    if fast and msg.t ~= "POS" then
+        ns.Log("dropped: " .. msg.t .. " on the positions prefix from " .. from)
         return
     end
     if msg.v > ns.PROTOCOL then
@@ -245,6 +251,10 @@ end
 
 Comm:RegisterComm(ns.PREFIX, function(prefix, text, channel, sender)
     ns.Safe(Comm.Receive, text, channel, sender)
+end)
+-- The near lane's prefix carries positions only; anything else on it is dropped.
+Comm:RegisterComm(ns.PREFIX_POS, function(prefix, text, channel, sender)
+    ns.Safe(Comm.Receive, text, channel, sender, true)
 end)
 
 ---------------------------------------------------------------------------------------------------

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.1
+
+- **Guildies near you on the minimap, smoother and closer to real time**: while a guildie with the addon is close by (about minimap range), you both now send your position every second while moving (it was every 3), and their dot moves smoothly every frame towards their newest position instead of guessing ahead, so it no longer runs past them and snaps back. It's about a second behind them. With 7 to 15 close by it slows down a bit, and in a crowd (more than 15, like a guild meeting) it works as before, so the guild's traffic stays in check. These go on their own addon message channel, so they never hold up anything else.
+- **Guildies in your group are live**: the game itself tells the addon where your party or raid members are, so their dot sits exactly on them, with no messages needed.
+- Works alongside 0.20.0: guildies who haven't updated still see you every 3 seconds, as before.
+
 ## 0.20.0
 
 - **Guildies near you keep up on the minimap**: while a guildie with the addon is close by (about minimap range), you both send your position every 3 seconds while moving instead of every 15 or more, and their dot glides smoothly the way they're going instead of standing still and jumping. In a crowd (more than 15 close by, like a guild meeting) it all works as before, so the guild's traffic doesn't grow.

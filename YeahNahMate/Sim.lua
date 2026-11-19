@@ -539,7 +539,7 @@ local function Walk()
     if not fakes then return end
     walkTicks = walkTicks + 1
     for i, m in ipairs(fakes) do
-        if m.online and m.addon and m.pm then
+        if m.online and m.addon and m.pm and not m.running then
             m.px = math.min(0.99, math.max(0.01, m.px + (math.random() - 0.5) * 0.004))
             m.py = math.min(0.99, math.max(0.01, m.py + (math.random() - 0.5) * 0.004))
             if (walkTicks + i) % 3 == 0 then
@@ -553,7 +553,7 @@ end
 local function Drift()
     if not fakes then return end
     local m = fakes[math.random(#fakes)]
-    if m.online then
+    if m.online and not m.running then
         m.zone = ZONES[math.random(#ZONES)]
         if math.random() < 0.3 and m.level < 60 then m.level = m.level + 1 end
         Spot(m, ns.Map.MyPosition())
@@ -605,6 +605,7 @@ function Sim.Stop()
     Sim.shots = false
     if ticker then ticker:Cancel(); ticker = nil end
     if walker then walker:Cancel(); walker = nil end
+    if Sim.Runner then Sim.Runner(false) end
     for name in pairs(byName) do ns.Status.extra[name] = nil end
     PurgeFakeEvents()
     if ns.Questions then ns.Questions.PurgeFakes(function(name) return byName[name] ~= nil end) end
@@ -680,6 +681,52 @@ ns.devCommands.sim = function(arg)
     elseif arg == "off" then Sim.Stop()
     else ns.Print("/ynm dev sim on  or  /ynm dev sim off") end
 end
+-- The runner: one fake guildie runs circles round where I stood (40 yd out, 7 yd a second, a full
+-- lap about every 36 s) and sends a position every second the way the near lane does, through the
+-- real receive path, each a little late (up to 0.3 s, like the real network). For checking that a
+-- nearby minimap dot moves smoothly and keeps up.
+local runner, runnerTicker = nil, nil
+function Sim.Runner(on)
+    if runnerTicker then runnerTicker:Cancel(); runnerTicker = nil end
+    if runner then runner.running = nil end
+    runner = nil
+    if not on then return true end
+    if not fakes then return false, "Fake guildies aren't on." end
+    local m0, x0, y0 = ns.Map.MyPosition()
+    if not m0 then return false, "The game won't say where you are (in a dungeon?)." end
+    local w, h = LibStub("HereBeDragons-2.0"):GetZoneSize(m0)
+    if not w or w == 0 or not h or h == 0 then return false, "No size for this map." end
+    for _, m in ipairs(fakes) do
+        if m.online and m.addon then runner = m break end
+    end
+    if not runner then return false, "No fake guildie with the addon is online." end
+    runner.running = true
+    runner.zone = (GetRealZoneText and GetRealZoneText()) or GetZoneText() or runner.zone
+    ns.Guild.SetFakes(fakes)
+    local R, SPEED, a = 40, 7, 0
+    local function Send()
+        if not runner or not fakes then return end
+        a = a + SPEED / R
+        runner.pm, runner.px, runner.py = m0, x0 + math.cos(a) * R / w, y0 + math.sin(a) * R / h
+        local px, py = runner.px, runner.py
+        local who = runner
+        C_Timer.After(math.random() * 0.3, function()
+            if fakes then ns.Safe(FakeSend, who, { t = "POS", m = m0, x = px, y = py }) end
+        end)
+    end
+    Send()
+    runnerTicker = C_Timer.NewTicker(1, function() ns.Safe(Send) end)
+    return true, runner.name
+end
+function Sim.RunnerName() return runner and runner.name end
+
+ns.devCommands.runner = function(arg)
+    local ok, what = Sim.Runner(arg ~= "off")
+    if arg == "off" then ns.Print("Runner stopped.")
+    elseif ok then ns.Print(what .. " is running circles round you, 40 yd out. Watch their minimap dot.")
+    else ns.Print("No runner: " .. tostring(what)) end
+end
+
 ns.devCommands.shots = function(arg)
     if arg ~= "on" and arg ~= "off" then ns.Print("/ynm dev shots on  or  /ynm dev shots off") return end
     if arg == "on" and not Sim.IsOn() then ns.Print("/ynm dev sim on first") return end
