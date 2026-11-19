@@ -191,7 +191,7 @@ local function BuildClanRanks(p, v)
                     -- Back to what the roster says: drop any hand link to this rank.
                     local b = ns.Board.Store()
                     local cr = b and b.clr and b.clr.cr or {}
-                    for race, i in pairs(cr) do if i == r.index then ns.Clans.SetRank(race, nil) end end
+                    for race, index in pairs(cr) do if index == r.index then ns.Clans.SetRank(race, nil) end end
                 else
                     ns.Clans.SetRank(races[k - 1], r.index)
                 end
