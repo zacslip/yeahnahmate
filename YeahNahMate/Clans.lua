@@ -1,6 +1,9 @@
 -- Clans: the guild split by race. Each character is in the clan of its own race. Each clan has a
--- leader: whoever holds that clan's guild rank (the guild master or a manager links each clan to its
--- rank on the GM tab). Members pick their roles (Tank / Healer / DPS, up to two), shown by their name.
+-- leader: whoever holds that clan's guild rank. Found by itself from the roster: ranks 0 and 1 run the
+-- whole guild; from rank 2 down, each rank held by exactly one guildie leads that guildie's clan (the
+-- run stops at the first rank with more or fewer). The guild master or a manager can link a clan to a
+-- rank by hand on the GM tab, which wins over that. Members pick their roles (Tank / Healer / DPS, up
+-- to two), shown by their name.
 --
 -- Where a guildie's race comes from: guildies with the addon say it in their HI (and saved, so they
 -- keep it while offline); for the rest, the game's GetPlayerInfoByGUID on their roster GUID, when the
@@ -108,23 +111,70 @@ function C.Roles(name)
 end
 
 ---------------------------------------------------------------------------------------------------
--- Leaders: one guild rank per clan (GM tab).
+-- Leaders: one guild rank per clan.
 
 local function Board() return ns.Board.Store() end
 
-function C.RankFor(race)
+C.FIRST_CLAN_RANK = 2               -- ranks 0 and 1 lead the whole guild
+
+-- Ranks found by itself: race -> rank index (see the top of this file). Real guildies only.
+local autoCache = nil
+local function AutoRanks()
+    if autoCache then return autoCache end
+    local holders = {}
+    for _, m in ipairs(ns.Guild.list) do
+        if not m.sim and type(m.rankIndex) == "number" and m.rankIndex < 99 then
+            local h = holders[m.rankIndex] or {}
+            h[#h + 1] = m.name
+            holders[m.rankIndex] = h
+        end
+    end
+    local auto = {}
+    for index = C.FIRST_CLAN_RANK, 9 do
+        local h = holders[index]
+        if not h or #h ~= 1 then break end
+        local race = C.Race(h[1])
+        if race and not auto[race] then auto[race] = index end
+    end
+    autoCache = auto
+    return auto
+end
+ns.Listen("ROSTER", function() autoCache = nil end)
+ns.Listen("CLANS", function() autoCache = nil end)
+
+-- Every clan's rank: the ones found by itself, then the GM tab's links on top (a linked rank or race
+-- replaces what was found for it).
+local function Ranks()
+    local out = {}
+    for race, i in pairs(AutoRanks()) do out[race] = i end
     local b = Board()
     local cr = b and b.clr and b.clr.cr
-    return cr and race and cr[race] or nil
+    if cr then
+        for race, i in pairs(cr) do
+            for r2, i2 in pairs(out) do if i2 == i then out[r2] = nil end end
+            out[race] = i
+        end
+    end
+    return out
+end
+
+function C.RankFor(race)
+    return race and Ranks()[race] or nil
 end
 
 -- Which clan does this rank lead? (nil if none)
 function C.RaceForRank(index)
+    for race, i in pairs(Ranks()) do if i == index then return race end end
+    return nil
+end
+
+-- Was this rank linked by hand on the GM tab (not found by itself)?
+function C.LinkedByHand(index)
     local b = Board()
     local cr = b and b.clr and b.clr.cr
-    if not cr then return nil end
-    for race, i in pairs(cr) do if i == index then return race end end
-    return nil
+    if not cr then return false end
+    for _, i in pairs(cr) do if i == index then return true end end
+    return false
 end
 
 -- The clan's leaders: everyone on its rank on my roster (normally one), by name. In sim mode a fake
@@ -175,8 +225,7 @@ function C.List()
             unknown = unknown + 1
         end
     end
-    local b = Board()
-    if b and b.clr and b.clr.cr then for race in pairs(b.clr.cr) do Clan(race) end end
+    for race in pairs(Ranks()) do Clan(race) end
     local list = {}
     for race, c in pairs(by) do
         c.leaders = C.Leaders(race)
@@ -262,7 +311,8 @@ end
 
 function C.CanLinkRanks() return ns.Board.CanManage() end
 
--- Link a clan to a rank (index), or unlink it (nil). A rank leads one clan at most.
+-- Link a clan to a rank (index) by hand, or take the hand link off (nil: back to the rank found by
+-- itself). A rank leads one clan at most.
 function C.SetRank(race, index)
     race = C.CleanRace(race)
     local b = Board()

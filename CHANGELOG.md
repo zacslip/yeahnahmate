@@ -4,8 +4,8 @@
 
 Clans:
 
-- **A new Clans tab.** The guild by race: each character is in the clan of its own race. Pick a clan at the top to see its members, their roles, level and where they are (hover a name for more).
-- **Clan leaders come from the guild ranks.** On the GM tab (Moderators, then Clan leaders), the guild master or a manager picks which rank leads each clan. Whoever holds that rank is shown as the leader, with a crown.
+- **A new Clans tab.** The guild by race: each character is in the clan of its own race. Every clan side by side, one list each: who leads it, how many are online, and its members with their role badges and names in class colour (online first; scroll with the mouse wheel; hover a name for more). Your own clan is lit up in gold.
+- **Clan leaders come from the guild ranks, by themselves.** Under the guild's top two ranks, each rank held by one guildie leads that guildie's clan, shown with a crown. If that ever picks wrong, the guild master or a manager can set it by hand on the GM tab (Moderators, then Clan leaders).
 - **Your roles**: pick up to two of Tank, Healer and DPS on the Clans tab. They show next to your name and in your tooltip for guildies with the addon.
 - Guildies' tooltips say which clan they're in and their roles.
 - GM tab: a Clans column for moderator ranks (for clan meetings and challenges, coming next).

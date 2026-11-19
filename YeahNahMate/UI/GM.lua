@@ -184,12 +184,14 @@ local function BuildClanRanks(p, v)
         r.pick:SetScript("OnClick", function(self)
             if not r.index or not ns.Clans.CanLinkRanks() then return end
             local races = ClanChoices()
-            local items = { L.GM_CLAN_NO }
+            local items = { L.GM_CLAN_AUTO }
             for _, race in ipairs(races) do items[#items + 1] = string.format(L.CLAN_NAME, ns.Clans.RaceName(race)) end
             p.clanMenu.Open(self, items, function(k)
                 if k == 1 then
-                    local cur = ns.Clans.RaceForRank(r.index)
-                    if cur then ns.Clans.SetRank(cur, nil) end
+                    -- Back to what the roster says: drop any hand link to this rank.
+                    local b = ns.Board.Store()
+                    local cr = b and b.clr and b.clr.cr or {}
+                    for race, i in pairs(cr) do if i == r.index then ns.Clans.SetRank(race, nil) end end
                 else
                     ns.Clans.SetRank(races[k - 1], r.index)
                 end
@@ -224,7 +226,8 @@ local function RefreshClanRanks(p)
             local race = Cl.RaceForRank(rk.index)
             r.pick:SetShown(rk.index ~= 0)
             r.pick:SetEnabled(can)
-            r.pick:SetText((race and string.format(L.GM_CLAN_PICK, Cl.RaceName(race)) or (ns.GREY .. L.GM_CLAN_NONE .. "|r")) .. "  v")
+            local how = race and (Cl.LinkedByHand(rk.index) and "" or (ns.GREY .. " " .. L.GM_CLAN_FOUND .. "|r")) or ""
+            r.pick:SetText((race and (string.format(L.GM_CLAN_PICK, Cl.RaceName(race)) .. how) or (ns.GREY .. L.GM_CLAN_NONE .. "|r")) .. "  v")
             local n = holders[rk.index] or 0
             r.warn:SetText((race and n > 1) and ("|cffff8040" .. string.format(L.GM_CLAN_TWO, rk.name, n) .. "|r") or "")
             r.stripe:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.04 or 0)

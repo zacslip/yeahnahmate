@@ -20,6 +20,17 @@ local function BuildColumn(p, i)
     local x = (i - 1) * (COL_W + GAP)
     local c = UI.Box(p, x, 0, COL_W, COL_H)
     c.offset = 0
+    -- My own clan: a gold wash over the whole list and a brighter band behind its name.
+    c.wash = c:CreateTexture(nil, "BORDER")
+    c.wash:SetPoint("TOPLEFT", 3, -3)
+    c.wash:SetPoint("BOTTOMRIGHT", -3, 3)
+    c.wash:SetColorTexture(1, 0.82, 0, 0.07)
+    c.wash:Hide()
+    c.band = c:CreateTexture(nil, "BORDER")
+    c.band:SetPoint("TOPLEFT", 3, -3)
+    c.band:SetSize(COL_W - 6, 54)
+    c.band:SetColorTexture(1, 0.82, 0, 0.18)
+    c.band:Hide()
     c.title = Text(c, "", "GameFontNormal", 8, -8, COL_W - 16)
     c.count = Text(c, "", "GameFontDisableSmall", 8, -26, COL_W - 16)
     c.leader = Text(c, "", "GameFontHighlightSmall", 8, -41, COL_W - 16)
@@ -98,8 +109,10 @@ local function RefreshColumn(c, info)
         local name = m and UI.Name(m, true) or leaders[1]
         c.leader:SetText(LEADER_ICON .. " " .. name .. (#leaders > 1 and (ns.GREY .. " +" .. (#leaders - 1) .. "|r") or ""))
     end
+    c.wash:SetShown(mine)
+    c.band:SetShown(mine)
     if c.SetBackdropBorderColor then
-        if mine then c:SetBackdropBorderColor(0.9, 0.76, 0.36, 0.9) else c:SetBackdropBorderColor(0.55, 0.55, 0.55, 0.9) end
+        if mine then c:SetBackdropBorderColor(1, 0.82, 0, 1) else c:SetBackdropBorderColor(0.55, 0.55, 0.55, 0.9) end
     end
 
     local members = Cl.Members(race)

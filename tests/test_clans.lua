@@ -183,6 +183,37 @@ page.roleBtns.h:Click(); Tick(1)
 check(Cl.MyRoles() == "hd" and page.roleBtns.h.sel:IsShown(), "clicking Healer adds it")
 check(Col("Orc").rows[1].roles:GetText():find("Heal", 1, true), "and my badge shows it")
 
+-- Leaders found by themselves: from rank 2 down, each rank with one guildie leads that guildie's clan;
+-- the run stops at a rank with more (or none). A hand link on the GM tab wins for its race.
+-- Roster: Ned 0, Bluey 1 (Troll, linked by hand to rank 1), Chilli 2 (Undead), Bandit 3 (Troll),
+-- Bingo 4 (race not known), and a made-up rank 6 with one guildie, after a gap at 5.
+FAKE.roster[4][3], FAKE.roster[5][3], FAKE.roster[3][3] = 2, 3, 4
+FAKE.roster[#FAKE.roster + 1] = { "Lonely Larrikin", "Hermit", 6, 30, "Mage", "Durotar", "", "", false, 0, "MAGE", 0, 0, false, false, 3, "Player-6797-00000009" }
+local realInfo = GetPlayerInfoByGUID
+function GetPlayerInfoByGUID(guid)
+    if guid == "Player-6797-00000009" then return "Mage", "MAGE", "Orc", "Orc", 2, "x", "" end
+    return realInfo(guid)
+end
+FireEvent("GUILD_ROSTER_UPDATE"); Tick(2)
+check(Cl.RankFor("Scourge") == 2 and Cl.Leaders("Scourge")[1] == "Chilli Heeler", "rank 2, one guildie: Chilli leads the Undead")
+check(Cl.RankFor("Troll") == 1 and Cl.Leaders("Troll")[1] == "Bluey Heeler" and not Cl.IsLeader("Bandit Heeler"),
+    "the hand link wins: Bluey still leads the Trolls, not Bandit on rank 3")
+check(Cl.RankFor("Orc") == nil, "rank 5 has nobody: the run stops, so Lonely on rank 6 leads nobody")
+check(not Cl.LinkedByHand(2) and Cl.LinkedByHand(1), "found vs linked by hand")
+-- Take the hand link off: back to what the roster says (Bandit, the only one on rank 3).
+Cl.SetRank("Troll", nil)
+check(Cl.RankFor("Troll") == 3 and Cl.Leaders("Troll")[1] == "Bandit Heeler", "no hand link: Bandit leads the Trolls")
+-- Two on rank 2: the run stops at once.
+FAKE.roster[5][3] = 2
+FireEvent("GUILD_ROSTER_UPDATE"); Tick(2)
+check(Cl.RankFor("Scourge") == nil and Cl.RankFor("Troll") == nil, "two on the first clan rank: nothing found")
+-- Back as it was.
+table.remove(FAKE.roster)
+GetPlayerInfoByGUID = realInfo
+FAKE.roster[4][3], FAKE.roster[5][3], FAKE.roster[3][3] = 3, 3, 3
+FireEvent("GUILD_ROSTER_UPDATE"); Tick(2)
+Cl.SetRank("Troll", 1)
+
 -- The GM tab's Clan leaders page.
 UI.Open("gm")
 Tick(1)
@@ -195,7 +226,7 @@ for _, r in ipairs(gm.clanRows) do if r.index == 1 then officerRow = r end end
 check(officerRow and officerRow.pick:GetText():find("Troll", 1, true), "the Officer rank leads the Troll clan")
 officerRow.pick:Click(); Tick(1)
 gm.clanMenu.rows[1]:Click(); Tick(1)
-check(Cl.RankFor("Troll") == nil, "Leads no clan unlinks it")
+check(Cl.RankFor("Troll") == nil, "As the roster says takes the hand link off")
 officerRow.pick:Click(); Tick(1)
 gm.clanMenu.rows[3]:Click(); Tick(1)             -- Leads no clan, Orc, Troll, ...
 check(Cl.RankFor("Troll") == 1, "picking Troll links it again")
