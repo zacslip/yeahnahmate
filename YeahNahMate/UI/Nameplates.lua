@@ -30,7 +30,7 @@ Plates.GOLD = { 1, 0.82, 0 }
 local ARM, THICK = 10, 2          -- bracket arm length and thickness
 -- How far the brackets sit outside the health bar (x each side, y below), how much room above it for
 -- the name, and how far the whole thing is moved up (dy, negative = down). /ynm dev platefit tries a look.
-Plates.FIT = { x = -19, y = 3, top = 14, dy = -5 }   -- picked by eye in game (Zac, 19 Nov)
+Plates.FIT = { x = -19, y = 3, top = 14, dy = -5 }   -- picked by eye in game
 local markers, spare = {}, {}     -- unit token -> marker frame; unused frames to reuse
 local live = {}                   -- unit tokens with a nameplate showing now (from the game's events)
 local CROWN = "Interface\\GroupFrame\\UI-Group-LeaderIcon"
