@@ -327,6 +327,41 @@ function Sim.FakeClanMeet()
     ns.Print(L.SIM_CLANMEET_NONE)
 end
 
+-- Challenges: one online fake (not a leader) from my clan and from two other clans challenge for
+-- the leadership; 20 s later Bazza (a fake officer) marks the first other-clan one Lost.
+function Sim.FakeChallenges()
+    if not fakes then return end
+    local now = GetServerTime()
+    local myRace = ns.Clans.MyRace()
+    local picks, seen = {}, {}
+    for _, m in ipairs(fakes) do
+        if m.online and m.addon and m.race and not m.simLeader and m.race == myRace and not seen[m.race] then
+            picks[#picks + 1] = m; seen[m.race] = true
+        end
+    end
+    for _, m in ipairs(fakes) do
+        if #picks >= 3 then break end
+        if m.online and m.addon and m.race and not m.simLeader and not seen[m.race] then
+            picks[#picks + 1] = m; seen[m.race] = true
+        end
+    end
+    for i, m in ipairs(picks) do
+        ns.Safe(FakeSend, m, { t = "CHG", id = now + i, r = m.race, st = "o", at = now - i * 3600, ev = now })
+    end
+    local loser
+    for _, m in ipairs(picks) do if m.race ~= myRace then loser = m; break end end
+    if loser then
+        C_Timer.After(20, function()
+            if not (fakes and byName["Bazza Stubbs"]) then return end
+            local id
+            for i, m in ipairs(picks) do if m == loser then id = now + i end end
+            ns.Safe(FakeSend, byName["Bazza Stubbs"], { t = "CHG", o = loser.name, id = id, r = loser.race, st = "lost",
+                sb = "Bazza Stubbs", at = now - 3600, ev = GetServerTime() })
+        end)
+    end
+    ns.Print(L.SIM_CHALLENGES)
+end
+
 -- Disband in sim mode: a fake who "joined" my party leaves it.
 function Sim.Leave(name)
     if not joined[name] then return end

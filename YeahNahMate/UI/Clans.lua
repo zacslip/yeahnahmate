@@ -5,7 +5,11 @@
 -- During my clan meeting (ClanMeet.lua) that clan's list is the invite list: green = asked (ready to
 -- invite), gold = was in the group before Disband, a tick = in my group; click a name to invite them.
 -- Along the bottom, one bar: My roles (icons), then the buttons for the picked clan (my own unless I
--- click another clan's name, which only someone who may run that clan's meetings can do).
+-- click another clan's name, which only someone who may run that clan's meetings can do), and
+-- Challenge / Withdraw (two clicks) for my own clan.
+-- Challenges (ClanChallenge.lua): crossed swords after a challenger's name; the list's title shows how
+-- many, hover it for the order. Right-click a name for what I may do: Invite, Whisper, and for the
+-- guild master / Clan moderators: Won / Lost on a challenger, give or end second in command.
 local ADDON, ns = ...
 local L = ns.L
 local UI = ns.UI
@@ -19,6 +23,8 @@ local ROWS = 17
 local SURE_FOR = 5                   -- seconds a "Sure? Disband" waits for the second click
 local LEADER_ICON = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t"
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
+local SWORDS = "|TInterface\\Icons\\Ability_DualWield:12:12|t"
+local DEPUTY_ICON = "|TInterface\\GroupFrame\\UI-Group-AssistantIcon:12:12|t"
 local ROLE_NAME = { t = L.ROLE_TANK, h = L.ROLE_HEALER, d = L.ROLE_DPS }
 -- Row tints during my meeting.
 local TINT = { asked = { 0.2, 0.85, 0.3, 0.30 }, here = { 1, 0.82, 0, 0.22 } }
@@ -70,6 +76,31 @@ local function BuildColumn(p, i)
     end)
     c.head:SetScript("OnLeave", NoTip)
     c.title = Text(c, "", "GameFontNormal", 8, -8, COL_W - 16)
+    c.chal = CreateFrame("Frame", nil, c)
+    c.chal:SetPoint("TOPLEFT", COL_W - 44, -6)
+    c.chal:SetSize(40, 18)
+    c.chal.text = Text(c.chal, "", "GameFontHighlightSmall", 0, -3, 38, "RIGHT")
+    c.chal:EnableMouse(true)
+    c.chal:SetScript("OnEnter", function(self)
+        if not c.race then return end
+        local X = ns.ClanChallenge
+        local lines = { string.format(L.CHAL_TIP_HEAD, string.format(L.CLAN_NAME, ns.Clans.RaceName(c.race))) }
+        for i, ch in ipairs(X.Open(c.race)) do
+            lines[#lines + 1] = string.format(L.CHAL_TIP_ROW, i, ch.owner, UI.DayText(ch.at))
+        end
+        if #lines == 1 then lines[#lines + 1] = L.CHAL_TIP_NONE end
+        local recent = X.Recent(c.race)
+        if #recent > 0 then
+            lines[#lines + 1] = " "
+            lines[#lines + 1] = ns.GOLD .. L.CHAL_TIP_RECENT .. "|r"
+            for i = 1, math.min(5, #recent) do
+                local ch = recent[i]
+                lines[#lines + 1] = string.format(ch.st == "won" and L.CHAL_TIP_WON or L.CHAL_TIP_LOST, ch.owner, UI.DayText(ch.ev))
+            end
+        end
+        Tip(self, lines)
+    end)
+    c.chal:SetScript("OnLeave", NoTip)
     c.count = Text(c, "", "GameFontDisableSmall", 8, -26, COL_W - 16)
     c.leader = Text(c, "", "GameFontHighlightSmall", 8, -41, COL_W - 16)
     local line = c:CreateTexture(nil, "ARTWORK")
@@ -112,7 +143,12 @@ local function BuildColumn(p, i)
             self.hl:Hide()
             NoTip()
         end)
-        r:SetScript("OnClick", function(self)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            if button == "RightButton" then
+                if self.m then p.OpenMenu(self, self.m) end
+                return
+            end
             if self.meet and ns.ClanMeet.Invitable(self.meet.state) then ns.ClanMeet.Invite(self.m.name) end
         end)
         r:EnableMouseWheel(true)
@@ -165,11 +201,53 @@ local function BuildBar(p)
         end, 24),
         stop = Button(p, L.CLAN_STOP, 60, 0, y, function() CM.Stop() end, 24),
         ask = Button(p, L.CLAN_ASK, 130, 0, y, function() CM.AskInvite(ns.Clans.MyRace()) end, 24),
+        challenge = Button(p, SWORDS .. " " .. L.CHAL_BTN, 104, 0, y, function() ns.ClanChallenge.Challenge() end, 24),
+        withdraw = Button(p, L.CHAL_WITHDRAW, 120, 0, y, function()
+            if p.wdAt and GetTime() - p.wdAt < SURE_FOR then
+                p.wdAt = nil
+                ns.ClanChallenge.Withdraw()
+            else
+                p.wdAt = GetTime()
+                C_Timer.After(SURE_FOR + 0.1, UI.Dirty)
+            end
+            UI.Dirty()
+        end, 24),
     }
-    local widths = { start = 170, next = 100, raid = 110, disband = 104, stop = 60, ask = 130 }
+    p.bar.challenge:SetScript("OnEnter", function(self) Tip(self, { L.CHAL_BTN, L.CHAL_BTN_TIP }) end)
+    p.bar.challenge:SetScript("OnLeave", NoTip)
+    local widths = { start = 170, next = 100, raid = 110, disband = 104, stop = 60, ask = 130, challenge = 104, withdraw = 120 }
     for k, btn in pairs(p.bar) do btn._barW = widths[k] end
     p.barHint = Text(p, "", "GameFontDisableSmall", 0, y - 6, 300)
     p.barY = y
+end
+
+-- Right-click on a name: what I may do with them.
+local function BuildMenu(p)
+    p.menu = UI.PickMenu(p, 200, 6)
+    function p.OpenMenu(anchor, m)
+        local X, CM = ns.ClanChallenge, ns.ClanMeet
+        local items, acts = {}, {}
+        local function Add(label, fn) items[#items + 1] = label; acts[#acts + 1] = fn end
+        if m.name ~= ns.me and m.online then
+            Add(L.INVITE, function() if CM.Mine() then CM.Invite(m.name) else UI.Invite(m) end end)
+            Add(L.CLAN_MENU_WHISPER, function() ns.Whisper.Open(m) end)
+        end
+        local race = ns.Clans.Race(m.name)
+        local ch = race and X.OpenOf(m.name, race)
+        if ch and X.CanSettle(ns.me) then
+            Add(ns.GREEN .. L.CHAL_MENU_WON .. "|r", function() X.Settle(ch.owner, ch.id, "won") end)
+            Add("|cffff6060" .. L.CHAL_MENU_LOST .. "|r", function() X.Settle(ch.owner, ch.id, "lost") end)
+        end
+        if race and m.name ~= ns.me and X.CanSettle(ns.me) and not ns.Clans.IsLeader(m.name, race) then
+            if ns.Clans.IsDeputy(m.name, race) then
+                Add(L.DEP_MENU_END, function() X.SetDeputy(m.name, false) end)
+            elseif m.online then
+                Add(string.format(L.DEP_MENU_GIVE, X.DEPUTY_FOR / 60), function() X.SetDeputy(m.name, true) end)
+            end
+        end
+        if #items == 0 then return end
+        p.menu.Open(anchor, items, function(i) acts[i](); UI.Dirty() end)
+    end
 end
 
 local function Build(p)
@@ -177,6 +255,7 @@ local function Build(p)
     p.cols = {}
     for i = 1, COLS do p.cols[i] = BuildColumn(p, i) end
     BuildBar(p)
+    BuildMenu(p)
 end
 
 local function RefreshColumn(p, c, info, picked)
@@ -205,6 +284,13 @@ local function RefreshColumn(p, c, info, picked)
         local name = m and UI.Name(m, true) or leaders[1]
         c.leader:SetText(LEADER_ICON .. " " .. name .. (#leaders > 1 and (ns.GREY .. " +" .. (#leaders - 1) .. "|r") or ""))
     end
+    local open = ns.ClanChallenge.Open(race)
+    local challengers = {}
+    for _, ch in ipairs(open) do challengers[ch.owner] = true end
+    c.chal.text:SetText(#open > 0 and (SWORDS .. " " .. #open) or "")
+    c.chal:SetShown(#open > 0 or #ns.ClanChallenge.Recent(race) > 0)
+    if #open == 0 and c.chal:IsShown() then c.chal.text:SetText(ns.GREY .. SWORDS .. "|r") end
+    local deputy = ns.ClanChallenge.Deputy(race)
     c.wash:SetShown(mineClan)
     c.band:SetShown(mineClan)
     if c.SetBackdropBorderColor then
@@ -233,6 +319,8 @@ local function RefreshColumn(p, c, info, picked)
             local name = UI.Name(m, true)
             if r.meet and row.state == "ingroup" then name = TICK .. " " .. ns.GREY .. m.name .. "|r" end
             if r.meet and row.other then name = name .. ns.GREY .. " *|r" end
+            if deputy and deputy.who == m.name then name = name .. " " .. DEPUTY_ICON end
+            if challengers[m.name] then name = name .. " " .. SWORDS end
             r.name:SetText(name)
             local tint = r.meet and TINT[row.state]
             r.tint:SetShown(tint ~= nil)
@@ -273,6 +361,14 @@ local function RefreshBar(p, picked)
         b.ask:SetText(asked and (TICK .. " " .. L.CLAN_ASKED) or L.CLAN_ASK)
         b.ask:SetEnabled(not asked)
         show[#show + 1] = b.ask
+    end
+    local X = ns.ClanChallenge
+    if myRace and X.OpenOf(ns.me, myRace) then
+        local sure = p.wdAt and GetTime() - p.wdAt < SURE_FOR
+        b.withdraw:SetText(sure and ("|cffff6060" .. L.CHAL_WITHDRAW_SURE .. "|r") or L.CHAL_WITHDRAW)
+        show[#show + 1] = b.withdraw
+    elseif X.CanChallenge() then
+        show[#show + 1] = b.challenge
     end
     local x = 172
     for _, btn in ipairs(show) do
@@ -322,4 +418,17 @@ ns.Listen("CLANMEET_ASKED", function(name)
     if thePage and thePage:IsShown() then return end         -- the list shows it already
     ns.Toast.nextTab = "clans"
     ns.Toast.Show(string.format(L.TOAST_CLANMEET_ASKED, name:match("^%S+") or name), "", "gather")
+end)
+
+-- A challenge in a clan I lead (or every clan, for those who settle them); second in command for me.
+ns.Listen("CLAN_CHALLENGE", function(c)
+    if not (ns.Clans.IsLeader(ns.me, c.r) or ns.ClanChallenge.CanSettle(ns.me)) or c.owner == ns.me then return end
+    ns.Toast.nextTab = "clans"
+    ns.Toast.Show(string.format(L.TOAST_CHALLENGE, c.owner:match("^%S+") or c.owner,
+        string.format(L.CLAN_NAME, ns.Clans.RaceName(c.r))), L.TOAST_CHALLENGE_TEXT, nil)
+end)
+ns.Listen("CLAN_DEPUTY", function(race, by)
+    ns.Toast.nextTab = "clans"
+    ns.Toast.Show(string.format(L.TOAST_DEPUTY, string.format(L.CLAN_NAME, ns.Clans.RaceName(race))),
+        string.format(L.TOAST_DEPUTY_TEXT, by:match("^%S+") or by, ns.ClanChallenge.DEPUTY_FOR / 60), nil)
 end)

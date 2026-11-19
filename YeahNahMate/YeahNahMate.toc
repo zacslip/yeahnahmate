@@ -37,6 +37,7 @@ Board.lua
 Milestones.lua
 Clans.lua
 ClanMeet.lua
+ClanChallenge.lua
 Breakdown.lua
 Sim.lua
 Probe.lua
