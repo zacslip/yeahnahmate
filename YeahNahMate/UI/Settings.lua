@@ -80,6 +80,15 @@ local function Build(p)
     -- Minimap button (left, under the map)
     Header(p, L.SET_BUTTON, 0, -156, 350)
     p.minimap = UI.Check(p, L.SET_MINIMAP, 0, -178, s.minimap, function(on) s.minimap = on; Changed() end)
+    p.plates = UI.Check(p, L.SET_PLATES, 176, -178, s.guildPlates ~= false, function(on) s.guildPlates = on; Changed() end)
+    p.plates:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L.SET_PLATES, 1, 0.82, 0)
+        GameTooltip:AddLine(L.SET_PLATES_TIP, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.plates:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
     -- How much memory the addon uses (a guildie asked). Only our own addon, only when Settings opens.
     p.memory = Text(p, "", "GameFontHighlightSmall", 4, -206, 346)

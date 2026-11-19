@@ -53,6 +53,7 @@ UI\Home.lua
 UI\Breakdown.lua
 UI\Roster.lua
 UI\Clans.lua
+UI\Nameplates.lua
 UI\Professions.lua
 UI\Ask.lua
 UI\Legends.lua

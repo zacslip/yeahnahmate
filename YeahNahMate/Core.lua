@@ -256,6 +256,7 @@ end
 ns.DEFAULTS = {
     settings = {
         minimap = true,         -- show the minimap button
+        guildPlates = true,     -- brackets and the owl on guildies' nameplates (UI/Nameplates.lua)
         minimapAngle = 200,
         showWorld = true,       -- guildies' dots on the world map
         showMinimap = true,     -- and on the minimap
