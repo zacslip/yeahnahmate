@@ -769,3 +769,47 @@ ns.Listen("ROSTER", function()
     if changed then ns.Fire("PROFS") end
 end)
 ns.Listen("LOGIN", function() dirty = true end)
+
+---------------------------------------------------------------------------------------------------
+-- Materials for a recipe (the Professions tab's tooltip). The game's C_TradeSkillUI.GetRecipeSchematic
+-- gives them for any recipe, known or not, whatever profession window is open (/ynm dev matprobe,
+-- Nov 2026). A recipe's materials don't change, so each is asked once. Item names may not be loaded
+-- yet: the game is asked for them, and ITEM_DATA_LOAD_RESULT says when one arrives.
+
+local matCache = {}             -- recipe id -> { { id, n }, ... } (false: the game had none)
+
+function Prof.Materials(rid)
+    if type(rid) ~= "number" then return nil end
+    local cached = matCache[rid]
+    if cached ~= nil then return cached or nil end
+    local api = C_TradeSkillUI
+    if not (api and api.GetRecipeSchematic) then return nil end
+    local ok, s = pcall(api.GetRecipeSchematic, rid, false)
+    if not ok or type(s) ~= "table" or type(s.reagentSlotSchematics) ~= "table" then return nil end
+    local out = {}
+    for _, slot in ipairs(s.reagentSlotSchematics) do
+        local first = type(slot) == "table" and type(slot.reagents) == "table" and slot.reagents[1]
+        local id = first and ns.Public(first.itemID, "number")
+        local n = ns.Public(slot.quantityRequired, "number")
+        if id and n and n > 0 and slot.required ~= false then out[#out + 1] = { id = id, n = n } end
+    end
+    matCache[rid] = #out > 0 and out or false
+    return #out > 0 and out or nil
+end
+
+-- An item's name, or nil while the game loads it (asked for here).
+function Prof.ItemName(id)
+    local name = C_Item and C_Item.GetItemNameByID and ns.Public(C_Item.GetItemNameByID(id), "string")
+    if name and name ~= "" then return name end
+    if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+    return nil
+end
+
+-- How many I carry (bags only).
+function Prof.Carried(id)
+    local n = C_Item and C_Item.GetItemCount and ns.Public(C_Item.GetItemCount(id), "number")
+    if n == nil and GetItemCount then n = ns.Public(GetItemCount(id), "number") end
+    return n or 0
+end
+
+ns.OnEvent("ITEM_DATA_LOAD_RESULT", function(id) ns.Fire("ITEM_LOADED", id) end)

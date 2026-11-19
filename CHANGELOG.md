@@ -2,6 +2,7 @@
 
 ## 0.20.0 (not released yet)
 
+- **Materials on the Professions tab**: hover a recipe to see what it needs and how many of each you're carrying (green when you have enough). Works for every recipe in the list, not just your own.
 - **Guildies stand out on their nameplates**: corner brackets round the name and health bar in their clan's colour (Orc red, Troll teal, Tauren orange, Undead purple, Skyborne blue). The guild master and the rank under them get a crown on each side of theirs. Needs the game's friendly nameplates on (Ctrl+V). The game locks nameplates in some places (like dungeons); there they show as normal. Switch it off in Settings (Minimap, Mark guildies' nameplates).
 
 ## 0.19.0

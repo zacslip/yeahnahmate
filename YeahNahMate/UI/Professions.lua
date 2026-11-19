@@ -129,16 +129,39 @@ local FILTERS = {
 }
 local ROW_STEP = 31
 
--- Item tooltip for a recipe row (the item it makes, or the enchant spell).
+-- Item tooltip for a recipe row (the item it makes, or the enchant spell), then the materials it
+-- needs and how many of each I carry (green: enough).
+local tipRow = nil
 local function RecipeTooltip(r)
     if not GameTooltip or not r.rid then return end
+    tipRow = r
     GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
     local ok = false
     if r.itemID and GameTooltip.SetItemByID then ok = pcall(GameTooltip.SetItemByID, GameTooltip, r.itemID)
     elseif GameTooltip.SetSpellByID then ok = pcall(GameTooltip.SetSpellByID, GameTooltip, r.rid) end
     if not ok then GameTooltip:AddLine(r.recipe or "") end
+    local mats = ns.Prof.Materials(r.rid)
+    if mats then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L.PROF_MATS, 1, 0.82, 0)
+        for _, m in ipairs(mats) do
+            local name = ns.Prof.ItemName(m.id) or L.PROF_MATS_LOADING
+            local have = ns.Prof.Carried(m.id)
+            local icon = C_Item and C_Item.GetItemIconByID and ns.Public(C_Item.GetItemIconByID(m.id))
+            local left = (icon and ("|T" .. icon .. ":14:14|t ") or "") .. name .. " x" .. m.n
+            local right = string.format(L.PROF_MATS_HAVE, have)
+            if have >= m.n then GameTooltip:AddDoubleLine(left, right, 1, 1, 1, 0.3, 1, 0.4)
+            else GameTooltip:AddDoubleLine(left, right, 1, 1, 1, 0.6, 0.6, 0.6) end
+        end
+    end
     GameTooltip:Show()
 end
+-- A material's name arrived while its tooltip is up: draw it again.
+ns.Listen("ITEM_LOADED", function()
+    if tipRow and tipRow:IsShown() and GameTooltip and GameTooltip:IsShown() and GameTooltip:GetOwner() == tipRow then
+        RecipeTooltip(tipRow)
+    end
+end)
 
 local function BuildWho(p)
     local v = CreateFrame("Frame", nil, p)
@@ -220,6 +243,7 @@ local function BuildWho(p)
         end)
         r:SetScript("OnLeave", function(self)
             self.hl:Hide()
+            if tipRow == self then tipRow = nil end
             if GameTooltip then GameTooltip:Hide() end
         end)
         p.rows[i] = r
