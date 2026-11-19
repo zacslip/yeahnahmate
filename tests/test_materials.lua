@@ -48,6 +48,7 @@ GameTooltip.GetOwner = function() return owner end
 GameTooltip.AddLine = function(self, t) lines[#lines + 1] = t end
 GameTooltip.AddDoubleLine = function(self, a, b, r1, g1, b1, r2, g2) lines[#lines + 1] = a .. " || " .. b .. ((g2 == 1) and " [green]" or "") end
 GameTooltip.IsShown = function() return true end
+GameTooltip.NumLines = function() return #lines end
 FAKE.trade = { line = 197, rank = 75, max = 150, recipes = { [3755] = true } }
 ns.settings.shareProfessions = true
 FireEvent("TRADE_SKILL_SHOW"); Tick(2)
@@ -96,8 +97,8 @@ for _ = 1, 20 do Tick(0.1) end
 check(draws <= 2, "another addon loading items inside our tooltip: no loop (" .. draws .. " draws)")
 row._scripts.OnLeave(row)
 
--- First hover, the made item not loaded: when it arrives the game rebuilds the tooltip (our lines go);
--- we draw once more, next frame, so the materials come back without hovering again.
+-- First hover, the made item not loaded: when it arrives the game rebuilds the tooltip and our lines
+-- go. A moment later we see fewer lines than we drew and draw again, without a second hover.
 names[2320] = "Coarse Thread"
 local cached = false
 C_Item.IsItemDataCachedByID = function(id) if id == 4238 then return cached end return true end
@@ -105,10 +106,12 @@ GameTooltip.SetItemByID = function() end
 row._scripts.OnEnter(row)
 check(table.concat(lines, "\n"):find(L.PROF_MATS, 1, true), "first draw has the materials")
 cached = true
-lines = {}                                                 -- the game's rebuild wipes our lines
-FireEvent("ITEM_DATA_LOAD_RESULT", 4238, true)
-Tick(0.1)
-check(table.concat(lines, "\n"):find("Coarse Thread x3", 1, true), "made item loaded: drawn again with the materials")
+lines = { "Guardian Gloves" }                              -- the game's rebuild: its own lines only
+Tick(0.4)
+check(table.concat(lines, "\n"):find("Coarse Thread x3", 1, true), "the game rebuilt the tooltip: drawn again with the materials")
+local after = #lines
+Tick(2)
+check(#lines == after, "and then left alone")
 row._scripts.OnLeave(row)
 
 -- A made item that never loads, with the game firing loads all the time: still at most one redraw.
