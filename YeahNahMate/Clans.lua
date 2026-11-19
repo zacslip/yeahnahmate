@@ -186,7 +186,7 @@ function C.List()
     return list, unknown
 end
 
--- A clan's members (roster entries): leaders first, then online, then by level, then name.
+-- A clan's members (roster entries): leaders first, then online, then by name.
 function C.Members(race)
     local list = {}
     for _, m in ipairs(ns.Guild.list) do
@@ -197,7 +197,6 @@ function C.Members(race)
     table.sort(list, function(a, b)
         if (lead[a.name] or false) ~= (lead[b.name] or false) then return lead[a.name] == true end
         if a.online ~= b.online then return a.online == true end
-        if (a.level or 0) ~= (b.level or 0) then return (a.level or 0) > (b.level or 0) end
         return a.name < b.name
     end)
     return list

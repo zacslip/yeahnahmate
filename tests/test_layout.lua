@@ -220,19 +220,30 @@ dp.groupAlert:Click(); Tick(1)
 check(ns.settings.pop.group == true, "and back on")
 Inside(dp, "Dungeons")
 
--- Clans (sim on: fake guildies have races, roles and leaders).
+-- Clans (sim on: fake guildies have races, roles and leaders): five lists across the whole page.
 UI.Open("clans")
 Tick(1)
 local cp
-for _, o in ipairs(CREATED) do if o.roleBtns and o.leaderCard then cp = o end end
-cp.race = "Troll"; UI.Dirty(); Tick(1)
-check(cp.rows[1]:IsShown() and cp.rows[1].m.name == "Shazza Kettle" and cp.leaderCard.text:GetText() == "Shazza",
+for _, o in ipairs(CREATED) do if o.cols and o.roleBtns then cp = o end end
+local trollCol
+for _, c in ipairs(cp.cols) do if c:IsShown() and c.title:GetText():find("Troll", 1, true) then trollCol = c end end
+check(trollCol and trollCol.leader:GetText():find("Shazza Kettle", 1, true) and trollCol.rows[1].m.name == "Shazza Kettle",
     "Clans (sim): Shazza leads the Troll clan, listed first")
-local unknownNote = cp.note:GetText() or ""
-check(unknownNote ~= "", "Clans (sim): fakes without the addon counted as race not known")
+-- A big clan scrolls with the mouse wheel.
+for i = 1, 30 do
+    local m = { name = "Filler Bloke" .. string.char(64 + (i % 26) + 1) .. i, level = 10, class = "WARRIOR", zone = "Durotar",
+                online = false, sim = true, race = "Troll", roles = "", rank = "Member", rankIndex = 3 }
+    ns.Guild.members[m.name] = m
+    ns.Guild.list[#ns.Guild.list + 1] = m
+end
+UI.Dirty(); Tick(1)
+check(trollCol.shown:GetText() ~= "" and trollCol.rows[17]:IsShown(), "a long list says how many are shown")
+trollCol.rows[1]._scripts.OnMouseWheel(trollCol.rows[1], -1); Tick(1)
+check(trollCol.offset == 3 and trollCol.rows[1].m.name ~= "Shazza Kettle", "the mouse wheel scrolls it")
 Inside(cp, "Clans")
-cp.pickBtn:Click(); Tick(1)
-Inside(cp, "Clans picker")
+ns.Guild.SetFakes(nil)
+SlashCmdList.YEAHNAHMATE("dev sim off"); Tick(1)
+SlashCmdList.YEAHNAHMATE("dev sim on"); Tick(16)
 
 -- GM tab: the moderator ticks (seven columns) and the Clan leaders page fit.
 SlashCmdList.YEAHNAHMATE("dev gm on")

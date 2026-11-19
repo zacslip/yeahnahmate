@@ -153,30 +153,35 @@ check(Cl.People()["Bingo Heeler"] == nil and Cl.People()["Bluey Heeler"] ~= nil,
 table.insert(FAKE.roster, 3, bingo)
 FireEvent("GUILD_ROSTER_UPDATE"); Tick(2)
 
--- The tab: the Troll clan, Bluey leading, roles shown; my clan by default.
+-- The tab: every clan side by side (Orc, Troll, Undead: Bingo's race isn't known any more since
+-- they left and came back), each with its leader and members, role badges on the left.
 UI.Open("clans")
 Tick(1)
 local page
-for _, o in ipairs(CREATED) do if o.roleBtns and o.leaderCard then page = o end end
+for _, o in ipairs(CREATED) do if o.cols and o.roleBtns then page = o end end
 check(page ~= nil, "the Clans tab opens")
-check(page.viewTitle:GetText() == string.format(L.CLAN_NAME, "Orc"), "my own clan first", page.viewTitle:GetText())
-check(page.rows[1]:IsShown() and page.rows[1].m.name == "Ned Jones" and not page.rows[2]:IsShown(), "just me in the Orc clan")
-page.race = "Troll"; UI.Dirty(); Tick(1)
-check(page.leaderCard.text:GetText() == "Bluey", "Troll clan: Bluey leads", page.leaderCard.text:GetText())
-check(page.rows[1].m.name == "Bluey Heeler" and page.rows[1].name:GetText():find("LeaderIcon", 1, true)
-    and page.rows[1].roles:GetText():find("Sword", 1, true), "Bluey: crown and the DPS icon")
+local function Col(race)
+    for _, c in ipairs(page.cols) do
+        if c:IsShown() and c.title:GetText():find(string.format(L.CLAN_NAME, Cl.RaceName(race)), 1, true) then return c end
+    end
+end
+local shownCols = 0
+for _, c in ipairs(page.cols) do if c:IsShown() then shownCols = shownCols + 1 end end
+check(shownCols == 3 and page.cols[1].title:GetText():find("Orc", 1, true) and page.cols[3].title:GetText():find("Undead", 1, true),
+    "three clans shown, in order (Orc, Troll, Undead)")
+check(Col("Orc").title:GetText():find(L.CLAN_YOU, 1, true) and not Col("Troll").title:GetText():find(L.CLAN_YOU, 1, true),
+    "my clan says (you)")
+local troll = Col("Troll")
+check(troll.leader:GetText():find("LeaderIcon", 1, true) and troll.leader:GetText():find("Bluey Heeler", 1, true),
+    "Troll clan: Bluey leads, with a crown")
+check(troll.count:GetText() == string.format(L.CLAN_COUNT, 2, 1), "Troll clan: 2 members, 1 online", troll.count:GetText())
+check(troll.rows[1].m.name == "Bluey Heeler" and troll.rows[1].roles:GetText():find("Sword", 1, true)
+    and troll.rows[2].m.name == "Bandit Heeler" and troll.rows[2].roles:GetText() == "", "rows: role badge, then the name")
+check(Col("Scourge").leader:GetText():find(L.CLAN_NO_LEADER, 1, true), "no leader yet for Undead")
 check(page.roleBtns.d.sel:IsShown() and not page.roleBtns.t.sel:IsShown(), "my roles lit: DPS")
 page.roleBtns.h:Click(); Tick(1)
 check(Cl.MyRoles() == "hd" and page.roleBtns.h.sel:IsShown(), "clicking Healer adds it")
--- The picker lists every clan.
-page.pickBtn:Click(); Tick(1)
-local shown = 0
-for _, r in ipairs(page.menu.rows) do if r:IsShown() then shown = shown + 1 end end
--- (Bingo left and came back, so their race isn't known any more: Orc, Troll, Undead, Race not known.)
-check(page.menu:IsShown() and shown == 4 and page.menu.rows[4].text:GetText():find(L.CLAN_RACE_UNKNOWN, 1, true),
-    "the picker lists the clans, then Race not known")
-page.menu.rows[3]:Click(); Tick(1)
-check(page.race == "Scourge" and page.viewTitle:GetText() == string.format(L.CLAN_NAME, "Undead"), "picking Undead shows them " .. tostring(page.race) .. " / " .. tostring(page.viewTitle:GetText()))
+check(Col("Orc").rows[1].roles:GetText():find("Heal", 1, true), "and my badge shows it")
 
 -- The GM tab's Clan leaders page.
 UI.Open("gm")
