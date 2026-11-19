@@ -4,7 +4,7 @@
 -- tooltip.
 -- During my clan meeting (ClanMeet.lua) that clan's list is the invite list: green = asked (ready to
 -- invite), gold = was in the group before Disband, a tick = in my group; click a name to invite them.
--- Along the bottom, one bar: My roles (icons), then the buttons for the picked clan (my own unless I
+-- Along the top, one bar: My roles (icons), then the buttons for the picked clan (my own unless I
 -- click another clan's name, which only someone who may run that clan's meetings can do), and
 -- Challenge / Withdraw (two clicks) for my own clan.
 -- Challenges (ClanChallenge.lua): crossed swords after a challenger's name; the list's title shows how
@@ -18,6 +18,7 @@ local Text, Button, Row = UI.Text, UI.Button, UI.Row
 local COLS = 5
 local COL_W, GAP = 140, 9            -- 5 x 140 + 4 x 9 = 736, the whole page
 local COL_H = 372
+local BAR_H = 32                     -- the bar along the top (24) and a gap; the lists start under it
 local ROW_H = 17
 local ROWS = 17
 local SURE_FOR = 5                   -- seconds a "Sure? Disband" waits for the second click
@@ -51,7 +52,7 @@ end
 
 local function BuildColumn(p, i)
     local x = (i - 1) * (COL_W + GAP)
-    local c = UI.Box(p, x, 0, COL_W, COL_H)
+    local c = UI.Box(p, x, -BAR_H, COL_W, COL_H)
     c.offset = 0
     -- My own clan: a gold wash over the whole list and a brighter band behind its name.
     c.wash = c:CreateTexture(nil, "BORDER")
@@ -164,7 +165,7 @@ local function BuildColumn(p, i)
 end
 
 local function BuildBar(p)
-    local y = -COL_H - 8
+    local y = 0
     Text(p, ns.GOLD .. L.CLAN_MY_ROLES .. "|r", "GameFontNormalSmall", 4, y - 6, 60)
     p.roleBtns = {}
     for i, r in ipairs(ns.Clans.ROLES) do

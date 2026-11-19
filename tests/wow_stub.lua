@@ -66,6 +66,7 @@ function methods.Hide(self)
 end
 function methods.SetShown(self, v) if v then self:Show() else self:Hide() end end
 function methods.IsShown(self) return self._shown end
+function methods.IsMouseOver(self) return self._over == true end   -- tests set o._over = true
 function methods.IsVisible(self)
     local o = self
     while o do if not o._shown then return false end o = o._parent end

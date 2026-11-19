@@ -88,6 +88,31 @@ Tick(1)
 local res = Sent("CHG", before + 1)
 check(#res == 1 and res[1].st == "lost" and res[1].o == "Bingo Heeler" and res[1].sb == "Ned Jones", "Lost: sent with who settled it")
 check(#X.Open("Orc") == 0 and #X.Recent("Orc") == 1, "no open challenges; one result")
+
+-- The right-click menu doesn't stay stuck: mouse on it keeps it; off it for a moment closes it; a click
+-- anywhere else closes it; the same right-click again closes it.
+local menu = page.menu
+bingoRow._scripts.OnClick(bingoRow, "RightButton"); Tick(1)
+menu._over = true; Tick(5)
+check(menu:IsShown(), "menu stays while the mouse is on it")
+menu._over = false; Tick(1)
+check(menu:IsShown(), "still there a moment after the mouse leaves")
+Tick(1)
+check(not menu:IsShown(), "closes by itself once the mouse has been off it")
+bingoRow._scripts.OnClick(bingoRow, "RightButton"); Tick(0.5)
+FireEvent("GLOBAL_MOUSE_DOWN", "LeftButton")
+check(not menu:IsShown(), "a click elsewhere closes it")
+bingoRow._scripts.OnClick(bingoRow, "RightButton"); Tick(0.5)
+menu._over = true
+FireEvent("GLOBAL_MOUSE_DOWN", "LeftButton")
+check(menu:IsShown(), "a click on the menu itself doesn't")
+menu._over = false
+bingoRow._scripts.OnClick(bingoRow, "RightButton")
+check(not menu:IsShown(), "the same right-click again closes it")
+
+-- The bar is along the top, the lists under it.
+local colY = page.cols[1]._pt and page.cols[1]._pt[3]
+check(page.barY == 0 and colY and colY <= -(24 + 4), "bar on top, lists under it", tostring(page.barY) .. " / " .. tostring(colY))
 -- A result is final: Bingo's older "open" doesn't undo it, nor does a later "withdrawn".
 INJECT("YNM", Msg({ v = 1, t = "CHG", id = now, r = "Orc", st = "o", at = now, ev = now }), "GUILD", "Bingo Heeler")
 INJECT("YNM", Msg({ v = 1, t = "CHG", id = now, r = "Orc", st = "w", at = now, ev = GetServerTime() + 5 }), "GUILD", "Bingo Heeler")

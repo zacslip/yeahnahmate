@@ -246,8 +246,32 @@ function UI.PickMenu(parent, w, maxRows, rowH)
         menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
         menu:Show()
     end
+    -- It closes on a pick, on the same click again, on a click anywhere else, and by itself once
+    -- the mouse has been off it (and off what opened it) for a moment.
+    local function Over(f) return f ~= nil and f.IsMouseOver ~= nil and f:IsMouseOver() == true end
+    local away, ticker = 0, nil
+    menu:SetScript("OnShow", function()
+        away = 0
+        if ticker then ticker:Cancel() end
+        ticker = C_Timer.NewTicker(0.25, function()
+            if Over(menu) or Over(menu.anchor) then away = 0 return end
+            away = away + 0.25
+            if away >= UI.MENU_AWAY then menu:Hide() end
+        end)
+    end)
+    menu:SetScript("OnHide", function()
+        if ticker then ticker:Cancel(); ticker = nil end
+    end)
+    -- A mouse button pressed anywhere else. GLOBAL_MOUSE_DOWN may not exist on every client: pcall.
+    local clicks = CreateFrame("Frame", nil, menu)
+    if pcall(clicks.RegisterEvent, clicks, "GLOBAL_MOUSE_DOWN") then
+        clicks:SetScript("OnEvent", function()
+            if menu:IsShown() and not Over(menu) and not Over(menu.anchor) then menu:Hide() end
+        end)
+    end
     return menu
 end
+UI.MENU_AWAY = 1.5              -- seconds off the menu before it closes by itself
 
 -- Builds the sidebar on parent. action = { label, onClick } or nil (the views then start at the top).
 -- Returns s: s.action (the button), s.rows[i] (.label, .count, .bar), s.y (under the last row),
