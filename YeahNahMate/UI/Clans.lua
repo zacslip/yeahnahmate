@@ -85,16 +85,16 @@ local function BuildColumn(p, i)
         if not c.race then return end
         local X = ns.ClanChallenge
         local lines = { string.format(L.CHAL_TIP_HEAD, string.format(L.CLAN_NAME, ns.Clans.RaceName(c.race))) }
-        for i, ch in ipairs(X.Open(c.race)) do
-            lines[#lines + 1] = string.format(L.CHAL_TIP_ROW, i, ch.owner, UI.DayText(ch.at))
+        for n, ch in ipairs(X.Open(c.race)) do
+            lines[#lines + 1] = string.format(L.CHAL_TIP_ROW, n, ch.owner, UI.DayText(ch.at))
         end
         if #lines == 1 then lines[#lines + 1] = L.CHAL_TIP_NONE end
         local recent = X.Recent(c.race)
         if #recent > 0 then
             lines[#lines + 1] = " "
             lines[#lines + 1] = ns.GOLD .. L.CHAL_TIP_RECENT .. "|r"
-            for i = 1, math.min(5, #recent) do
-                local ch = recent[i]
+            for n = 1, math.min(5, #recent) do
+                local ch = recent[n]
                 lines[#lines + 1] = string.format(ch.st == "won" and L.CHAL_TIP_WON or L.CHAL_TIP_LOST, ch.owner, UI.DayText(ch.ev))
             end
         end
