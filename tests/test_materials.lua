@@ -71,11 +71,29 @@ check(all:find(L.PROF_MATS_LOADING .. " x3 || " .. string.format(L.PROF_MATS_HAV
 -- The thread's name arrives: the tooltip is drawn again with it.
 names[2320] = "Coarse Thread"
 FireEvent("ITEM_DATA_LOAD_RESULT", 2320, true)
+Tick(0.1)
 all = table.concat(lines, "\n")
 check(all:find("Coarse Thread x3", 1, true), "the name fills in when it loads")
 row._scripts.OnLeave(row)
 lines = {}
 FireEvent("ITEM_DATA_LOAD_RESULT", 2320, true)
+Tick(0.1)
 check(#lines == 0, "after leaving the row nothing is redrawn")
+
+-- The crash (20 Nov): another addon's item-tooltip hook loads item data from inside SetItemByID, so the
+-- game says "an item loaded" while we draw. That must never start a loop: at most one more draw per
+-- material shown as loading, and other items' loads don't redraw at all.
+names[2320] = nil
+local draws = 0
+GameTooltip.SetItemByID = function()
+    draws = draws + 1
+    if draws > 50 then error("tooltip loop") end
+    FireEvent("ITEM_DATA_LOAD_RESULT", 4238, true)          -- the made item (not a material)
+    FireEvent("ITEM_DATA_LOAD_RESULT", 2320, true)          -- the thread, still not loaded
+end
+row._scripts.OnEnter(row)
+for _ = 1, 20 do Tick(0.1) end
+check(draws <= 2, "another addon loading items inside our tooltip: no loop (" .. draws .. " draws)")
+row._scripts.OnLeave(row)
 
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))
