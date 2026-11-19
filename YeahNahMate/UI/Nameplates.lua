@@ -1,5 +1,5 @@
--- Guildies' nameplates: gold-style corner brackets round a guildie's nameplate, in their clan's colour,
--- and the guild owl on top, so guildies stand out in a crowd. Settings switch (on by default).
+-- Guildies' nameplates: corner brackets round a guildie's nameplate (its name and health bar), in
+-- their clan's colour, so guildies stand out in a crowd. Settings switch (on by default).
 --
 -- Only our own frames: each marker is a small frame of ours (parent UIParent) anchored to the
 -- nameplate the game gives for the unit (C_NamePlate.GetNamePlateForUnit). Nothing of Blizzard's
@@ -12,7 +12,6 @@
 -- Dev: Plates.preview (/ynm dev platepreview) marks every player's nameplate, coloured by their race,
 -- to see the look in a busy town.
 local ADDON, ns = ...
-local UI = ns.UI
 
 local Plates = {}
 ns.Plates = Plates
@@ -28,8 +27,11 @@ Plates.COLOURS = {
 Plates.GOLD = { 1, 0.82, 0 }
 
 local ARM, THICK = 10, 2          -- bracket arm length and thickness
-local OWL = 18
+-- How far the brackets sit outside the health bar (x each side, y below) and how much room above it
+-- for the name. /ynm dev platefit changes them to try a look.
+Plates.FIT = { x = 3, y = 3, top = 14 }
 local markers, spare = {}, {}     -- unit token -> marker frame; unused frames to reuse
+local live = {}                   -- unit tokens with a nameplate showing now (from the game's events)
 
 function Plates.On() return ns.settings and ns.settings.guildPlates ~= false end
 
@@ -50,10 +52,6 @@ local function NewMarker()
     f:SetFrameStrata("BACKGROUND")
     f.bars = {}
     Corner(f, "TOPLEFT"); Corner(f, "TOPRIGHT"); Corner(f, "BOTTOMLEFT"); Corner(f, "BOTTOMRIGHT")
-    f.owl = f:CreateTexture(nil, "OVERLAY")
-    f.owl:SetSize(OWL, OWL)
-    f.owl:SetPoint("BOTTOM", f, "TOP", 0, 1)
-    f.owl:SetTexture(UI.MINI)
     return f
 end
 
@@ -76,22 +74,6 @@ local function Guildie(unit)
     return member and key or true, race
 end
 
-local function Show(unit)
-    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
-    if not plate or (plate.IsForbidden and plate:IsForbidden()) then return end
-    local who, race = Guildie(unit)
-    if not who then return end
-    local f = markers[unit] or table.remove(spare) or NewMarker()
-    markers[unit] = f
-    local c = (race and Plates.COLOURS[race]) or Plates.GOLD
-    f.colour = c
-    for _, b in ipairs(f.bars) do b:SetColorTexture(c[1], c[2], c[3], 0.95) end
-    f:ClearAllPoints()
-    f:SetPoint("TOPLEFT", plate, "TOPLEFT", -2, 2)
-    f:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", 2, -2)
-    f:Show()
-end
-
 local function Hide(unit)
     local f = markers[unit]
     if not f then return end
@@ -101,23 +83,70 @@ local function Hide(unit)
     spare[#spare + 1] = f
 end
 
--- Every nameplate showing now, again (after the switch, a roster read or a clan change).
-function Plates.Refresh()
-    for unit in pairs(markers) do Hide(unit) end
-    if not Plates.On() or not (C_NamePlate and C_NamePlate.GetNamePlates) then return end
-    local ok, list = pcall(C_NamePlate.GetNamePlates)
-    if not ok or type(list) ~= "table" then return end
-    for _, plate in ipairs(list) do
-        local unit = ns.Public(plate.namePlateUnitToken, "string")
-        if unit then ns.Safe(Show, unit) end
+-- Round the visible part: the health bar with room for the name above it. The nameplate's own frame
+-- is a bigger click box, so it's only the fallback (pulled in a little).
+local function Usable(frame) return frame ~= nil and type(frame) == "table" and not (frame.IsForbidden and frame:IsForbidden()) end
+local function Place(f, plate)
+    local fit = Plates.FIT
+    local uf = plate.UnitFrame
+    local bar = Usable(uf) and uf.healthBar or nil
+    f:ClearAllPoints()
+    if Usable(bar) and bar.IsShown and bar:IsShown() then
+        f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, fit.top)
+        f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y)
+    else
+        f:SetPoint("TOPLEFT", plate, "TOPLEFT", 12, -6)
+        f:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -12, 6)
     end
+end
+
+local function Show(unit)
+    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
+    if not plate or (plate.IsForbidden and plate:IsForbidden()) then return end
+    local who, race = Guildie(unit)
+    if not who then Hide(unit) return end
+    local f = markers[unit] or table.remove(spare) or NewMarker()
+    markers[unit] = f
+    local c = (race and Plates.COLOURS[race]) or Plates.GOLD
+    f.colour = c
+    for _, b in ipairs(f.bars) do b:SetColorTexture(c[1], c[2], c[3], 0.95) end
+    Place(f, plate)
+    f:Show()
+end
+
+-- Every nameplate showing now, again (after the switch, a roster read or a clan change). Markers are
+-- updated where they are, never all taken down first, so a busy guild's frequent roster reads don't
+-- make them blink or vanish.
+function Plates.Refresh()
+    if not Plates.On() then
+        for unit in pairs(markers) do Hide(unit) end
+        return
+    end
+    for unit in pairs(live) do ns.Safe(Show, unit) end
 end
 
 function Plates.Count() local n = 0 for _ in pairs(markers) do n = n + 1 end return n end
 function Plates.MarkerFor(unit) return markers[unit] end
 
-ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit) if Plates.On() then ns.Safe(Show, unit) end end)
-ns.OnEvent("NAME_PLATE_UNIT_REMOVED", function(unit) ns.Safe(Hide, unit) end)
+ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit)
+    if type(unit) ~= "string" then return end
+    live[unit] = true
+    if Plates.On() then ns.Safe(Show, unit) end
+end)
+ns.OnEvent("NAME_PLATE_UNIT_REMOVED", function(unit)
+    if type(unit) ~= "string" then return end
+    live[unit] = nil
+    ns.Safe(Hide, unit)
+end)
+-- Nameplates already showing when we load (a /reload in town): nameplate1 .. nameplate40.
+ns.Listen("LOGIN", function()
+    if not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
+    for i = 1, 40 do
+        local unit = "nameplate" .. i
+        if C_NamePlate.GetNamePlateForUnit(unit) then live[unit] = true end
+    end
+    ns.Safe(Plates.Refresh)
+end)
 ns.Listen("ROSTER", function() ns.Safe(Plates.Refresh) end)
 ns.Listen("CLANS", function() ns.Safe(Plates.Refresh) end)
 ns.Listen("SETTINGS", function() ns.Safe(Plates.Refresh) end)
@@ -131,5 +160,14 @@ ns.devCommands.platepreview = function(arg)
     Plates.Refresh()
     ns.Print(Plates.preview and "(dev) Nameplate preview on: every player's nameplate is marked, coloured by race."
         or "(dev) Nameplate preview off: guildies only.")
+end
+
+-- /ynm dev platefit x y top: how far the brackets sit outside the health bar (default 3 3 14).
+ns.devCommands.platefit = function(arg)
+    local x, y, top = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)$")
+    if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top) } end
+    Plates.Refresh()
+    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name.",
+        Plates.FIT.x, Plates.FIT.y, Plates.FIT.top))
 end
 --@end-do-not-package@

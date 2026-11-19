@@ -52,6 +52,20 @@ check(P.MarkerFor("nameplate1") == nil and not chilli:IsShown(), "nameplate gone
 FireEvent("NAME_PLATE_UNIT_ADDED", "nameplate1")
 check(P.MarkerFor("nameplate1") == chilli, "the frame is reused")
 
+-- Roster reads (often, in a big guild) keep the markers where they are, even when the game's
+-- nameplate list has no unit tokens on it.
+for _, pl in pairs(plates) do pl.namePlateUnitToken = nil end
+FireEvent("GUILD_ROSTER_UPDATE"); Tick(2)
+check(P.MarkerFor("nameplate1") == chilli and chilli:IsShown() and P.Count() == 2, "a roster read doesn't take markers away")
+
+-- Tight round the health bar (room above for the name) when the nameplate has one.
+local bar = CreateFrame("StatusBar")
+plates.nameplate1.UnitFrame = CreateFrame("Frame")
+plates.nameplate1.UnitFrame.healthBar = bar
+P.Refresh()
+check(chilli._pt and chilli._pt[2] == bar, "brackets round the health bar")
+plates.nameplate1.UnitFrame = nil
+
 -- A secret name: nothing read from it (the game's guild check still works).
 local realSecret = issecretvalue
 issecretvalue = function(v) return v == "Chilli" end
