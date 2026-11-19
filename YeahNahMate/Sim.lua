@@ -287,6 +287,53 @@ ns.Listen("SENT", function(msg, channel)
     end
 end)
 
+-- Clan meetings: when I start one, the clan's online fakes ask (one by whispering "inv"), and a fake
+-- from another clan whispers "inv pls" too. /ynm dev clanmeet has my clan's fake leader start one.
+ns.Listen("SENT", function(msg, channel)
+    if not fakes or msg.t ~= "CMT" or not msg.on or channel ~= "GUILD" then return end
+    local delay, whispered = 1, false
+    for _, m in ipairs(fakes) do
+        if m.online and m.addon and m.race == msg.r then
+            delay = delay + 1.5
+            local byWhisper = not whispered
+            whispered = true
+            C_Timer.After(delay, function()
+                if not (fakes and byName[m.name]) then return end
+                if byWhisper then ns.Safe(ns.ClanMeet.Whispered, "inv", m.name)
+                else ns.Safe(FakeSend, m, { t = "CAK", r = msg.r }, "WHISPER") end
+            end)
+        end
+    end
+    for _, m in ipairs(fakes) do
+        if m.online and m.addon and m.race and m.race ~= msg.r then
+            C_Timer.After(delay + 2, function()
+                if fakes and byName[m.name] then ns.Safe(ns.ClanMeet.Whispered, "inv pls", m.name) end
+            end)
+            break
+        end
+    end
+end)
+
+function Sim.FakeClanMeet()
+    if not fakes then return end
+    local race = ns.Clans.MyRace()
+    for _, m in ipairs(fakes) do
+        if m.simLeader and m.race == race and m.online then
+            ns.Safe(FakeSend, m, { t = "CMT", r = race, on = true })
+            ns.Print(string.format(L.SIM_CLANMEET, m.name))
+            return
+        end
+    end
+    ns.Print(L.SIM_CLANMEET_NONE)
+end
+
+-- Disband in sim mode: a fake who "joined" my party leaves it.
+function Sim.Leave(name)
+    if not joined[name] then return end
+    joined[name] = nil
+    ns.Dungeons.Recount()
+end
+
 function Sim.FakeGather()
     if not fakes then return end
     local now = GetServerTime()

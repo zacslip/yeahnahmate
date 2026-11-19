@@ -24,7 +24,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Dungeons.lua` | Group posts, sign-ups and "I'm available" (`GRP`, `SIGN`, `ANS`, `AVL`, `DMX`). |
 | `Calendar.lua`, `Gather.lua` | Guild events and answers (`EVT`, `RSVP`, `EVR`, `EVM`); gathering for an event (`GTH`, `GAK`). |
 | `Board.lua` | Guild info, managers, which ranks moderate each tab, streamer cards (`BRD`). |
-| `Clans.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`). |
+| `Clans.lua`, `ClanMeet.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`); clan meetings (`CMT`, `CAK`, and "inv" whispers read on the organiser's side). |
 | `Milestones.lua` | Milestone and welcome cards (`BRD` kinds `ms`, `wel`), posting them (`MSF`, `MSW`). |
 | `Voice.lua` | Proximity voice: guildies' voice volume by distance, on Blizzard's voice chat (`VGRP`). |
 | `Breakdown.lua` | The guild breakdown page's numbers. |

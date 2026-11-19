@@ -6,9 +6,12 @@ Clans:
 
 - **A new Clans tab.** The guild by race: each character is in the clan of its own race. Every clan side by side, one list each: who leads it, how many are online, and its members with their role badges and names in class colour (online first; scroll with the mouse wheel; hover a name for more). Your own clan is lit up in gold.
 - **Clan leaders come from the guild ranks, by themselves.** Under the guild's top two ranks, each rank held by one guildie leads that guildie's clan, shown with a crown. If that ever picks wrong, the guild master or a manager can set it by hand on the GM tab (Moderators, then Clan leaders).
+- **Clan meetings**: a clan's leader (or the guild master, a manager or a Clan moderator rank) clicks **Start meeting** on the bar at the bottom of the Clans tab. The clan gets a pop-up with **Ask for an invite**, or anyone can just **whisper the leader "inv"** (also "invite", "inv pls"). While it's on, the clan's list is the invite list: **green** = asked, ready to invite; **gold** = was in the group before a Disband; a tick = in your group. **Click a name to invite them**, or use **Invite next**. Nothing is ever whispered back.
+- **Disband** (click twice): everyone out of your group, for layer trouble. Who was in it goes back to the top of the list for 30 minutes.
+- The guild master and Clan moderators can click another clan's name to run that clan's meeting.
 - **Your roles**: pick up to two of Tank, Healer and DPS on the Clans tab. They show next to your name and in your tooltip for guildies with the addon.
 - Guildies' tooltips say which clan they're in and their roles.
-- GM tab: a Clans column for moderator ranks (for clan meetings and challenges, coming next).
+- GM tab: a Clans column for moderator ranks: those ranks can run any clan's meeting.
 - The tab row is a little tighter to fit the new tab.
 
 ## 0.18.0
