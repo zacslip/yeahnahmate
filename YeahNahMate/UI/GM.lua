@@ -155,7 +155,7 @@ local MOD_ROWS = 10
 local COL_W = 56
 
 -- The clans a rank can lead: my faction's races, and any other race seen in the guild.
-local FACTION_RACES = { Horde = { "Orc", "Troll", "Tauren", "Scourge" }, Alliance = { "Human", "Dwarf", "NightElf", "Gnome" } }
+local FACTION_RACES = { Horde = { "Orc", "Troll", "Tauren", "Scourge", "Skyborne" }, Alliance = { "Human", "Dwarf", "NightElf", "Gnome" } }
 local function ClanChoices()
     local out, seen = {}, {}
     local faction = UnitFactionGroup and UnitFactionGroup("player")

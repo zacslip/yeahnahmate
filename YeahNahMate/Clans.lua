@@ -25,7 +25,7 @@ local SEND_GAP = 3                  -- role changes go out 3 s after the last cl
 
 -- Races in the order clans are listed (Horde first: the guild this was made for); any other race
 -- the game names is listed after these.
-C.ORDER = { "Orc", "Troll", "Tauren", "Scourge", "BloodElf", "Goblin",
+C.ORDER = { "Orc", "Troll", "Tauren", "Scourge", "Skyborne", "BloodElf", "Goblin",
             "Human", "Dwarf", "NightElf", "Gnome", "Draenei", "Worgen" }
 local ORDER_AT = {}
 for i, r in ipairs(C.ORDER) do ORDER_AT[r] = i end

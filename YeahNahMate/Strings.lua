@@ -880,7 +880,7 @@ L.VOICE_TIP = "Left-click: slide the voice panel out or back in.\nRight-click: t
 L.TAB_CLANS = "Clans"
 L.TAB_NAME.clan = "Clans"
 L.MOD_TAB_TIP.clan = "Give a clan a second in command for a while, and settle leadership challenges."
-L.RACE = { Orc = "Orc", Troll = "Troll", Tauren = "Tauren", Scourge = "Undead", BloodElf = "Blood Elf", Goblin = "Goblin",
+L.RACE = { Orc = "Orc", Troll = "Troll", Tauren = "Tauren", Scourge = "Undead", Skyborne = "Skyborne", BloodElf = "Blood Elf", Goblin = "Goblin",
            Human = "Human", Dwarf = "Dwarf", NightElf = "Night Elf", Gnome = "Gnome", Draenei = "Draenei", Worgen = "Worgen" }
 L.CLAN_NAME = "%s clan"
 L.CLAN_RACE_UNKNOWN = "Race not known"
