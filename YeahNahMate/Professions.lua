@@ -802,7 +802,7 @@ function Prof.Materials(rid)
         return out
     end
     -- None: maybe the game is still loading the recipe. Asked again after MAT_RETRY, up to MAT_TRIES.
-    local t = matTries[rid] or { n = 0 }
+    t = t or { n = 0 }
     t.n, t.at = t.n + 1, GetTime()
     matTries[rid] = t
     if t.n >= MAT_TRIES then matCache[rid], matTries[rid] = false, nil end

@@ -294,11 +294,10 @@ function Map.FindNear()
             end
         end
     end
-    if count > CROWD then
-        -- A crowd: nobody glides (they're placed the usual way below).
-    elseif count <= GLIDE_MAX then
+    -- A crowd (more than CROWD): nobody glides (they're placed the usual way below).
+    if count <= GLIDE_MAX then
         for i = 1, count do Map.near[found[i].name] = true end
-    else
+    elseif count <= CROWD then
         -- The closest ones (a partial sort is enough for 8).
         for i = 1, GLIDE_MAX do
             local best = i
