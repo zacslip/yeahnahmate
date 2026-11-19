@@ -2,6 +2,7 @@
 
 ## 0.20.0 (not released yet)
 
+- **Guildies near you keep up on the minimap**: while a guildie with the addon is close by (about minimap range), you both send your position every 3 seconds while moving instead of every 15 or more, and their dot glides smoothly the way they're going instead of standing still and jumping. In a crowd (more than 15 close by, like a guild meeting) it all works as before, so the guild's traffic doesn't grow.
 - **Materials on the Professions tab**: hover a recipe to see what it needs and how many of each you're carrying (green when you have enough). Works for every recipe in the list, not just your own.
 - **Guildies stand out on their nameplates**: corner brackets round the name and health bar in their clan's colour (Orc red, Troll teal, Tauren orange, Undead purple, Skyborne blue). The guild master and the rank under them get a crown on each side of theirs. Needs the game's friendly nameplates on (Ctrl+V). The game locks nameplates in some places (like dungeons); there they show as normal. Switch it off in Settings (Minimap, Mark guildies' nameplates).
 

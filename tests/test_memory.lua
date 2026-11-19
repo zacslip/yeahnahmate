@@ -80,6 +80,9 @@ local home = Churn(2) - harness
 ns.UI.Toggle()
 -- (Limits are about 1.5x today's numbers, which include the fake game's own overhead. Before 0.8.9
 -- the window-shut number was about 6 MB a minute.)
-check(closed < 1500, string.format("window shut: under 1.5 MB of garbage a minute (%.0f KB)", closed))
-check(roster < 1500, string.format("roster tab open: under 1.5 MB of garbage a minute (%.0f KB)", roster))
-check(home < 2000, string.format("home tab open: under 2 MB of garbage a minute (%.0f KB)", home))
+-- 0.20.0 added 200 KB to each: nearby guildies' minimap dots glide (Map.Glide), and here about eight
+-- of them are near and moving all the time. Moving a dot makes the map library redraw every minimap
+-- dot; in the game that happens every frame anyway while I move myself.
+check(closed < 1700, string.format("window shut: under 1.7 MB of garbage a minute (%.0f KB)", closed))
+check(roster < 1700, string.format("roster tab open: under 1.7 MB of garbage a minute (%.0f KB)", roster))
+check(home < 2200, string.format("home tab open: under 2.2 MB of garbage a minute (%.0f KB)", home))

@@ -75,15 +75,28 @@ for _, tab in ipairs({ "home", "roster", "dungeons", "calendar", "professions", 
 end
 
 -- Messages I send per minute while moving around with 40 others online (positions slow down as
--- more guildies have the addon).
-local before = #SENT
-for i = 1, 60 do FAKE.x = 0.3 + i * 0.005; Tick(1) end
-local mine = 0
-for i = before + 1, #SENT do
-    local ok, m = Ser:Deserialize(SENT[i].text)
-    if ok and type(m) == "table" and m.t == "POS" then mine = mine + 1 end
+-- more guildies have the addon). Nobody near me: the usual pace.
+local function MyPositions(fn)
+    local before = #SENT
+    fn()
+    local mine = 0
+    for i = before + 1, #SENT do
+        local ok, m = Ser:Deserialize(SENT[i].text)
+        if ok and type(m) == "table" and m.t == "POS" then mine = mine + 1 end
+    end
+    return mine
 end
-check(mine <= 4, "positions I send per minute while moving: " .. mine .. " (every " .. ns.Map.Interval() .. " s)")
+local saved = ns.Map.pos
+ns.Map.pos = {}
+local mine = MyPositions(function() for i = 1, 60 do FAKE.x = 0.3 + i * 0.005; Tick(1) end end)
+check(mine <= 4, "positions I send per minute while moving, nobody near: " .. mine .. " (every " .. ns.Map.Interval() .. " s)")
+-- One guildie with the addon within 400 yd: the near lane, every 3 s while I move.
+ns.Map.pos = { [users[1]] = { m = 1413, x = 0.62, y = 0.5, at = GetTime() } }
+mine = MyPositions(function()
+    for i = 1, 60 do FAKE.x = 0.6 + i * 0.0005; ns.Map.pos[users[1]].at = GetTime(); Tick(1) end
+end)
+check(mine >= 15 and mine <= 21, "with a guildie near: every 3 s (" .. mine .. " a minute)")
+ns.Map.pos = saved
 
 -- A busy evening: 20 roster events in a burst make one scan.
 local scans = 0
