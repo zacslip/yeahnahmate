@@ -34,9 +34,9 @@ local FORBIDDEN = {
 local COMM_ONLY = { "SendAddonMessage", "SendCommMessage" }
 
 local files = {}
--- ../YeahNahMateDev: an optional developer add-on kept next to this repo (not part of it); checked the
--- same way when it's there, skipped when it isn't.
-for _, dir in ipairs({ "YeahNahMate", "../YeahNahMateDev/YeahNahMateDev" }) do
+-- An optional developer add-on kept next to this repo or in the ignored private/ folder (not part of
+-- this repo); checked the same way when it's there, skipped when it isn't.
+for _, dir in ipairs({ "YeahNahMate", "../YeahNahMateDev/YeahNahMateDev", "private/YeahNahMateDev" }) do
     for _, f in ipairs(listLua(dir)) do
         if not f:find("/libs/", 1, true) then files[#files + 1] = f end
     end

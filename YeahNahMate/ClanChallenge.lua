@@ -43,6 +43,21 @@ end
 -- moderator ranks (on my roster).
 function X.CanSettle(name) return ns.Board.CanModerate(name, "clan") end
 
+-- On this screen, may I? Also in test mode (/ynm dev editor, gm, rank N), where the result stays on
+-- this screen unless my real rank could send it (Keep).
+function X.ICanSettle()
+    if X.CanSettle(ns.me) then return true end
+    return ns.Board.Testing() and ns.Board.Moderates("clan")
+end
+
+-- Send a moderator's message, or (test mode, my real rank can't) keep it on this screen.
+local function SendModerated(msg, channel, target)
+    if X.CanSettle(ns.me) then return ns.Comm.Send(msg, channel or "GUILD", target) end
+    ns.Log("(dev) kept on this screen: your guild rank can't send " .. tostring(msg.t))
+    ns.Fire("SENT", msg, channel or "GUILD", target)
+    return true
+end
+
 ---------------------------------------------------------------------------------------------------
 -- Reading
 
@@ -122,9 +137,9 @@ end
 function X.Settle(owner, id, result)
     local store = X.Store()
     local c = store and store[owner .. ":" .. tostring(id)]
-    if not c or c.st ~= "o" or not FINAL[result] or not X.CanSettle(ns.me) then return false end
+    if not c or c.st ~= "o" or not FINAL[result] or not X.ICanSettle() then return false end
     c.st, c.sb, c.ev, c.direct = result, ns.me, NextVersion(c.ev), true
-    ns.Comm.Send(Message(c), "GUILD")
+    SendModerated(Message(c), "GUILD")
     Changed()
     return true
 end
@@ -284,13 +299,13 @@ function X.Deputy(race)
 end
 
 local function SendDeputy(race, d, channel, target)
-    ns.Comm.Send({ t = "DEP", r = race, who = d.who, un = d.un }, channel or "GUILD", target)
+    SendModerated({ t = "DEP", r = race, who = d.who, un = d.un }, channel or "GUILD", target)
 end
 
 -- Give (or end, with on = false) second in command of their clan to a guildie.
 function X.SetDeputy(name, on)
     local race = ns.Clans.Race(name)
-    if not race or not X.CanSettle(ns.me) or name == ns.me then return false end
+    if not race or not X.ICanSettle() or name == ns.me then return false end
     local un = on and (GetServerTime() + X.DEPUTY_FOR) or 0
     local d = { who = name, un = un, by = ns.me }
     if on then X.deputies[race] = d

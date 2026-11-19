@@ -40,6 +40,13 @@ function M.CanRun(name, race)
     return ns.Clans.IsDeputy ~= nil and ns.Clans.IsDeputy(name, race) or false
 end
 
+-- On this screen, may I run this clan's meetings? Also in test mode (/ynm dev editor, gm, rank N),
+-- where the meeting stays on this screen unless my real rank could run it (Announce).
+function M.ICanRun(race)
+    if M.CanRun(ns.me, race) then return true end
+    return race ~= nil and ns.Board.Testing() and ns.Board.Moderates("clan")
+end
+
 function M.Mine() return mine end
 
 function M.ActiveFor(race)
@@ -62,11 +69,18 @@ end
 
 local function Announce(on, channel, target)
     if not mine then return end
-    ns.Comm.Send({ t = "CMT", r = mine.race, on = on or nil }, channel or "GUILD", target)
+    local msg = { t = "CMT", r = mine.race, on = on or nil }
+    if not M.CanRun(ns.me, mine.race) then
+        -- Test mode only: not sent. SENT still fires, so sim fakes react as if it had gone.
+        ns.Log("(dev) clan meeting kept on this screen: your guild rank can't run it")
+        ns.Fire("SENT", msg, channel or "GUILD", target)
+        return
+    end
+    ns.Comm.Send(msg, channel or "GUILD", target)
 end
 
 function M.Start(race)
-    if not race or not M.CanRun(ns.me, race) then return false end
+    if not race or not M.ICanRun(race) then return false end
     if mine and mine.race ~= race then M.Stop() end
     if mine then return true end
     mine = { race = race, since = GetServerTime(), asks = {}, invited = {} }
@@ -294,8 +308,25 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", Changed)
 
 -- Dev only: the CurseForge build leaves this out (BigWigs packager's do-not-package markers).
 --@do-not-package@
--- For testing alone: /ynm dev clanmeet makes my clan's fake leader start a meeting (sim mode).
-ns.devCommands.clanmeet = function()
-    if ns.Sim and ns.Sim.IsOn() then ns.Sim.FakeClanMeet() else ns.Print("/ynm dev sim on first") end
+-- For testing alone (sim mode):
+--   /ynm dev clanmeet        my clan's fake leader starts a meeting (I see the pop-up and Ask).
+--   /ynm dev clanmeet start  I start my clan's meeting (test editor on if my rank can't), Clans tab.
+--   /ynm dev clanmeet stop   I stop mine.
+ns.devCommands.clanmeet = function(arg)
+    if not (ns.Sim and ns.Sim.IsOn()) then ns.Print("/ynm dev sim on first") return end
+    if arg == "stop" then
+        if mine then M.Stop(); ns.Print("(dev) clan meeting stopped") else ns.Print("(dev) no clan meeting of mine to stop") end
+        return
+    end
+    if arg ~= "start" then ns.Sim.FakeClanMeet() return end
+    local race = ns.Clans.MyRace()
+    if not race then ns.Print("(dev) your clan (race) isn't known yet") return end
+    if not M.ICanRun(race) then ns.devCommands.editor("on") end
+    if M.Start(race) then
+        ns.Print("(dev) clan meeting started for " .. ns.Clans.RaceName(race) .. ": the fakes ask over the next 10 s")
+        if ns.UI and ns.UI.Open then ns.UI.Open("clans") end
+    else
+        ns.Print("(dev) couldn't start the clan meeting")
+    end
 end
 --@end-do-not-package@

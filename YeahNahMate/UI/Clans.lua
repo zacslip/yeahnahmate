@@ -45,7 +45,7 @@ local function NoTip() if GameTooltip then GameTooltip:Hide() end end
 local function Picked(p)
     local Cl, CM = ns.Clans, ns.ClanMeet
     local mine = Cl.MyRace()
-    if p.sel and p.sel ~= mine and not CM.CanRun(ns.me, p.sel) then p.sel = nil end
+    if p.sel and p.sel ~= mine and not CM.ICanRun(p.sel) then p.sel = nil end
     return p.sel or mine
 end
 
@@ -69,10 +69,10 @@ local function BuildColumn(p, i)
     c.head:SetPoint("TOPLEFT", 4, -4)
     c.head:SetSize(COL_W - 8, 20)
     c.head:SetScript("OnClick", function()
-        if c.race and ns.ClanMeet.CanRun(ns.me, c.race) then p.sel = c.race; UI.Dirty() end
+        if c.race and ns.ClanMeet.ICanRun(c.race) then p.sel = c.race; UI.Dirty() end
     end)
     c.head:SetScript("OnEnter", function(self)
-        if c.race and ns.ClanMeet.CanRun(ns.me, c.race) and c.race ~= Picked(p) then Tip(self, { L.CLAN_PICK_TIP }) end
+        if c.race and ns.ClanMeet.ICanRun(c.race) and c.race ~= Picked(p) then Tip(self, { L.CLAN_PICK_TIP }) end
     end)
     c.head:SetScript("OnLeave", NoTip)
     c.title = Text(c, "", "GameFontNormal", 8, -8, COL_W - 16)
@@ -234,11 +234,11 @@ local function BuildMenu(p)
         end
         local race = ns.Clans.Race(m.name)
         local ch = race and X.OpenOf(m.name, race)
-        if ch and X.CanSettle(ns.me) then
+        if ch and X.ICanSettle() then
             Add(ns.GREEN .. L.CHAL_MENU_WON .. "|r", function() X.Settle(ch.owner, ch.id, "won") end)
             Add("|cffff6060" .. L.CHAL_MENU_LOST .. "|r", function() X.Settle(ch.owner, ch.id, "lost") end)
         end
-        if race and m.name ~= ns.me and X.CanSettle(ns.me) and not ns.Clans.IsLeader(m.name, race) then
+        if race and m.name ~= ns.me and X.ICanSettle() and not ns.Clans.IsLeader(m.name, race) then
             if ns.Clans.IsDeputy(m.name, race) then
                 Add(L.DEP_MENU_END, function() X.SetDeputy(m.name, false) end)
             elseif m.online then
@@ -350,7 +350,7 @@ local function RefreshBar(p, picked)
         b.disband:SetEnabled(CM.CanDisband())
         show[#show + 1] = b.disband
         show[#show + 1] = b.stop
-    elseif CM.CanRun(ns.me, picked) then
+    elseif CM.ICanRun(picked) then
         b.start:SetText(L.CLAN_START .. ": " .. Cl.RaceName(picked))
         show = { b.start }
     end
