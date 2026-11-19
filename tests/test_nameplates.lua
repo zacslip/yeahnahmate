@@ -46,8 +46,8 @@ check(P.MarkerFor("nameplate2") == nil and P.MarkerFor("nameplate3") == nil, "no
 check(P.MarkerFor("nameplate4") == nil, "a forbidden nameplate is left alone")
 check(P.MarkerFor("nameplate5") and P.MarkerFor("nameplate5").colour == P.COLOURS.Tauren, "the game's own guild check counts too (race from the unit)")
 check(P.Count() == 3, "three markers")
-check(P.MarkerFor("nameplate6").crown:IsShown() and not chilli.crown:IsShown() and not P.MarkerFor("nameplate5").crown:IsShown(),
-    "a crown left of the brackets for the top two ranks (Bluey, rank 1) only")
+check(P.MarkerFor("nameplate6").crown:IsShown() and P.MarkerFor("nameplate6").crown2:IsShown() and not chilli.crown:IsShown() and not chilli.crown2:IsShown() and not P.MarkerFor("nameplate5").crown:IsShown(),
+    "a crown on each side of the brackets for the top two ranks (Bluey, rank 1) only")
 
 -- Gone when the nameplate goes; reused for the next one.
 FireEvent("NAME_PLATE_UNIT_REMOVED", "nameplate1")
@@ -67,6 +67,10 @@ plates.nameplate1.UnitFrame = CreateFrame("Frame")
 plates.nameplate1.UnitFrame.healthBar = bar
 P.Refresh()
 check(chilli._pt and chilli._pt[2] == bar, "brackets round the health bar")
+SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14 5")
+check(chilli._pt and chilli._pt[5] == -3 + 5, "dev platefit moves the brackets up")
+SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14")
+check(P.FIT.dy == 0, "three numbers: not moved")
 plates.nameplate1.UnitFrame = nil
 
 -- A secret name: nothing read from it (the game's guild check still works).

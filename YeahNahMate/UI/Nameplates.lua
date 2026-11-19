@@ -1,6 +1,6 @@
 -- Guildies' nameplates: corner brackets round a guildie's nameplate (its name and health bar), in
 -- their clan's colour, so guildies stand out in a crowd; the guild's top two ranks (guild master and
--- the rank under it) get a crown to the left. Settings switch (on by default).
+-- the rank under it) get a crown on each side. Settings switch (on by default).
 --
 -- Only our own frames: each marker is a small frame of ours (parent UIParent) anchored to the
 -- nameplate the game gives for the unit (C_NamePlate.GetNamePlateForUnit). Nothing of Blizzard's
@@ -28,9 +28,9 @@ Plates.COLOURS = {
 Plates.GOLD = { 1, 0.82, 0 }
 
 local ARM, THICK = 10, 2          -- bracket arm length and thickness
--- How far the brackets sit outside the health bar (x each side, y below) and how much room above it
--- for the name. /ynm dev platefit changes them to try a look.
-Plates.FIT = { x = 3, y = 3, top = 14 }
+-- How far the brackets sit outside the health bar (x each side, y below), how much room above it for
+-- the name, and how far the whole thing is moved up (dy, negative = down). /ynm dev platefit tries a look.
+Plates.FIT = { x = 3, y = 3, top = 14, dy = 0 }
 local markers, spare = {}, {}     -- unit token -> marker frame; unused frames to reuse
 local live = {}                   -- unit tokens with a nameplate showing now (from the game's events)
 local CROWN = "Interface\\GroupFrame\\UI-Group-LeaderIcon"
@@ -60,6 +60,11 @@ local function NewMarker()
     f.crown:SetPoint("RIGHT", f, "LEFT", -2, 0)
     f.crown:SetTexture(CROWN)
     f.crown:Hide()
+    f.crown2 = f:CreateTexture(nil, "OVERLAY")
+    f.crown2:SetSize(14, 14)
+    f.crown2:SetPoint("LEFT", f, "RIGHT", 2, 0)
+    f.crown2:SetTexture(CROWN)
+    f.crown2:Hide()
     return f
 end
 
@@ -105,11 +110,11 @@ local function Place(f, plate)
     local bar = Usable(uf) and uf.healthBar or nil
     f:ClearAllPoints()
     if Usable(bar) and bar.IsShown and bar:IsShown() then
-        f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, fit.top)
-        f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y)
+        f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, fit.top + fit.dy)
+        f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
     else
-        f:SetPoint("TOPLEFT", plate, "TOPLEFT", 12, -6)
-        f:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -12, 6)
+        f:SetPoint("TOPLEFT", plate, "TOPLEFT", 12, -6 + fit.dy)
+        f:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -12, 6 + fit.dy)
     end
 end
 
@@ -123,7 +128,9 @@ local function Show(unit)
     local c = (race and Plates.COLOURS[race]) or Plates.GOLD
     f.colour = c
     for _, b in ipairs(f.bars) do b:SetColorTexture(c[1], c[2], c[3], 0.95) end
-    f.crown:SetShown(type(rank) == "number" and rank <= Plates.CROWN_RANKS)
+    local crown = type(rank) == "number" and rank <= Plates.CROWN_RANKS
+    f.crown:SetShown(crown)
+    f.crown2:SetShown(crown)
     Place(f, plate)
     f:Show()
 end
@@ -176,12 +183,13 @@ ns.devCommands.platepreview = function(arg)
         or "(dev) Nameplate preview off: guildies only.")
 end
 
--- /ynm dev platefit x y top: how far the brackets sit outside the health bar (default 3 3 14).
+-- /ynm dev platefit x y top [dy]: how far the brackets sit outside the health bar, and moved up
+-- (default 3 3 14 0).
 ns.devCommands.platefit = function(arg)
-    local x, y, top = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)$")
-    if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top) } end
+    local x, y, top, dy = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
+    if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top), dy = tonumber(dy) or 0 } end
     Plates.Refresh()
-    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name.",
-        Plates.FIT.x, Plates.FIT.y, Plates.FIT.top))
+    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name, moved up %d.",
+        Plates.FIT.x, Plates.FIT.y, Plates.FIT.top, Plates.FIT.dy))
 end
 --@end-do-not-package@
