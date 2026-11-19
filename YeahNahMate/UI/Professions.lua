@@ -134,9 +134,27 @@ local ROW_STEP = 31
 -- Names still loading are redrawn once each when they arrive, and only those: other addons (and the
 -- game) load item data from inside the item tooltip, so redrawing on any load looped until the game
 -- ran out of stack. Never redrawn from inside a draw, and only on the next frame.
+-- The item a recipe makes may not be loaded the first time: when it arrives, the game rebuilds its
+-- tooltip from scratch and our lines go, so that item waits for one redraw too (after the game's).
 local tipRow, drawing, redrawSoon = nil, false, false
 local waiting = {}              -- item id -> true: shown as loading in the tooltip that's up now
-local function RecipeTooltip(r)
+local retried = {}              -- recipe id -> true: the game had no materials yet; tried once more
+local function Cached(id)
+    if not (C_Item and C_Item.IsItemDataCachedByID) then return true end
+    return ns.Public(C_Item.IsItemDataCachedByID(id), "boolean") ~= false
+end
+local RecipeTooltip
+local function RedrawSoon(delay)
+    if redrawSoon then return end
+    redrawSoon = true
+    C_Timer.After(delay or 0, function()
+        redrawSoon = false
+        if tipRow and tipRow:IsShown() and GameTooltip and GameTooltip:IsShown() and GameTooltip:GetOwner() == tipRow then
+            ns.Safe(RecipeTooltip, tipRow)
+        end
+    end)
+end
+function RecipeTooltip(r)
     if not GameTooltip or not r.rid or drawing then return end
     drawing = true
     local ok2, err = pcall(function()
@@ -144,10 +162,15 @@ local function RecipeTooltip(r)
         tipRow = r
         GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
         local ok = false
+        if r.itemID and not Cached(r.itemID) and waiting[r.itemID] == nil then waiting[r.itemID] = true end
         if r.itemID and GameTooltip.SetItemByID then ok = pcall(GameTooltip.SetItemByID, GameTooltip, r.itemID)
         elseif GameTooltip.SetSpellByID then ok = pcall(GameTooltip.SetSpellByID, GameTooltip, r.rid) end
         if not ok then GameTooltip:AddLine(r.recipe or "") end
         local mats = ns.Prof.Materials(r.rid)
+        if not mats and not retried[r.rid] then
+            retried[r.rid] = true
+            RedrawSoon(0.5)
+        end
         if mats then
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(L.PROF_MATS, 1, 0.82, 0)
@@ -172,15 +195,9 @@ local function RecipeTooltip(r)
 end
 -- A material shown as loading arrived while its tooltip is up: draw it again, once, next frame.
 ns.Listen("ITEM_LOADED", function(id)
-    if waiting[id] ~= true or redrawSoon then return end
+    if waiting[id] ~= true then return end
     waiting[id] = false
-    redrawSoon = true
-    C_Timer.After(0, function()
-        redrawSoon = false
-        if tipRow and tipRow:IsShown() and GameTooltip and GameTooltip:IsShown() and GameTooltip:GetOwner() == tipRow then
-            ns.Safe(RecipeTooltip, tipRow)
-        end
-    end)
+    RedrawSoon(0)
 end)
 
 local function BuildWho(p)

@@ -96,4 +96,50 @@ for _ = 1, 20 do Tick(0.1) end
 check(draws <= 2, "another addon loading items inside our tooltip: no loop (" .. draws .. " draws)")
 row._scripts.OnLeave(row)
 
+-- First hover, the made item not loaded: when it arrives the game rebuilds the tooltip (our lines go);
+-- we draw once more, next frame, so the materials come back without hovering again.
+names[2320] = "Coarse Thread"
+local cached = false
+C_Item.IsItemDataCachedByID = function(id) if id == 4238 then return cached end return true end
+GameTooltip.SetItemByID = function() end
+row._scripts.OnEnter(row)
+check(table.concat(lines, "\n"):find(L.PROF_MATS, 1, true), "first draw has the materials")
+cached = true
+lines = {}                                                 -- the game's rebuild wipes our lines
+FireEvent("ITEM_DATA_LOAD_RESULT", 4238, true)
+Tick(0.1)
+check(table.concat(lines, "\n"):find("Coarse Thread x3", 1, true), "made item loaded: drawn again with the materials")
+row._scripts.OnLeave(row)
+
+-- A made item that never loads, with the game firing loads all the time: still at most one redraw.
+cached = false
+draws = 0
+GameTooltip.SetItemByID = function()
+    draws = draws + 1
+    if draws > 50 then error("tooltip loop") end
+    FireEvent("ITEM_DATA_LOAD_RESULT", 4238, true)
+end
+row._scripts.OnEnter(row)
+for _ = 1, 20 do Tick(0.1) end
+check(draws <= 2, "the made item's load redraws once at most (" .. draws .. " draws)")
+row._scripts.OnLeave(row)
+C_Item.IsItemDataCachedByID = nil
+GameTooltip.SetItemByID = function() end
+
+-- The game had no materials the first time: tried once more half a second later.
+local ready = false
+C_TradeSkillUI.GetRecipeSchematic = function(id)
+    if not ready then return nil end
+    return { reagentSlotSchematics = { { quantityRequired = 2, reagents = { { itemID = 2589 } } } } }
+end
+P.Materials(3756)                                          -- nothing yet, not remembered
+row.rid = 3756
+row._scripts.OnEnter(row)
+check(not table.concat(lines, "\n"):find(L.PROF_MATS, 1, true), "no materials yet")
+ready = true
+Tick(0.6)
+check(table.concat(lines, "\n"):find("Linen Cloth x2", 1, true), "tried again: the materials show")
+row._scripts.OnLeave(row)
+row.rid = 3755
+
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))
