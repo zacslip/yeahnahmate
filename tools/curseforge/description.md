@@ -18,7 +18,8 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 **Map**
 - Guildies with the addon show as class-coloured dots on your world map and minimap.
 - Hover a dot for their name, level, zone and how far away they are.
-- Guildies close by keep up on your minimap: their dot glides along the way they're heading instead of jumping.
+- Guildies close by keep up on your minimap: their dot moves smoothly, about a second behind them, instead of jumping.
+- Guildies in your group show with the game's own party dots, so you never see two dots for one person.
 - **Guildies stand out on their nameplates**: corner brackets in their clan's colour, with crowns for the guild's top two ranks (needs friendly nameplates on; switch it off in Settings).
 - Your dot is hidden inside dungeons, and you can turn sharing off any time.
 
