@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.3 (not released yet)
+
+- Groundwork for a Yeah Nah Mate button on the game's Guild & Communities window. Switched off for everyone until it's been tested.
+
 ## 0.20.2
 
 - **Fixed a voice chat error** that could repeat hundreds of times ("attempt to compare a secret string value" in Voice.lua). On some setups the game hides details of the voice channel you're in from addons; the addon now treats a hidden channel as not the guild's instead of erroring, so Proximity just waits.
