@@ -172,6 +172,36 @@ local function Build(p)
     p.privacy:SetHeight(38)          -- three lines: the text wraps on a narrow font
     p.privacy:SetJustifyV("TOP")
     Text(b, L.COMMANDS, "GameFontDisableSmall", 12, -65, 712)
+
+    -- Recruiters: what Share puts in the whisper (Recruit.lua). One line under Privacy; saved as typed,
+    -- empty = the default.
+    local label = Text(p, L.SET_RECRUIT_MSG, "GameFontHighlightSmall", 4, -392)
+    local e = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
+    e:SetSize(590, 20)
+    e:SetPoint("TOPLEFT", 142, -388)
+    e:SetAutoFocus(false)
+    e:SetMaxLetters(240)
+    e:SetScript("OnEscapePressed", function(self)
+        self:SetText(ns.Recruit.Message())
+        self:ClearFocus()
+    end)
+    e:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    e:SetScript("OnEditFocusLost", function(self)
+        local t = strtrim(self:GetText() or "")
+        ns.settings.recruitMsg = (t ~= "" and t ~= L.RECRUIT_MSG_DEFAULT) and t or nil
+        self:SetText(ns.Recruit.Message())
+        self:SetCursorPosition(0)
+    end)
+    e:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L.SET_RECRUIT_MSG, 1, 0.82, 0)
+        GameTooltip:AddLine(L.SET_RECRUIT_MSG_TIP, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    e:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    label:SetWidth(136)
+    p.recruitMsg = e
 end
 
 local function Refresh(p)
@@ -188,6 +218,10 @@ local function Refresh(p)
     p.msPost:SetChecked(not s.msNoPost)
     p.profNotAsked:SetText(s.shareProfessions == nil and L.SHARE_NOT_ASKED or "")
     p.privacy:SetText(string.format(L.PRIVACY_TEXT, ns.Guild.name or L.NO_GUILD))
+    if p.recruitMsg and not p.recruitMsg:HasFocus() then
+        p.recruitMsg:SetText(ns.Recruit.Message())
+        p.recruitMsg:SetCursorPosition(0)
+    end
     -- Your characters
     local A = ns.Alts
     local on = A.Linking()

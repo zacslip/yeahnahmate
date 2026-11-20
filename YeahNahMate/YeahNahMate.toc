@@ -71,5 +71,6 @@ UI\GMMilestones.lua
 UI\GM.lua
 UI\Settings.lua
 UI\Voice.lua
+UI\Recruit.lua
 UI\GuildButton.lua
 UI\Minimap.lua

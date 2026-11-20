@@ -209,7 +209,7 @@ for _, lvl in ipairs({ 5, 22, 60 }) do
         for i = 1, n do
             local o = CREATED[i]
             if o._template == "UIPanelCloseButton" then o = { _scripts = {} } end   -- X buttons have their own test
-            if o._name ~= "YeahNahMateWhisper" and o._name ~= "YeahNahMateWelcome" then
+            if not IsInside(o, "YeahNahMateWhisper") and o._name ~= "YeahNahMateWelcome" then
                 for _, s in ipairs({ "OnClick", "OnMouseUp", "OnEnter", "OnLeave" }) do
                     if o._scripts[s] then o._scripts[s](o, "LeftButton") end
                 end

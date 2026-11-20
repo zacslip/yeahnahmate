@@ -256,6 +256,10 @@ local function BuildMenu(p)
             Add(L.INVITE, function() if CM.Mine() then CM.Invite(m.name) else UI.Invite(m) end end)
             Add(L.CLAN_MENU_WHISPER, function() ns.Whisper.Open(m) end)
         end
+        -- Recruiters: a guildie without the addon (once a week each).
+        if ns.Recruit and ns.Recruit.CanShareTo(m.name) then
+            Add(L.RECRUIT_MENU_SHARE, function() ns.Recruit.Share(m.name) end)
+        end
         local race = ns.Clans.Race(m.name)
         local ch = race and X.OpenOf(m.name, race)
         if ch and X.ICanSettle() then

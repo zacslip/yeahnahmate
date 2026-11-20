@@ -53,7 +53,7 @@ ns.UI.Select("breakdown")
 Tick(1)
 for _, o in ipairs(CREATED) do
     for _, s in ipairs({ "OnClick", "OnEnter", "OnLeave" }) do
-        if o._scripts[s] and o._name ~= "YeahNahMateWhisper" and o._name ~= "YeahNahMateWelcome"
+        if o._scripts[s] and not IsInside(o, "YeahNahMateWhisper") and o._name ~= "YeahNahMateWelcome"
             and o._template ~= "UIPanelCloseButton" then
             o._scripts[s](o, "LeftButton")
         end

@@ -463,6 +463,15 @@ function LoadAddon(dir, name, ns)
 end
 
 -- Tiny test helpers.
+-- Is this object the named frame, or inside it? (Click-everything loops skip the whisper box and its
+-- Send button: pressing Send is the player's own choice, and Share opens the box already filled in.)
+function IsInside(o, name)
+    while o do
+        if o._name == name then return true end
+        o = o._parent
+    end
+    return false
+end
 FAILS = 0
 function check(cond, msg)
     io.write((cond and "  PASS " or "  FAIL ") .. msg .. "\n")
