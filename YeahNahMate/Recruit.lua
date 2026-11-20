@@ -84,7 +84,8 @@ end
 function R.CanShareTo(name)
     if not name or Same(name, ns.me) then return false end
     local m = ns.Guild.Get(name)
-    if not m or not m.online or m.sim or R.HasAddon(name) then return false end
+    -- Fake guildies without the addon count too (sim mode, to try it alone; nothing about them is sent).
+    if not m or not m.online or R.HasAddon(name) then return false end
     local last = R.LastShare(name)
     return not (last and GetServerTime() - last < SHARE_AGAIN)
 end
@@ -93,7 +94,7 @@ end
 function R.Candidates()
     local out = {}
     for _, m in ipairs(ns.Guild.list) do
-        if m.online and not m.sim and m.name ~= ns.me and not Same(m.name, ns.me) and not R.HasAddon(m.name) then
+        if m.online and m.name ~= ns.me and not Same(m.name, ns.me) and not R.HasAddon(m.name) then
             local last = R.LastShare(m.name)
             out[#out + 1] = { name = m.name, class = m.class, level = m.level,
                               shared = (last and GetServerTime() - last < SHARE_AGAIN) and last or nil }
@@ -439,3 +440,66 @@ local function Tidy()
 end
 ns.Listen("ROSTER", function() ns.Safe(Tidy) end)
 R.Tidy = Tidy
+
+---------------------------------------------------------------------------------------------------
+-- Testing alone (sim mode; the dev console's Recruiters page). Everything here stays on this screen.
+
+-- Sim off: forget everything about the fake guildies.
+function R.PurgeFakes(isFake)
+    local s = R.Store()
+    if not s then return end
+    for author, list in pairs(s.shares) do
+        if isFake(author) then s.shares[author] = nil
+        else for to in pairs(list) do if isFake(to) then list[to] = nil end end end
+    end
+    for owner, c in pairs(s.claims) do if isFake(owner) or isFake(c.by) then s.claims[owner] = nil end end
+    for who in pairs(s.hidden) do if isFake(who) then s.hidden[who] = nil end end
+    Changed()
+end
+
+local function FakesWithAddon()
+    local out = {}
+    for _, m in ipairs(ns.Guild.list) do
+        if m.sim and R.HasAddon(m.name) then out[#out + 1] = m.name end
+    end
+    table.sort(out)
+    return out
+end
+
+--@do-not-package@
+-- /ynm dev recruit share | claims | forget
+ns.devCommands.recruit = function(arg)
+    local s = R.Store()
+    if not s then return end
+    if not (ns.Sim and ns.Sim.IsOn()) and arg ~= "forget" then ns.Print("/ynm dev sim on first") return end
+    local fakes = FakesWithAddon()
+    local now = GetServerTime()
+    if arg == "share" then
+        local who = fakes[math.random(#fakes)]
+        if not who then return end
+        s.shares[who] = s.shares[who] or {}
+        s.shares[who][ns.me] = { at = now - math.random(60, 3600) }
+        ns.Print(who .. " shared the addon with you (fake, on your screen only).")
+    elseif arg == "claims" then
+        -- Each fake with the addon says who got them on: another fake, or me; a few of them last month.
+        local n = 0
+        for i, who in ipairs(fakes) do
+            if not s.claims[who] then
+                local by = (i % 3 == 0) and ns.me or fakes[(i % #fakes) + 1]
+                if by ~= who then
+                    s.claims[who] = { by = by, at = now - ((i % 4 == 0) and 40 * 86400 or math.random(60, 86400)) }
+                    n = n + 1
+                end
+            end
+        end
+        ns.Print(n .. " fake guildies said who got them on (on your screen only).")
+    elseif arg == "forget" then
+        for owner in pairs(s.claims) do if Same(owner, ns.me) then s.claims[owner] = nil end end
+        ns.Print("Your answer is forgotten on this screen (the guild still has it if it went out).")
+    else
+        ns.Print("/ynm dev recruit share | claims | forget")
+        return
+    end
+    Changed()
+end
+--@end-do-not-package@

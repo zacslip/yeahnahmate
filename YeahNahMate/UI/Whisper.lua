@@ -24,7 +24,10 @@ local function Send()
     if text == "" then return end
     if target.sim then
         ns.Print(string.format(L.WHISPER_FAKE, target.name))
+        local to = target.name
         box:Hide()
+        -- As if it went (Recruit.lua notes a share to a fake; Comm keeps anything about fakes on screen).
+        ns.Fire("WHISPERED", to, text)
         return
     end
     if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown() then

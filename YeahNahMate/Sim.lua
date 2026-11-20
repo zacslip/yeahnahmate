@@ -610,6 +610,7 @@ function Sim.Stop()
     PurgeFakeEvents()
     if ns.Questions then ns.Questions.PurgeFakes(function(name) return byName[name] ~= nil end) end
     if ns.Alts then ns.Alts.PurgeFakes(function(name) return byName[name] ~= nil end) end
+    if ns.Recruit then ns.Recruit.PurgeFakes(function(name) return byName[name] ~= nil end) end
     wipe(byName)
     ns.db.dev.sim = false
     ns.Guild.SetFakes(nil)
