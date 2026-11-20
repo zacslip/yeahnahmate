@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.0 (not released yet)
+
+Recruiters (in progress):
+
+- Groundwork: sharing the addon with guildies who don't have it, "who got you onto it", and a leaderboard. Nothing to see yet.
+
 ## 0.20.5
 
 - Testing tools only: seeing the addon as a clan's leader rank now shows that clan's Start meeting (and no Challenge button for it), like the real leader sees.

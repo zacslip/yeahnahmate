@@ -2,7 +2,7 @@
 ## Title: Yeah Nah Mate
 ## Notes: Guild map, roster, dungeon finder, calendar, professions and proximity voice, shared only with your guildmates.
 ## Author: zacslip
-## Version: 0.20.5
+## Version: 0.21.0
 ## SavedVariables: YeahNahMateDB
 ## IconTexture: Interface\AddOns\YeahNahMate\Media\crestmini
 ## AddonCompartmentFunc: YeahNahMate_OnAddonCompartmentClick
@@ -38,6 +38,7 @@ Milestones.lua
 Clans.lua
 ClanMeet.lua
 ClanChallenge.lua
+Recruit.lua
 Breakdown.lua
 Sim.lua
 Probe.lua

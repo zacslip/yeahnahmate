@@ -157,7 +157,7 @@ function Comm.Send(msg, channel, target, prio, fast)
     -- (fakes aren't in their roster), but it shouldn't go out at all. SENT still fires, so the fakes
     -- react as if it had gone. Fake names are taken out of "who helped" lists too.
     if ns.Sim and ns.Sim.IsOn() then
-        if ns.Sim.IsFake(msg.o) or ns.Sim.IsFake(msg.by) or ns.Sim.IsFake(msg.who) then
+        if ns.Sim.IsFake(msg.o) or ns.Sim.IsFake(msg.by) or ns.Sim.IsFake(msg.who) or ns.Sim.IsFake(msg.to) then
             ns.Log("(sim) kept on this screen: " .. tostring(msg.t) .. " about " .. tostring(msg.o))
             ns.Fire("SENT", msg, channel, target)
             return true

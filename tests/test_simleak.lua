@@ -28,8 +28,15 @@ end
 for key, r in pairs(ns.Requests.Store()) do
     if ns.Sim.IsFake(r.owner) and not r.x then ns.Requests.Claim(key, true); break end
 end
+-- Recruiters: I say a fake guildie got me onto the addon (the claim names a fake).
+local fakeWithAddon
+for name, u in pairs(ns.Comm.users) do if u.sim then fakeWithAddon = name break end end
+check(fakeWithAddon ~= nil and ns.Recruit.Claim(fakeWithAddon), "I can name a fake as my recruiter (on my screen)")
+local heldBack = false
+for _, l in ipairs(ns.GetLog()) do if tostring(l):find("kept on this screen: RCL", 1, true) then heldBack = true end end
+check(heldBack, "and the claim was held back, not sent (the log says so)")
 -- A real guildie catching up asks me for everything I know.
-for _, w in ipairs({ "QS", "CAL", "RQS", "BRD" }) do
+for _, w in ipairs({ "QS", "CAL", "RQS", "BRD", "RCT" }) do
     INJECT("YNM", Msg({ v = 1, t = "REQ", w = w }), "WHISPER", "Bluey Heeler")
 end
 Tick(30)
@@ -39,7 +46,7 @@ for i = first, #SENT do
     local ok, m = Ser:Deserialize(SENT[i].text)
     if ok and type(m) == "table" then
         out = out + 1
-        if ns.Sim.IsFake(m.o) or ns.Sim.IsFake(m.by) or ns.Sim.IsFake(SENT[i].target) then leaks[#leaks + 1] = m.t .. " " .. tostring(m.o) end
+        if ns.Sim.IsFake(m.o) or ns.Sim.IsFake(m.by) or ns.Sim.IsFake(m.to) or ns.Sim.IsFake(m.who) or ns.Sim.IsFake(SENT[i].target) then leaks[#leaks + 1] = m.t .. " " .. tostring(m.o) end
         for _, name in ipairs(type(m.hp) == "table" and m.hp or {}) do
             if ns.Sim.IsFake(name) then leaks[#leaks + 1] = "hp " .. name end
         end

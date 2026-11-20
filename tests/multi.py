@@ -144,6 +144,7 @@ class World:
         self.info = None          # newest guild info: {ev, motd, by}
         self.ms = {}              # milestone card id -> {v, x, m, n, on, tie}
         self.wel = None           # newest welcome card: {v, m, on, wr, tie}
+        self.claims = {}          # recruiter answers (Phase 13): character -> {by, at}
         self.welcomes = 0         # welcomes posted (each join must give exactly one, when it should)
         self.joins = 0
         self.levelups = 0
@@ -217,6 +218,9 @@ class World:
         self.actions += 1
         if rng.random() < 0.3:
             self.act_question(c, name)
+            return
+        if rng.random() < 0.06:
+            self.act_recruit(c, name)
             return
         if ns.Board.IsManager(name) and rng.random() < 0.35:
             self.act_milestone(c, name)
@@ -300,6 +304,18 @@ class World:
                     info = ns.Board.Store().info
                     self.info = {"ev": info.ev, "motd": info.motd, "by": name, "t": self.now}
                     self.note("%s sets the guild info (v%d)" % (name, info.ev))
+
+    def act_recruit(self, c, name):
+        # Answer "who got you onto it" (once per person): someone online with the addon, or skip.
+        R = c.ns.Recruit
+        if R.MyClaim() is not None:
+            return
+        others = sorted(n for n in self.online if n != name and R.CanBeRecruiter(n))
+        by = self.rng.choice(others) if others and self.rng.random() < 0.8 else ""
+        if R.Claim(by):
+            mine = R.Store().claims[name]
+            self.claims[name] = {"by": mine.by, "at": mine.at, "t": self.now}
+            self.note("%s says %s got them onto it" % (name, by or "nobody (skip)"))
 
     def act_milestone(self, c, name):
         rng, MS = self.rng, c.ns.Milestones
@@ -704,6 +720,18 @@ class World:
                     self.fail("%s's welcome v%d differs" % (c.name, w.ev))
                 elif w.ev < self.wel["v"] and final:
                     self.fail("%s's welcome is v%d, newest is v%d" % (c.name, w.ev, self.wel["v"]))
+            # Recruiter answers: everyone ends up holding each one, as written (final, never changed).
+            claims = c.ns.Recruit.Store().claims
+            for owner, truth in self.claims.items():
+                if owner == c.name:
+                    continue
+                got = claims[owner]
+                author_on = owner in self.online and self.now - self.online[owner].since >= SETTLE
+                if got is None:
+                    if final or (author_on and settled):
+                        self.fail("%s doesn't have %s's recruiter answer" % (c.name, owner))
+                elif (got.by, got.at) != (truth["by"], truth["at"]):
+                    self.fail("%s holds %s's recruiter answer as %s, written as %s" % (c.name, owner, got.by, truth["by"]))
             # Guild info: the newest edit wins.
             if self.info:
                 info = c.ns.Board.Store().info
@@ -801,9 +829,9 @@ def main():
     total = 0
     for seed in range(1, seeds + 1):
         w = simulate(seed, minutes)
-        print("  %s seed %d: %d actions, %d events by %d players, %d messages sent, %d copies of others' events held, %d questions (%d posters' threads, %d copies held, %d officer removals), %d requests with makers (Crafty Bugger %s), Bingo+Bandit %s, %d milestone cards, %d joins -> %d welcomes, %d level-ups, %d checks failed" % (
+        print("  %s seed %d: %d actions, %d events by %d players, %d messages sent, %d copies of others' events held, %d questions (%d posters' threads, %d copies held, %d officer removals), %d requests with makers (Crafty Bugger %s), Bingo+Bandit %s, %d milestone cards, %d joins -> %d welcomes, %d level-ups, %d recruiter answers, %d checks failed" % (
             "PASS" if not w.fails else "FAIL", seed, w.actions, w.events, len(PLAYERS), w.routed, w.held,
-            w.questions, w.posts, w.qheld, w.removals, w.made, w.crafty or "nobody", "linked" if w.linked else "apart", w.cards, w.joins, w.welcomes, w.levelups, len(w.fails)))
+            w.questions, w.posts, w.qheld, w.removals, w.made, w.crafty or "nobody", "linked" if w.linked else "apart", w.cards, w.joins, w.welcomes, w.levelups, len(w.claims), len(w.fails)))
         for f in w.fails[:8]:
             print("      " + f)
         if w.fails:

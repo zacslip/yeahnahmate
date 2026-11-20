@@ -670,6 +670,9 @@ L.ABOUT_CMD_LOG = "The last 15 things the addon sent or got"
 L.ABOUT_CMD_ERRORS = "The last errors, if there are any"
 L.ABOUT_CMD_RESET = "Move this window back to the middle of the screen"
 L.ABOUT_KEYS = "You can also set a key for Proximity voice on/off: Options > Keybindings > AddOns > Yeah Nah Mate."
+-- Recruiters (Recruit.lua, UI/Recruit.lua)
+L.RECRUIT_MSG_DEFAULT = "G'day! Grab our guild addon, Yeah Nah Mate. You'll find it in the guild Discord, in the yeah-nah-mate-addon channel, or ask me for details."
+
 L.ABOUT_PROBLEM = "Found a problem?"
 L.ABOUT_PROBLEM_TEXT = "Type |cffffffff/ynm errors|r in chat and take a screenshot of what it prints. Send it to whoever looks after the addon in your guild, or post it in the comments on the addon's CurseForge page. Say what you were doing when it happened."
 L.SIM_ON = "Sim mode on: %d fake guildies added (they're only on your screen). /ynm dev sim off to remove them."

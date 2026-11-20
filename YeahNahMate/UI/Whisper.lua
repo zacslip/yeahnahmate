@@ -40,7 +40,11 @@ local function Send()
         ns.Print(string.format(L.WHISPER_FAILED, tostring(err)))
         return
     end
+    -- Recruit.lua notes a share only when it really went (the player pressed Enter or Send). The name is
+    -- read first: hiding the box forgets who it was for.
+    local to = target.name
     box:Hide()
+    ns.Fire("WHISPERED", to, text)
 end
 
 local function Build()
