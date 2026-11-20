@@ -4,10 +4,11 @@
 
 Recruiters:
 
-- **A Recruiters tab** on the right of the window, by the version (the handshake). It slides out with three things:
+- **Addon recruiting**: the handshake tab on the right of the window, by the version (getting guildies onto the addon, not recruiting to the guild). It slides out with three things:
   - **Share the addon**: guildies online who don't have Yeah Nah Mate yet. Click Share and a whisper opens with your recruitment message; read it, change it if you like, and press Enter. Once a week per guildie.
   - **Who got you onto it?** A gold "!" on the tab until you answer, once. Anyone who shared it with you is suggested; or pick someone else, or skip.
   - **Top recruiters**: who's brought the most guildies on, all time and this month. Hover a name to see who.
+- Above it, a **Guild recruiting** tab (the guild crest): nothing there yet.
 - Your **recruitment message** is in Settings (bottom line). It points guildies to the guild Discord, as WoW chat links can't be clicked.
 - Right-click a guildie on the Clans tab: **Share the addon** (if they haven't got it).
 - Fair counting: people, not characters (alts count once), nobody recruits themselves, and the guild master and managers can take a wrong claim off the board.

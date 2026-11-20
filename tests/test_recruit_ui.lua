@@ -18,18 +18,20 @@ INJECT("YNM", Msg({ t = "RSH", to = "Ned Jones", at = now - 600 }), "GUILD", "Bl
 Tick(2)
 
 UI.Open("home")
-local tab, panel = UI.recruitTab, UI.recruitPanel
-check(tab and panel, "the window has the Recruiters tab and drawer")
+local tab, drawer = UI.recruitTab, UI.recruitPanel
+local panel = drawer.addon
+check(tab and panel and UI.recruitTabs.guild, "the window has both tabs (guild above, addon below) and the drawer")
 check(UI.recruitHolder._pt and UI.recruitHolder._pt[2] == YeahNahMateFrame and tostring(UI.recruitHolder._pt[3]):find("RIGHT", 1, true),
     "on the window's right edge")
 check(tab.bang:IsShown(), "a ! on the tab: I haven't answered")
 check(not UI.RecruitOpen(), "shut at first")
 tab:Click()
 Tick(0.5)
-check(UI.RecruitOpen() and panel:IsShown(), "click: it slides open")
+check(UI.RecruitOpen() and drawer:IsShown() and panel:IsShown() and not drawer.guild:IsShown(), "click: it slides open on the addon page")
 
 -- The question, with Bluey suggested (he shared with me).
 check(panel.question:IsShown() and not panel.answer:IsShown(), "the question shows")
+check(panel.body.top == -150, "Share sits under the question")
 local sug = panel.question.suggest[1]
 check(sug:IsShown() and sug.name == "Bluey Heeler", "Bluey is suggested")
 
@@ -91,3 +93,14 @@ edit._scripts.OnEditFocusLost(edit)
 check(ns.settings.recruitMsg == nil and edit:GetText() == L.RECRUIT_MSG_DEFAULT, "emptied: back to the default")
 
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))
+
+-- The layout: once answered, Share moves up into the question's space (no gap); the guild tab swaps pages.
+check(panel.body.top == -82, "answered: Share moved up into the question's space (no gap)")
+UI.Open("home")
+local guildTab = UI.recruitTabs.guild
+guildTab:Click()
+check(UI.RecruitOpen() and UI.RecruitPage() == "guild" and drawer.guild:IsShown() and not panel:IsShown(), "guild tab: the guild page (blank for now)")
+guildTab:Click()
+check(not UI.RecruitOpen(), "clicking the open tab again shuts it")
+tab:Click()
+check(UI.RecruitOpen() and UI.RecruitPage() == "addon" and panel:IsShown(), "addon tab: back on the addon page")
