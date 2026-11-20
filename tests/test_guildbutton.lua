@@ -1,21 +1,15 @@
--- Our tab on Blizzard's Guild & Communities window (UI/GuildButton.lua; on by default, Settings turns
--- it off): made only when their window is loaded by the game, placed under their lowest shown tab, a
--- click closes theirs (never in combat) and opens ours; the probe reports what it found.
-YeahNahMateDB = nil
+-- Our tab on Blizzard's Guild & Communities window (UI/GuildButton.lua; always on, no setting): made
+-- only when their window is loaded by the game, placed under their lowest shown tab, a click closes
+-- theirs (never in combat) and opens ours; the probe reports what it found.
+YeahNahMateDB = { settings = { guildButton = false } }    -- a pre-release 0.20.3 build's setting
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
 LOGGED_IN = true
 FireEvent("PLAYER_LOGIN")
 Tick(15)
 local GB = ns.GuildButton
 
-check(GB.On() and ns.settings.guildButton == true, "on by default")
-check(GB.Button() == nil, "but their window isn't loaded yet: no button (we never load it ourselves)")
-
--- Settings has the tick.
-ns.UI.Open("settings")
-local tick
-for _, o in ipairs(CREATED) do if o._text == ns.L.SET_GUILDBTN then tick = o end end
-check(tick ~= nil, "Settings shows the guild window button tick")
+check(ns.settings.guildButton == nil, "the old setting is cleared (there's no switch any more)")
+check(GB.Button() == nil, "their window isn't loaded yet: no button (we never load it ourselves)")
 
 -- The game loads their window (the first J): a fake one with four tabs, 32 high, 17 apart.
 CommunitiesFrame = CreateFrame("Frame", "CommunitiesFrame", UIParent)
@@ -55,7 +49,7 @@ end
 CommunitiesFrame:Show()
 FireEvent("ADDON_LOADED", "Blizzard_Communities")
 local b = GB.Button()
-check(b ~= nil, "their window loaded: our button is made")
+check(b ~= nil and b:IsShown(), "their window loaded: our button is made and shown")
 check(b and b:GetParent() == CommunitiesFrame, "parented to their window (shows and hides with it)")
 check(b and b._pt and b._pt[2] == settingsTab and b._pt[5] == -17,
     "placed under their lowest tab (the unnamed fifth one), same gap", b and b._pt and tostring(b._pt[5]))
@@ -92,10 +86,6 @@ local lines = GB.Probe()
 local all = table.concat(lines, "\n")
 check(all:find("Tabs found: 4 of 4 named, 1 more", 1, true) and all:find("goes under: SettingsTabWeDontKnow", 1, true) and all:find("ChatTab: shown", 1, true), "probe: finds their four tabs", all)
 check(ns.db.dev.guildProbe and #ns.db.dev.guildProbe.lines == #lines, "probe saved for after /reload")
-
--- Switched off: our button hides.
-GB.Set(false)
-check(not b:IsShown() and not GB.On(), "switched off: our button is hidden")
 
 CommunitiesFrame = nil
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))

@@ -31,7 +31,7 @@ local function ShowMemory(p)
     local kb = GetAddOnMemoryUsage(ADDON)
     if type(kb) ~= "number" then p.memory:SetText(""); return end
     local text = kb >= 1024 and string.format("%.1f MB", kb / 1024) or string.format("%d KB", kb)
-    p.memory:SetText(string.format(L.SET_MEMORY, text))
+    p.memory:SetText(string.format(L.SET_MEMORY, text) .. ns.GREY .. "  " .. L.SET_MEMORY_TIP .. "|r")
 end
 
 -- Your characters (Alts.lua): the main cycles through this account's characters in the guild.
@@ -89,23 +89,8 @@ local function Build(p)
         GameTooltip:Show()
     end)
     p.plates:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    -- Our button on the game's guild window (UI/GuildButton.lua), under the nameplates tick.
-    p.guildBtn = UI.Check(p, L.SET_GUILDBTN, 176, -200, s.guildButton ~= false, function(on)
-        ns.GuildButton.Set(on)
-        Changed()
-    end)
-    p.guildBtn:SetScript("OnEnter", function(self)
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(L.SET_GUILDBTN, 1, 0.82, 0)
-        GameTooltip:AddLine(L.SET_GUILDBTN_TIP, 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    p.guildBtn:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-
     -- How much memory the addon uses (a guildie asked). Only our own addon, only when Settings opens.
-    -- Left of the guild window tick, so it's kept short.
-    p.memory = Text(p, "", "GameFontHighlightSmall", 4, -206, 168)
+    p.memory = Text(p, "", "GameFontHighlightSmall", 4, -206, 346)
     p:HookScript("OnShow", function() ns.Safe(ShowMemory, p) end)
     ShowMemory(p)
 
