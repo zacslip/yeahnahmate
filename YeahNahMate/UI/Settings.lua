@@ -117,7 +117,10 @@ local function Build(p)
     p.altsState:SetJustifyV("TOP")
 
     -- Professions
-    Header(p, L.SET_PROF, 386, -4, 350)
+    Header(p, L.SET_PROF, 386, -4, 226)
+    -- The welcome page (what the addon shares and the first-run questions), top right. It took over from
+    -- the Privacy box at the bottom (21 Nov), which made room for the recruiting messages.
+    UI.Button(p, L.SET_WELCOME, 120, 616, -2, function() ns.Welcome.Show() end, 20)
     p.shareProf = UI.Check(p, L.SET_SHARE_PROF, 386, -26, s.shareProfessions == true, function(on)
         s.shareProfessions = on
         Changed()
@@ -164,21 +167,13 @@ local function Build(p)
     end)
     p.msPost:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
-    local b = UI.Box(p, 0, -300, 736, 82)
-    Text(b, ns.GOLD .. L.PRIVACY .. "|r", "GameFontNormal", 12, -9)
-    UI.Button(b, L.SET_WELCOME, 120, 604, -6, function() ns.Welcome.Show() end, 22)
-    p.privacy = Text(b, "", "GameFontHighlightSmall", 12, -27, 712)
-    p.privacy:SetWordWrap(true)
-    p.privacy:SetHeight(38)          -- three lines: the text wraps on a narrow font
-    p.privacy:SetJustifyV("TOP")
-    Text(b, L.COMMANDS, "GameFontDisableSmall", 12, -65, 712)
-
-    -- Recruiters: what Share puts in the whisper (Recruit.lua). One line under Privacy; saved as typed,
-    -- empty = the default.
-    local label = Text(p, L.SET_RECRUIT_MSG, "GameFontHighlightSmall", 4, -392)
+    -- Recruiting messages (bottom, full width). Addon recruiting: what Share puts in the whisper
+    -- (Recruit.lua); saved as typed, empty = the default. The guild recruiting message goes under it later.
+    Header(p, L.SET_RECRUIT_HEAD, 0, -304, 736)
+    local label = Text(p, L.SET_RECRUIT_MSG, "GameFontHighlightSmall", 4, -334)
     local e = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
-    e:SetSize(590, 20)
-    e:SetPoint("TOPLEFT", 142, -388)
+    e:SetSize(570, 20)
+    e:SetPoint("TOPLEFT", 162, -330)
     e:SetAutoFocus(false)
     e:SetMaxLetters(240)
     e:SetScript("OnEscapePressed", function(self)
@@ -200,7 +195,7 @@ local function Build(p)
         GameTooltip:Show()
     end)
     e:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    label:SetWidth(136)
+    label:SetWidth(156)
     p.recruitMsg = e
 end
 
@@ -217,7 +212,6 @@ local function Refresh(p)
     p.remind:SetChecked(s.remind)
     p.msPost:SetChecked(not s.msNoPost)
     p.profNotAsked:SetText(s.shareProfessions == nil and L.SHARE_NOT_ASKED or "")
-    p.privacy:SetText(string.format(L.PRIVACY_TEXT, ns.Guild.name or L.NO_GUILD))
     if p.recruitMsg and not p.recruitMsg:HasFocus() then
         p.recruitMsg:SetText(ns.Recruit.Message())
         p.recruitMsg:SetCursorPosition(0)

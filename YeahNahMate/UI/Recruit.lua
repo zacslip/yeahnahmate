@@ -87,7 +87,11 @@ end
 local function ShowPage()
     panel.addon:SetShown(page == "addon")
     panel.guild:SetShown(page == "guild")
-    for key, t in pairs(tabs) do t:SetChecked(open and key == page) end
+    -- The open page's tab glows (as on hover). A "checked" overlay washed the icon out to blank.
+    for key, t in pairs(tabs) do
+        t.sel = open and key == page
+        if t.sel then t:LockHighlight() else t:UnlockHighlight() end
+    end
 end
 
 -- Open or shut the drawer. which = "addon" / "guild" picks the page (and a click on the page already
@@ -422,7 +426,7 @@ local function BuildGuildPage()
 end
 
 local function MakeTab(frame, key, icon, y, tip)
-    local t = CreateFrame("CheckButton", nil, frame)
+    local t = CreateFrame("Button", nil, frame)
     t:SetSize(32, 32)
     t:SetPoint("TOPLEFT", holder, "TOPRIGHT", -1, y)
     t:SetFrameLevel(holder:GetFrameLevel())
@@ -432,7 +436,6 @@ local function MakeTab(frame, key, icon, y, tip)
     bg:SetPoint("TOPLEFT", -3, 11)
     t:SetNormalTexture(icon)
     t:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    t:SetCheckedTexture("Interface\\Buttons\\CheckButtonHilight", "ADD")
     t:SetScript("OnClick", function() UI.ToggleRecruit(nil, key) end)
     Tip(t, tip)
     return t

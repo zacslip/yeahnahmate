@@ -9,7 +9,8 @@ Recruiters:
   - **Who got you onto it?** A gold "!" on the tab until you answer, once. Anyone who shared it with you is suggested; or pick someone else, or skip.
   - **Top recruiters**: who's brought the most guildies on, all time and this month. Hover a name to see who.
 - Above it, a **Guild recruiting** tab (the guild crest): nothing there yet.
-- Your **recruitment message** is in Settings (bottom line). It points guildies to the guild Discord, as WoW chat links can't be clicked.
+- Your **addon recruiting message** is in Settings, under Recruiting messages at the bottom. It points guildies to the guild Discord, as WoW chat links can't be clicked.
+- Settings: the Privacy box is gone (the Welcome page says it all); its **Welcome page** button is now at the top right.
 - Right-click a guildie on the Clans tab: **Share the addon** (if they haven't got it).
 - Fair counting: people, not characters (alts count once), nobody recruits themselves, and the guild master and managers can take a wrong claim off the board.
 

@@ -104,3 +104,16 @@ guildTab:Click()
 check(not UI.RecruitOpen(), "clicking the open tab again shuts it")
 tab:Click()
 check(UI.RecruitOpen() and UI.RecruitPage() == "addon" and panel:IsShown(), "addon tab: back on the addon page")
+
+-- The open tab glows (its icon stays); the shut one doesn't.
+check(tab.sel == true and UI.recruitTabs.guild.sel == false, "the open page's tab is the lit one")
+
+-- Settings: the Welcome button at the top; the recruiting messages at the bottom; no Privacy box.
+UI.Select("settings")
+local welcome, privacyBox
+for _, o in ipairs(CREATED) do
+    if o._text == L.SET_WELCOME and o.Click then welcome = o end
+    if type(o._text) == "string" and o._text:find(L.PRIVACY .. "|r", 1, true) then privacyBox = o end
+end
+check(welcome and welcome._pt and welcome._pt[3] == -2, "the Welcome page button sits at the top")
+check(privacyBox == nil, "no Privacy box any more")
