@@ -60,6 +60,23 @@ SlashCmdList.YEAHNAHMATE("dev rank 0")
 check(CM.ICanRun("Orc"), "dev rank 0: may run meetings on this screen")
 SlashCmdList.YEAHNAHMATE("dev rank off")
 
+-- Seeing the addon as a clan's leader rank (0.20.5: Shadowhunter for the Trolls showed no Start
+-- meeting, because someone else really holds that rank). Rank 2 leads the Orcs here.
+local realRaceFor = ns.Clans.RaceForRank
+ns.Clans.RaceForRank = function(i) if i == 2 then return "Orc" end return realRaceFor(i) end
+check(X.CanChallenge(), "a member may challenge")
+SlashCmdList.YEAHNAHMATE("dev rank 2")
+check(CM.ICanRun("Orc") and not CM.ICanRun("Troll"), "dev rank 2 (the Orc leader rank): may run the Orc meeting, not the Trolls'")
+check(not CM.CanRun(ns.me, "Orc"), "the real rank check is unchanged")
+check(not X.CanChallenge(), "as the leader: no Challenge button for my own clan")
+before = #SENT
+check(CM.Start("Orc") and CM.Mine() ~= nil, "the meeting starts on this screen")
+check(#Sent("CMT", before + 1) == 0, "no CMT sent to the guild")
+CM.Stop()
+SlashCmdList.YEAHNAHMATE("dev rank off")
+check(not CM.ICanRun("Orc") and X.CanChallenge(), "rank off: a member again")
+ns.Clans.RaceForRank = realRaceFor
+
 -- /ynm dev clanmeet start | stop: needs sim; turns the test editor on; the fakes ask; nothing sent.
 SlashCmdList.YEAHNAHMATE("dev clanmeet start")
 check(CM.Mine() == nil, "dev clanmeet start needs sim mode")

@@ -221,6 +221,16 @@ function C.IsLeader(name, race)
     return false
 end
 
+-- Am I this clan's leader, as shown on this screen? Testing with /ynmdev's rank picker (Board.simRank)
+-- as a clan's leader rank (say Shadowhunter for the Trolls) counts, though someone else really holds
+-- it: before 0.20.5 that showed no Start meeting. What's sent is still checked against my real rank.
+function C.IShownLeader(race)
+    if not race then return false end
+    if C.IsLeader(ns.me, race) then return true end
+    local sim = ns.Board.simRank
+    return sim ~= nil and C.RaceForRank(sim) == race
+end
+
 ---------------------------------------------------------------------------------------------------
 -- The clans and their members.
 

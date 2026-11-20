@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.5 (not released yet)
+
+- Testing tools only: seeing the addon as a clan's leader rank now shows that clan's Start meeting (and no Challenge button for it), like the real leader sees.
+
 ## 0.20.4
 
 - **About panel**: a small round "i" next to the version (top right of the window) shows your version, whether a guildie has a newer one, every / command, and how to report a problem.

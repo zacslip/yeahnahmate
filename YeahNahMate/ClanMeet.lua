@@ -44,7 +44,8 @@ end
 -- where the meeting stays on this screen unless my real rank could run it (Announce).
 function M.ICanRun(race)
     if M.CanRun(ns.me, race) then return true end
-    return race ~= nil and ns.Board.Testing() and ns.Board.Moderates("clan")
+    if race == nil or not ns.Board.Testing() then return false end
+    return ns.Board.Moderates("clan") or ns.Clans.IShownLeader(race)
 end
 
 function M.Mine() return mine end

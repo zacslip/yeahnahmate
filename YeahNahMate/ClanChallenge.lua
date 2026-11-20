@@ -96,7 +96,7 @@ end
 -- Can I challenge for my clan's leadership? In the clan, not its leader, nothing open already.
 function X.CanChallenge()
     local race = ns.Clans.MyRace()
-    if not race or ns.Clans.IsLeader(ns.me, race) then return false end
+    if not race or ns.Clans.IShownLeader(race) then return false end
     return X.OpenOf(ns.me, race) == nil
 end
 
