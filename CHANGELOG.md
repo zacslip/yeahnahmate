@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.4 (not released yet)
+
+- **About panel**: a small round "i" left of the version (top right of the window) shows your version, whether a guildie has a newer one, every / command, and how to report a problem.
+
 ## 0.20.3
 
 - **A Yeah Nah Mate button on the game's guild window**: open Guild & Communities (J) and there's a Yeah Nah Mate tab under the tabs on the right, in the same style. Click it to close the game's window and open Yeah Nah Mate. In combat the game's window stays open and Yeah Nah Mate opens on top.

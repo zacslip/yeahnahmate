@@ -252,6 +252,8 @@ local function Build()
     title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     title:SetPoint("TOP", 0, -6)
     BuildHeader()
+    -- The "i" left of the version: commands and help (UI/About.lua).
+    if UI.BuildAbout then UI.BuildAbout(frame, header) end
 
     tabButtons = {}
     for i, t in ipairs(TABS) do
