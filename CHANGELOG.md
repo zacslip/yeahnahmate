@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.5 (not released yet)
+## 0.20.5
 
 - Testing tools only: seeing the addon as a clan's leader rank now shows that clan's Start meeting (and no Challenge button for it), like the real leader sees.
 - Settings: the nameplate tooltip now says Shift+V (the friendly nameplates key), not Ctrl+V.
