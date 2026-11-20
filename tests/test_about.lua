@@ -1,4 +1,4 @@
--- The About panel (UI/About.lua): an "i" button left of the version in the banner opens a panel with
+-- The About panel (UI/About.lua): an "i" button right of the version in the banner opens a panel with
 -- the version (and a newer one a guildie has), the slash commands, and how to report a problem.
 YeahNahMateDB = nil
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
@@ -10,7 +10,7 @@ local UI, L = ns.UI, ns.L
 UI.Open("home")
 local b = UI.aboutButton
 check(b ~= nil, "the window has the i button")
-check(b and b._pt and b._pt[1] == "RIGHT" and b._pt[3] == "LEFT", "placed just left of the version text")
+check(b and b._pt and b._pt[1] == "LEFT" and b._pt[3] == "RIGHT" and b._w == 20, "placed just right of the version text, 20 px")
 check(UI.AboutPanel() == nil, "no panel until it's clicked")
 
 b:Click()

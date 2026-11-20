@@ -71,7 +71,7 @@ local function BuildHeader()
     header.me:SetPoint("TOPRIGHT", -10, -10)
     header.me:SetJustifyH("RIGHT")
     header.ver = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    header.ver:SetPoint("TOPRIGHT", -10, -30)
+    header.ver:SetPoint("TOPRIGHT", -36, -30)     -- room on its right for the About "i" (UI/About.lua)
     header.ver:SetJustifyH("RIGHT")
 end
 

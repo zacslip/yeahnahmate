@@ -1,4 +1,4 @@
--- About panel: a small round "i" button just left of the version in the window's banner (top right)
+-- About panel: a small round "i" button just right of the version in the window's banner (top right)
 -- opens a panel over the window with your version (and whether a guildie has a newer one), the slash
 -- commands, and how to report a problem. Click the button again, or the panel's X, to close it.
 local ADDON, ns = ...
@@ -71,11 +71,11 @@ local function BuildPanel(window, header)
     panel:Hide()
 end
 
--- Called by UI/Window.lua when the window is built: the "i" button left of the version, and the panel.
+-- Called by UI/Window.lua when the window is built: the "i" button right of the version, and the panel.
 function UI.BuildAbout(window, header)
     local b = CreateFrame("Button", nil, header)
-    b:SetSize(16, 16)
-    b:SetPoint("RIGHT", header.ver, "LEFT", -6, 0)
+    b:SetSize(20, 20)          -- 16 was too small (asked for 25% bigger)
+    b:SetPoint("LEFT", header.ver, "RIGHT", 6, 0)
     local icon = b:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
     -- The game's round "i"; if this client hasn't got it, a plain gold "i".

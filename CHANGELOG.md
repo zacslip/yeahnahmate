@@ -2,7 +2,7 @@
 
 ## 0.20.4 (not released yet)
 
-- **About panel**: a small round "i" left of the version (top right of the window) shows your version, whether a guildie has a newer one, every / command, and how to report a problem.
+- **About panel**: a small round "i" next to the version (top right of the window) shows your version, whether a guildie has a newer one, every / command, and how to report a problem.
 
 ## 0.20.3
 

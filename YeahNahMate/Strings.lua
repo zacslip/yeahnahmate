@@ -653,7 +653,7 @@ L.ERRORS_HEADER = "%d errors saved. Latest:"
 L.HELP = "/ynm  open or close   /ynm voice  proximity voice on/off   /ynm log  recent messages   /ynm errors  recent errors   /ynm reset  window back to the middle"
 L.RESET_DONE = "Window moved back to the middle."
 
--- About panel (the "i" left of the version, top right)
+-- About panel (the "i" right of the version, top right)
 L.ABOUT_TIP = "About Yeah Nah Mate: commands and help"
 L.ABOUT_TITLE = "About Yeah Nah Mate"
 L.ABOUT_VERSION = "You have version |cffffffff%s|r."
