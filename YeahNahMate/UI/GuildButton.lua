@@ -162,7 +162,8 @@ function GB.Probe()
         Add("In the game's window list (UIPanelWindows): " .. tostring(type(UIPanelWindows) == "table"
             and UIPanelWindows.CommunitiesFrame ~= nil))
     end
-    Add("Our button: " .. (button and (button:IsShown() and "on" or "off") or "not made yet"))
+    Add("Dev switch: " .. (GB.On() and "ON" or "OFF (tick Add our button to the guild window)"))
+    Add("Our button: " .. (button and (button:IsShown() and "made and shown" or "made, hidden") or "not made yet"))
     Add("Last click: " .. (GB.last or "none yet"))
     ns.db.dev.guildProbe = { at = date and date("%Y-%m-%d %H:%M") or "?", lines = out }
     return out
