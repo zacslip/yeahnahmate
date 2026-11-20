@@ -34,6 +34,19 @@ local function Ask(name, ...)
 end
 Voice.Ask = Ask
 
+-- A field from a voice or club table, or nil when the game hides it. Ask only checks the table it got
+-- back; on some clients the fields inside are secret too, and comparing one is an error (0.20.1:
+-- "attempt to compare a secret string value" from GuildChannel, hundreds of times).
+local function Field(t, key, kind)
+    if type(t) ~= "table" then return nil end
+    local v = t[key]
+    if v == nil or (issecretvalue and issecretvalue(v)) then return nil end
+    if kind then return type(v) == kind and v or nil end
+    local tv = type(v)
+    return (tv == "string" or tv == "number") and v or nil
+end
+Voice.Field = Field
+
 -- The guild's club and the stream that carries its voice channel.
 function Voice.GuildStream()
     if not (C_Club and C_Club.GetGuildClubId and C_Club.GetStreams) then return nil end
@@ -43,7 +56,7 @@ function Voice.GuildStream()
     local ok2, streams = pcall(C_Club.GetStreams, club)
     if not ok2 or type(streams) ~= "table" then return club, nil end
     for _, s in ipairs(streams) do
-        if ns.Public(s.streamType, "number") == GUILD_STREAM then return club, s.streamId end
+        if Field(s, "streamType", "number") == GUILD_STREAM then return club, Field(s, "streamId") end
     end
     return club, nil
 end
@@ -56,16 +69,21 @@ function Voice.GuildChannel()
     if type(ch) ~= "table" then return nil end
     local club, stream = Voice.GuildStream()
     if not club or not stream then return nil end
-    if tostring(ch.clubId) ~= tostring(club) or tostring(ch.streamId) ~= tostring(stream) then return nil end
+    -- Hidden ids: we can't tell it's the guild's, so it counts as not (Proximity waits).
+    local cid, sid = Field(ch, "clubId"), Field(ch, "streamId")
+    if not cid or not sid then return nil end
+    if tostring(cid) ~= tostring(club) or tostring(sid) ~= tostring(stream) then return nil end
     return ch
 end
 
 -- Is a guildie (not me) talking in the guild channel right now?
 function Voice.SomeoneTalking()
     local ch = Voice.GuildChannel()
-    if not ch or type(ch.members) ~= "table" then return false end
-    for _, m in ipairs(ch.members) do
-        if m.isSpeaking == true and Ask("IsMemberLocalPlayer", m.memberID, ch.channelID) ~= true then return true end
+    local members, chID = Field(ch, "members", "table"), Field(ch, "channelID")
+    if not members or not chID then return false end
+    for _, m in ipairs(members) do
+        local id = Field(m, "memberID")
+        if id and Field(m, "isSpeaking", "boolean") == true and Ask("IsMemberLocalPlayer", id, chID) ~= true then return true end
     end
     return false
 end
@@ -367,19 +385,20 @@ function Voice.Tick()
     local t0 = clock and clock()
     local s = ns.settings
     local ch = Voice.GuildChannel()
-    if not ch or type(ch.members) ~= "table" then Voice.list = {} return end
+    local members, chID = Field(ch, "members", "table"), Field(ch, "channelID")
+    if not members or not chID then Voice.list = {} return end
     if GetTime() < pausedUntil then return end
     local saved, list, calls = Saved(), {}, 0
-    for _, m in ipairs(ch.members) do
-        local id = m.memberID
-        if Ask("IsMemberLocalPlayer", id, ch.channelID) ~= true then
-            local guid = ns.Public(Ask("GetMemberGUID", id, ch.channelID), "string")
-            local rawName = ns.Public(Ask("GetMemberName", id, ch.channelID), "string")
+    for _, m in ipairs(members) do
+        local id = Field(m, "memberID")
+        if id and Ask("IsMemberLocalPlayer", id, chID) ~= true then
+            local guid = ns.Public(Ask("GetMemberGUID", id, chID), "string")
+            local rawName = ns.Public(Ask("GetMemberName", id, chID), "string")
             local name = rawName and ns.Key(rawName)
             local loc = Loc(guid)
-            local row = { name = name or "?", speaking = m.isSpeaking == true }
+            local row = { name = name or "?", speaking = Field(m, "isSpeaking", "boolean") == true }
             list[#list + 1] = row
-            local skip = not loc or m.isMutedForAll == true or m.isSilenced == true
+            local skip = not loc or Field(m, "isMutedForAll", "boolean") == true or Field(m, "isSilenced", "boolean") == true
                 or Ask("IsMemberMuted", loc) == true
             if not skip then
                 local now = GetVol(loc)

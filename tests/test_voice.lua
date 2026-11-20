@@ -136,3 +136,26 @@ panel.join:Click()
 check(provider == 0, "Join picks Blizzard's own voice service first")
 pending = true; ns.Fire("VOICE")
 check(tab.state == "notin" and panel.detail:GetText() == L.VOICE_ST_JOINING and not panel.join:IsShown(), "while joining: says so, no second Join")
+
+-- 0.20.1 report: "Voice.lua:59: attempt to compare a secret string value" (x343). On some clients the
+-- channel table comes back fine but the ids and flags inside it are secret. A fake secret: any use
+-- that would compare it errors, and issecretvalue says so.
+local SECRET = setmetatable({}, { __tostring = function() error("attempt to compare a secret string value") end })
+local realSecret = issecretvalue
+issecretvalue = function(v) return v == SECRET end
+active = 10001
+C_VoiceChat.GetChannel = function(id) return { channelID = id, clubId = SECRET, streamId = SECRET, members = {
+    { memberID = SECRET, isSpeaking = SECRET } } } end
+local errsBefore = #ns.db.errors
+local okG, chG = pcall(ns.Voice.GuildChannel)
+check(okG and chG == nil, "secret channel ids: no error, just not counted as guild voice", tostring(chG))
+ns.Fire("VOICE")
+check(#ns.db.errors == errsBefore, "secret channel ids: no error saved", tostring(ns.db.errors[#ns.db.errors] and ns.db.errors[#ns.db.errors].msg))
+-- Ids fine but the members' fields secret: the guild channel is found, the hidden members are skipped.
+C_VoiceChat.GetChannel = function(id) return { channelID = id, clubId = "503775341", streamId = "1", members = {
+    { memberID = SECRET, isSpeaking = SECRET, isMutedForAll = SECRET } } } end
+local okT, talking = pcall(ns.Voice.SomeoneTalking)
+check(okT and talking == false, "secret member fields: nobody counted as talking, no error")
+local okV = pcall(ns.Voice.Tick)
+check(okV and #ns.db.errors == errsBefore, "secret member fields: the volume tick skips them, no error")
+issecretvalue = realSecret

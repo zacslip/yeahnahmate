@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.2 (not released yet)
+
+- **Fixed a voice chat error** that could repeat hundreds of times ("attempt to compare a secret string value" in Voice.lua). On some setups the game hides details of the voice channel you're in from addons; the addon now treats a hidden channel as not the guild's instead of erroring, so Proximity just waits.
+
 ## 0.20.1
 
 - **Guildies near you on the minimap, smoother and closer to real time**: while a guildie with the addon is close by (about minimap range), you both now send your position every second while moving (it was every 3), and their dot moves smoothly every frame towards their newest position instead of guessing ahead, so it no longer runs past them and snaps back. It's about a second behind them. With 7 to 15 close by it slows down a bit, and in a crowd (more than 15, like a guild meeting) it works as before, so the guild's traffic stays in check. These go on their own addon message channel, so they never hold up anything else.
