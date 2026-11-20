@@ -2,9 +2,9 @@
 -- window's right edge (chat, roster, guild info...), in the same style. Clicking it closes their window
 -- and opens ours.
 --
--- DEV ONLY for now (0.20.3 probe): off unless the dev console switches it on (ns.db.dev.guildButton).
--- What we don't know yet on Forever: whether hiding their window ourselves leaves the game's window
--- layout happy. We may not use the game's panel functions (they taint), so it's a plain Hide, never in
+-- On by default; Settings (Minimap section) turns it off (settings.guildButton). Checked on Forever
+-- (0.20.3): a plain Hide of their window closes it cleanly, and J, C and P open in the right place
+-- after. We may not use the game's panel functions (they taint), so it's a plain Hide, never in
 -- combat. We don't hook or change anything of Blizzard's: our button is our own frame, parented to
 -- their window so it shows and hides with it, and placed by reading where their tabs are.
 local ADDON, ns = ...
@@ -149,22 +149,30 @@ local function Build()
     Place()
 end
 
-function GB.On() return ns.db and ns.db.dev and ns.db.dev.guildButton == true end
+-- On unless the player unticks it in Settings (settings.guildButton).
+function GB.On() return ns.settings ~= nil and ns.settings.guildButton ~= false end
 
--- Show or hide our button (the dev console's switch).
-function GB.Set(on)
-    ns.db.dev.guildButton = on and true or nil
+-- Make, show or hide our button to match the setting.
+function GB.Apply()
+    local on = GB.On()
     -- Never load their window ourselves (code loaded by an addon is tainted): if it isn't loaded yet,
     -- the button is made when the game loads it (the first J).
     if on and Loaded() then Build() end
-    if button then button:SetShown(on == true) end
+    if button then button:SetShown(on) end
     ns.Fire("GUILDBUTTON")
+end
+
+-- The dev console's switch and Settings' tick both land here.
+function GB.Set(on)
+    ns.settings.guildButton = on and true or false
+    GB.Apply()
 end
 
 ns.OnEvent("ADDON_LOADED", function(name)
     if name == "Blizzard_Communities" and GB.On() then ns.Safe(Build) end
 end)
-ns.Listen("LOGIN", function() if GB.On() and Loaded() then ns.Safe(Build) end end)
+ns.Listen("LOGIN", function() ns.Safe(GB.Apply) end)
+ns.Listen("SETTINGS", function() if button or GB.On() then ns.Safe(GB.Apply) end end)
 
 -- For the dev console: what the game's guild window looks like to us, one line per finding; also
 -- saved to ns.db.dev.guildProbe (written to disk on /reload).
@@ -199,7 +207,7 @@ function GB.Probe()
         Add("In the game's window list (UIPanelWindows): " .. tostring(type(UIPanelWindows) == "table"
             and UIPanelWindows.CommunitiesFrame ~= nil))
     end
-    Add("Dev switch: " .. (GB.On() and "ON" or "OFF (tick Add our button to the guild window)"))
+    Add("Setting: " .. (GB.On() and "ON" or "OFF (Settings, or the console's switch)"))
     Add("Our button: " .. (button and (button:IsShown() and "made and shown" or "made, hidden") or "not made yet"))
     Add("Last click: " .. (GB.last or "none yet"))
     ns.db.dev.guildProbe = { at = date and date("%Y-%m-%d %H:%M") or "?", lines = out }

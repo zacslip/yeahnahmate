@@ -27,6 +27,7 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - Who's online, with their level, zone and what they're up to (in a group, in a dungeon, in town).
 - Views for *near my level*, *in my zone* and *everyone*, with a name search and sortable columns, including each guildie's roles and race.
 - Hover a name for their rank, what they look after, their alts and their titles. One-click whisper and invite.
+- A Yeah Nah Mate button on the game's own guild window (J) takes you straight here.
 
 **Dungeons**
 - Post a group with the roles you need. Guildies at the right level get a pop-up, sign up as tank, healer or DPS, and you invite them with a click.

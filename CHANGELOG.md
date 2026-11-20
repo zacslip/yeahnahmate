@@ -2,7 +2,8 @@
 
 ## 0.20.3 (not released yet)
 
-- Groundwork for a Yeah Nah Mate button on the game's Guild & Communities window. Switched off for everyone until it's been tested.
+- **A Yeah Nah Mate button on the game's guild window**: open Guild & Communities (J) and there's a Yeah Nah Mate tab under the tabs on the right, in the same style. Click it to close the game's window and open Yeah Nah Mate. In combat the game's window stays open and Yeah Nah Mate opens on top. Don't want it? Untick it in Settings (Minimap section).
+- Settings: the memory line is shorter, to make room.
 
 ## 0.20.2
 

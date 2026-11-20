@@ -1,6 +1,6 @@
--- Our tab on Blizzard's Guild & Communities window (UI/GuildButton.lua, dev only for now): made only
--- when their window is loaded by the game, placed under their lowest shown tab, a click closes theirs
--- (never in combat) and opens ours; the probe reports what it found.
+-- Our tab on Blizzard's Guild & Communities window (UI/GuildButton.lua; on by default, Settings turns
+-- it off): made only when their window is loaded by the game, placed under their lowest shown tab, a
+-- click closes theirs (never in combat) and opens ours; the probe reports what it found.
 YeahNahMateDB = nil
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
 LOGGED_IN = true
@@ -8,12 +8,14 @@ FireEvent("PLAYER_LOGIN")
 Tick(15)
 local GB = ns.GuildButton
 
-check(GB.Button() == nil, "off by default: no button")
-check(not GB.On(), "the dev switch is off by default")
+check(GB.On() and ns.settings.guildButton == true, "on by default")
+check(GB.Button() == nil, "but their window isn't loaded yet: no button (we never load it ourselves)")
 
--- Switched on before their window has loaded: nothing made yet, and we never load it ourselves.
-GB.Set(true)
-check(GB.On() and GB.Button() == nil, "on, but their window isn't loaded: no button yet")
+-- Settings has the tick.
+ns.UI.Open("settings")
+local tick
+for _, o in ipairs(CREATED) do if o._text == ns.L.SET_GUILDBTN then tick = o end end
+check(tick ~= nil, "Settings shows the guild window button tick")
 
 -- The game loads their window (the first J): a fake one with four tabs, 32 high, 17 apart.
 CommunitiesFrame = CreateFrame("Frame", "CommunitiesFrame", UIParent)
