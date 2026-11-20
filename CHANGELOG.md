@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.21.1 (not released yet)
+## 0.21.1
 
 - Settings tidied: the share message box uses the whole width; the Welcome page button sits at the bottom under "What the addon shares"; "Minimap button" no longer runs into the nameplates tick.
 
