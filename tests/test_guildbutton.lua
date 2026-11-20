@@ -25,20 +25,50 @@ for key, top in pairs(tops) do
     t:Show()
     CommunitiesFrame[key] = t
 end
+-- Forever has a fifth tab under Guild info (a settings tab) that we don't know by name: only found by
+-- being in the same column.
+local kids = {}
+for key in pairs(tops) do kids[#kids + 1] = CommunitiesFrame[key] end
+for _, t in ipairs(kids) do t.GetLeft = function() return 900 end; t.GetWidth = function() return 32 end end
+local settingsTab = CreateFrame("CheckButton", nil, CommunitiesFrame)
+settingsTab.GetTop = function() return 404 end
+settingsTab.GetBottom = function() return 372 end
+settingsTab.GetLeft = function() return 900 end
+settingsTab.GetWidth = function() return 32 end
+settingsTab:Show()
+CommunitiesFrame.SettingsTabWeDontKnow = settingsTab
+kids[#kids + 1] = settingsTab
+-- Something else of theirs, not in the column: ignored.
+local other = CreateFrame("Button", nil, CommunitiesFrame)
+other.GetTop = function() return 100 end; other.GetBottom = function() return 10 end
+other.GetLeft = function() return 300 end; other.GetWidth = function() return 32 end
+other:Show()
+kids[#kids + 1] = other
+CommunitiesFrame.GetChildren = function()
+    local out = {}
+    for _, k in ipairs(kids) do out[#out + 1] = k end
+    if GB.Button() then out[#out + 1] = GB.Button() end
+    return unpack(out)
+end
 CommunitiesFrame:Show()
 FireEvent("ADDON_LOADED", "Blizzard_Communities")
 local b = GB.Button()
 check(b ~= nil, "their window loaded: our button is made")
 check(b and b:GetParent() == CommunitiesFrame, "parented to their window (shows and hides with it)")
-check(b and b._pt and b._pt[2] == CommunitiesFrame.GuildInfoTab and b._pt[5] == -17,
-    "placed under their lowest tab, same gap", b and b._pt and tostring(b._pt[5]))
+check(b and b._pt and b._pt[2] == settingsTab and b._pt[5] == -17,
+    "placed under their lowest tab (the unnamed fifth one), same gap", b and b._pt and tostring(b._pt[5]))
+settingsTab:Hide()
+b:GetScript("OnUpdate")(b, 0.6)
+check(b._pt[2] == CommunitiesFrame.GuildInfoTab, "fifth tab hidden: under Guild info")
+settingsTab:Show()
+b:GetScript("OnUpdate")(b, 0.6)
 
 -- A tab goes (another community): it moves up under the new lowest.
-CommunitiesFrame.GuildInfoTab:Hide()
+settingsTab:Hide(); CommunitiesFrame.GuildInfoTab:Hide()
 Tick(0.6)
 b:GetScript("OnUpdate")(b, 0.6)
 check(b._pt[2] == CommunitiesFrame.GuildBenefitsTab, "a tab hidden: our button moves up under the new lowest")
-CommunitiesFrame.GuildInfoTab:Show()
+CommunitiesFrame.GuildInfoTab:Show(); settingsTab:Show()
 b:GetScript("OnUpdate")(b, 0.6)
 
 -- Click: theirs closes, ours opens.
@@ -58,7 +88,7 @@ FAKE.combat = false
 -- The probe.
 local lines = GB.Probe()
 local all = table.concat(lines, "\n")
-check(all:find("Tabs found: 4 of 4", 1, true) and all:find("ChatTab: shown", 1, true), "probe: finds their four tabs", all)
+check(all:find("Tabs found: 4 of 4 named, 1 more", 1, true) and all:find("goes under: SettingsTabWeDontKnow", 1, true) and all:find("ChatTab: shown", 1, true), "probe: finds their four tabs", all)
 check(ns.db.dev.guildProbe and #ns.db.dev.guildProbe.lines == #lines, "probe saved for after /reload")
 
 -- Switched off: our button hides.

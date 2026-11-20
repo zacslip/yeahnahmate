@@ -37,25 +37,52 @@ local function Loaded()
     return Their() ~= nil
 end
 
--- Their lowest shown tab, the gap between their tabs, and how many we found.
+-- Other tabs in the same column that we don't know by name (Forever has a fifth, a settings tab, under
+-- Guild info: our button sat hidden behind it). Any shown child of their window lined up with the chat
+-- tab and the same width counts. Read only; nothing of theirs is changed.
+local extras = {}
+local function ColumnExtras(cf)
+    wipe(extras)
+    local chat = cf.ChatTab
+    local left, width = Num(chat, "GetLeft"), Num(chat, "GetWidth")
+    if not left or not width or type(cf.GetChildren) ~= "function" then return extras end
+    local known = {}
+    for _, key in ipairs(TABS) do if type(cf[key]) == "table" then known[cf[key]] = true end end
+    local ok, kids = pcall(function() return { cf:GetChildren() } end)
+    if not ok then return extras end
+    for _, k in ipairs(kids) do
+        if k ~= button and not known[k] and type(k.IsShown) == "function" and k:IsShown() then
+            local l, w = Num(k, "GetLeft"), Num(k, "GetWidth")
+            if l and w and Num(k, "GetTop") and math.abs(l - left) < 4 and math.abs(w - width) < 4 then
+                extras[#extras + 1] = k
+            end
+        end
+    end
+    return extras
+end
+
+-- Their lowest shown tab, the gap between their tabs, and how many we found (named, extra).
 local function LowestTab()
     local cf = Their()
     if not cf then return nil end
     local lowest, lowBottom, prev, gap, found = nil, nil, nil, nil, 0
+    local function Consider(t)
+        local top, bottom = Num(t, "GetTop"), Num(t, "GetBottom")
+        if prev and top and not gap then gap = prev - top end
+        if bottom and (not lowBottom or bottom < lowBottom) then lowest, lowBottom = t, bottom end
+        if not bottom and not lowest then lowest = t end
+        prev = bottom
+    end
     for _, key in ipairs(TABS) do
         local t = cf[key]
         if type(t) == "table" and t.IsShown then
             found = found + 1
-            if t:IsShown() then
-                local top, bottom = Num(t, "GetTop"), Num(t, "GetBottom")
-                if prev and top and not gap then gap = prev - top end
-                if bottom and (not lowBottom or bottom < lowBottom) then lowest, lowBottom = t, bottom end
-                if not bottom and not lowest then lowest = t end
-                prev = bottom
-            end
+            if t:IsShown() then Consider(t) end
         end
     end
-    return lowest, (gap and gap > 0 and gap < 80) and gap or GAP, found
+    local more = ColumnExtras(cf)
+    for _, t in ipairs(more) do Consider(t) end
+    return lowest, (gap and gap > 0 and gap < 80) and gap or GAP, found, #more
 end
 
 local function Place()
@@ -157,8 +184,18 @@ function GB.Probe()
                 Add("  " .. key .. ": not found")
             end
         end
-        local _, gap, found = LowestTab()
-        Add(string.format("Tabs found: %d of %d; gap between them: %s", found or 0, #TABS, tostring(gap)))
+        local lowest, gap, found, more = LowestTab()
+        Add(string.format("Tabs found: %d of %d named, %d more in the same column; gap between them: %s",
+            found or 0, #TABS, more or 0, tostring(gap)))
+        for i, t in ipairs(extras) do
+            local name
+            for k, v in pairs(cf) do if v == t then name = tostring(k) break end end
+            Add(string.format("  extra %d: %s, top %s, bottom %s", i, name or (t.GetName and t:GetName()) or "no name",
+                tostring(Num(t, "GetTop")), tostring(Num(t, "GetBottom"))))
+        end
+        local lowName
+        for k, v in pairs(cf) do if v == lowest then lowName = tostring(k) break end end
+        Add("Our button goes under: " .. (lowName or (lowest and "a tab with no name") or "none (top right)"))
         Add("In the game's window list (UIPanelWindows): " .. tostring(type(UIPanelWindows) == "table"
             and UIPanelWindows.CommunitiesFrame ~= nil))
     end
