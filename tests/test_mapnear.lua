@@ -1,20 +1,15 @@
 -- Nearby guildies on the minimap: the near lane (my position every 1 s while a guildie with the addon
 -- is within 400 yd, slower with 7-15 near, as usual in a crowd; on its own prefix, one in three on
 -- the old one) and near dots we move every frame (gliding from where the dot is to the newest
--- position over the last gap, never past it; straight there after a teleport; a group member read
--- live from the game; none in a crowd).
+-- position over the last gap, never past it; straight there after a teleport; none in a crowd).
+-- A guildie in my group gets no dot from us (the game draws its own) and doesn't count as near.
 YeahNahMateDB = nil
 -- The game's UnitPosition gives world yards (y first). Set before loading: the map library keeps its
--- own copy. live: unit -> { map x, map y }, where the game says a group member is.
-local live = {}
+-- own copy.
 local HBD
 UnitPosition = function(unit)
-    if not HBD then return nil end      -- while loading
-    local mx, my
-    if unit == "player" then mx, my = FAKE.x, FAKE.y
-    elseif live[unit] then mx, my = live[unit][1], live[unit][2]
-    else return nil end
-    local wx, wy, inst = HBD:GetWorldCoordinatesFromZone(mx, my, 1413)
+    if not HBD or unit ~= "player" then return nil end      -- while loading
+    local wx, wy, inst = HBD:GetWorldCoordinatesFromZone(FAKE.x, FAKE.y, 1413)
     return wy, wx, 0, inst
 end
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
@@ -82,23 +77,30 @@ local still = M.GlideSpot("Bluey Heeler")
 Tick(3)
 check(still and M.GlideSpot("Bluey Heeler") == still, "stopped: the dot stays")
 
--- In my group: the game says where Bluey is, every frame, no message needed.
+-- In my group: no dot of ours at all (the game draws group members itself), and not near.
 Pos(0.6); Tick(1.1)
 FAKE.party = { "Bluey Heeler" }; FAKE.group = 1
 FireEvent("GROUP_ROSTER_UPDATE")
-live.party1 = { 0.61, 0.5 }
-Tick(0.1)
-local gx, _, isLive = M.GlideSpot("Bluey Heeler")
-check(isLive and Near(gx, World(0.61)), "a group member: drawn live where the game says", tostring(gx))
-live.party1 = { 0.615, 0.5 }
-Tick(0.1)
-check(Near((M.GlideSpot("Bluey Heeler")), World(0.615)), "and follows them frame by frame")
--- The game hides it (an instance, or a hidden value): back to gliding on messages.
-live.party1 = nil
-Tick(0.1)
-check(select(3, M.GlideSpot("Bluey Heeler")) == false, "the game stops saying: glides on messages again")
+Tick(1.1)
+local w, mini = M.DotShown("Bluey Heeler")
+check(not w and not mini, "a group member: no dot of ours on the map or minimap")
+check(M.near["Bluey Heeler"] == nil and M.GlideSpot("Bluey Heeler") == nil, "and not near (no 1 s positions for them)")
+Pos(0.61); Tick(1.1)
+w, mini = M.DotShown("Bluey Heeler")
+check(not w and not mini and M.pos["Bluey Heeler"].x == 0.61, "their positions still come in, but stay undrawn")
+-- Leaving the group: our dot is back.
 FAKE.party = {}; FAKE.group = 0
 FireEvent("GROUP_ROSTER_UPDATE")
+Tick(1.1)
+w, mini = M.DotShown("Bluey Heeler")
+check(w and mini and M.near["Bluey Heeler"], "left the group: our dot is back, and near again")
+-- The dev console's pretend group does the same, on my screen only.
+M.PretendGroup("Bluey Heeler", true)
+w, mini = M.DotShown("Bluey Heeler")
+check(not w and not mini and M.near["Bluey Heeler"] == nil, "pretend group: dot hidden")
+M.PretendGroup("Bluey Heeler", false)
+w, mini = M.DotShown("Bluey Heeler")
+check(w and mini, "pretend group off: dot back")
 
 -- The old prefix still works (a guildie on 0.20.0).
 Pos(0.62, "YNM"); Tick(1.5)
@@ -139,8 +141,11 @@ check(okRun and M.near[who] and M.GlideSpot(who) ~= nil, "the runner is near and
 local r1 = M.GlideSpot(who); Tick(0.5)
 check(M.GlideSpot(who) ~= r1, "and keeps moving")
 check(M.nearReal == 0, "a fake runner doesn't make me send faster")
+M.PretendGroup(who, true)
+check(M.near[who] == nil and M.GlideSpot(who) == nil, "runner pretend-grouped: no dot of ours")
 ns.Sim.Runner(false)
 check(ns.Sim.RunnerName() == nil, "runner off")
+check(M.pretendGroup[who] == nil, "stopping the runner ends the pretend group")
 ns.Sim.Stop()
 
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))

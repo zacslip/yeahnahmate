@@ -688,7 +688,11 @@ end
 local runner, runnerTicker = nil, nil
 function Sim.Runner(on)
     if runnerTicker then runnerTicker:Cancel(); runnerTicker = nil end
-    if runner then runner.running = nil end
+    if runner then
+        runner.running = nil
+        -- The dev console's "in my group (pretend)" ends with the run.
+        if ns.Map.pretendGroup[runner.name] then ns.Map.PretendGroup(runner.name, false) end
+    end
     runner = nil
     if not on then return true end
     if not fakes then return false, "Fake guildies aren't on." end

@@ -14,8 +14,9 @@
 -- A dot goes after 150 s without a POS, or at once when the roster says they went offline.
 -- Nearby minimap dots move every frame, drawn by us rather than the map library: from where the dot
 -- is towards the newest position, over the time the last gap between positions took, so they run
--- smoothly about one position (1 s) behind and never overshoot. A guildie in my group is read from
--- the game itself (UnitPosition works for party and raid members), so their dot is live.
+-- smoothly about one position (1 s) behind and never overshoot. A guildie in my group gets no dot
+-- from us at all: the game already draws group members on the map and minimap, live (0.20.1), and
+-- they don't count for the near lane either.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -167,7 +168,8 @@ end
 -- Draw (or hide) one guildie's dots from their last position.
 function Map.Place(name)
     local p, m = Map.pos[name], ns.Guild.Get(name)
-    if not p or not m or not m.online or name == ns.me then
+    -- In my group: the game's own dot shows them, so we draw none (we keep their position).
+    if not p or not m or not m.online or name == ns.me or Map.Grouped(name) then
         HideDots(name)
         return
     end
@@ -291,7 +293,8 @@ function Map.FindNear()
     if mm then
         for name, p in pairs(Map.pos) do
             -- Same zone map only: anyone else is rarely in minimap reach, and the distance is costly.
-            if p.m == mm and now - p.at < EXPIRE then
+            -- Group members don't count: the game draws them, so nobody needs my 1 s positions for them.
+            if p.m == mm and now - p.at < EXPIRE and not Map.Grouped(name) then
                 local d = HBD:GetZoneDistance(mm, mx, my, p.m, p.x, p.y)
                 if d and d <= NEAR then
                     count = count + 1
@@ -345,32 +348,32 @@ function Map.NearInterval(count)
     return math.min(Map.Interval(), FAST * count / 6)
 end
 
--- Group members: name -> "party1".."raid40", rebuilt when the group changes.
+-- Group members: name -> "party1".."raid40", rebuilt when the group changes. Their dots are the
+-- game's, not ours, so a change redraws everyone (joining hides our dot, leaving brings it back).
 local groupUnit = {}
+Map.pretendGroup = {}           -- dev console: a fake guildie treated as in my group (only on my screen)
 local function ReadGroup()
     wipe(groupUnit)
-    if not (IsInGroup and IsInGroup()) then return end
-    local raid = IsInRaid and IsInRaid()
-    for i = 1, raid and 40 or 4 do
-        local unit = (raid and "raid" or "party") .. i
-        local key = ns.UnitKey(unit)
-        if key and key ~= ns.me then groupUnit[key] = unit end
+    if IsInGroup and IsInGroup() then
+        local raid = IsInRaid and IsInRaid()
+        for i = 1, raid and 40 or 4 do
+            local unit = (raid and "raid" or "party") .. i
+            local key = ns.UnitKey(unit)
+            if key and key ~= ns.me then groupUnit[key] = unit end
+        end
     end
+    Map.PlaceAll()
 end
 ns.OnEvent("GROUP_ROSTER_UPDATE", function() ns.Safe(ReadGroup) end)
 Map.groupUnit = groupUnit
 
--- Where the game says a group member is right now (world yards), or nil (not grouped, in an
--- instance, a hidden value).
-local function LivePosition(name)
-    local unit = groupUnit[name]
-    if not unit or not UnitPosition then return nil end
-    -- Checked here first: the map library would do sums on a hidden value.
-    local a, b, _, i = UnitPosition(unit)
-    if not ns.Public(a, "number") or not ns.Public(b, "number") or not ns.Public(i, "number") then return nil end
-    local x, y, inst = HBD:GetUnitWorldPosition(unit)
-    if not x or not y or not inst then return nil end
-    return x, y, inst
+function Map.Grouped(name) return groupUnit[name] ~= nil or Map.pretendGroup[name] == true end
+
+-- Dev console: treat a fake guildie as in my group (or not), so the dot's hiding can be seen solo.
+function Map.PretendGroup(name, on)
+    Map.pretendGroup[name] = on and true or nil
+    Map.FindNear()
+    Map.PlaceAll()
 end
 
 -- A new position for a near dot: glide from where it is now to there, taking as long as the last gap
@@ -414,7 +417,7 @@ local function Draw(f, mm, px, py, x, y, sin, cos, square)
     f:Show()
 end
 
--- Every frame, near minimap dots only (up to GLIDE_MAX): live for group members, gliding otherwise.
+-- Every frame, near minimap dots only (up to GLIDE_MAX), gliding towards their newest position.
 function Map.Step()
     if not ns.settings.showMinimap then return end
     local mm = Pins.Minimap or Minimap
@@ -434,11 +437,7 @@ function Map.Step()
     for name in pairs(Map.near) do
         local f = miniDots[name]
         if f and f.gliding then
-            local x, y, inst = LivePosition(name)
-            f.live = x ~= nil
-            if x then
-                f.wx, f.wy, f.winst = x, y, inst
-            elseif f.tx then
+            if f.tx then
                 local k = f.dur > 0 and math.min(1, (now - f.t0) / f.dur) or 1
                 f.wx, f.wy = f.fx + (f.tx - f.fx) * k, f.fy + (f.ty - f.fy) * k
             end
@@ -450,23 +449,24 @@ ns.OnEvent("CVAR_UPDATE", function() rotateCVar = nil end)
 
 -- For the dev console: one line on nearby dots and my near lane.
 function Map.NearStatus()
-    local n, live, glide = 0, 0, 0
+    local n, glide, grouped = 0, 0, 0
     for name in pairs(Map.near) do
         n = n + 1
         local f = miniDots[name]
-        if f and f.live then live = live + 1 elseif f and f.gliding then glide = glide + 1 end
+        if f and f.gliding then glide = glide + 1 end
     end
+    for name in pairs(Map.pos) do if Map.Grouped(name) then grouped = grouped + 1 end end
     local pace = n > 0 and Map.nearReal and Map.nearReal > 0 and Map.NearInterval(n)
-    return string.format("%d near (%d gliding, %d live from my group). %s Sent this session: %d positions, %d of them on the fast prefix.",
-        n, glide, live, pace and string.format("I send every %.1f s while moving.", pace)
+    return string.format("%d near (%d gliding). %d in my group: no dot of ours, the game's own shows them. %s Sent this session: %d positions, %d of them on the fast prefix.",
+        n, glide, grouped, pace and string.format("I send every %.1f s while moving.", pace)
             or "Near lane off (nobody real near, or sharing off).", Map.sentCount or 0, Map.sentFast or 0)
 end
 
--- For tests and the dev console: where a near dot is drawn (world yards), and whether it's live.
+-- For tests and the dev console: where a near dot is drawn (world yards).
 function Map.GlideSpot(name)
     local f = miniDots[name]
     if not (f and f.gliding) then return nil end
-    return f.wx, f.wy, f.live == true
+    return f.wx, f.wy
 end
 
 ---------------------------------------------------------------------------------------------------
