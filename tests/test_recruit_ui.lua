@@ -113,5 +113,5 @@ for _, o in ipairs(CREATED) do
     if o._text == L.SET_WELCOME and o.Click then welcome = o end
     if type(o._text) == "string" and o._text:find(L.PRIVACY .. "|r", 1, true) then privacyBox = o end
 end
-check(welcome and welcome._pt and welcome._pt[3] == -2, "the Welcome page button sits at the top")
+check(welcome and welcome._pt and welcome._pt[3] == -388, "the Welcome page button sits at the bottom, under the share message")
 check(privacyBox == nil, "no Privacy box any more")

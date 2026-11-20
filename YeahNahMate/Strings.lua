@@ -617,10 +617,12 @@ L.WELCOME_PICK_BOTH = "Pick Yeah or Nah for both."
 L.WELCOME_DONE = "Sounds good"
 L.WELCOME_SAVED = "All set. Type /ynm (or click the minimap button) to open it."
 L.SET_WELCOME = "Welcome page"
+L.SET_ABOUT_HEAD = "What the addon shares"
+L.SET_WELCOME_HINT = "What Yeah Nah Mate shares (only with guildmates who have it), and the first-run questions again."
 
 -- Settings
 L.SET_BUTTON = "Minimap"
-L.SET_MINIMAP = "Show the minimap button"
+L.SET_MINIMAP = "Minimap button"
 L.SET_PLATES = "Mark guildies' nameplates"
 L.PROF_MATS = "Materials"
 L.PROF_MATS_HAVE = "you have %d"

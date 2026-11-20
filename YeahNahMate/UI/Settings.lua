@@ -117,10 +117,7 @@ local function Build(p)
     p.altsState:SetJustifyV("TOP")
 
     -- Professions
-    Header(p, L.SET_PROF, 386, -4, 226)
-    -- The welcome page (what the addon shares and the first-run questions), top right. It took over from
-    -- the Privacy box at the bottom (21 Nov), which made room for the recruiting messages.
-    UI.Button(p, L.SET_WELCOME, 120, 616, -2, function() ns.Welcome.Show() end, 20)
+    Header(p, L.SET_PROF, 386, -4, 350)
     p.shareProf = UI.Check(p, L.SET_SHARE_PROF, 386, -26, s.shareProfessions == true, function(on)
         s.shareProfessions = on
         Changed()
@@ -171,9 +168,12 @@ local function Build(p)
     -- empty = the default.
     Header(p, L.SET_RECRUIT_HEAD, 0, -304, 736)
     local label = Text(p, L.SET_RECRUIT_MSG, "GameFontHighlightSmall", 4, -334)
+    label:SetJustifyH("LEFT")
+    -- From just after the label to the right edge, so as much of the message shows as fits.
     local e = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
-    e:SetSize(570, 20)
-    e:SetPoint("TOPLEFT", 162, -330)
+    e:SetHeight(20)
+    e:SetPoint("LEFT", label, "RIGHT", 14, 0)
+    e:SetPoint("RIGHT", p, "RIGHT", -6, 0)
     e:SetAutoFocus(false)
     e:SetMaxLetters(240)
     e:SetScript("OnEscapePressed", function(self)
@@ -195,8 +195,13 @@ local function Build(p)
         GameTooltip:Show()
     end)
     e:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    label:SetWidth(156)
     p.recruitMsg = e
+
+    -- The welcome page (what the addon shares, and the first-run questions), under it. It replaced the
+    -- Privacy box (21 Nov).
+    Header(p, L.SET_ABOUT_HEAD, 0, -366, 736)
+    Text(p, L.SET_WELCOME_HINT, "GameFontHighlightSmall", 4, -394)
+    p.welcomeBtn = UI.Button(p, L.SET_WELCOME, 120, 612, -388, function() ns.Welcome.Show() end, 22)
 end
 
 local function Refresh(p)
