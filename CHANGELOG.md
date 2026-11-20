@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.21.0 (not released yet)
+## 0.21.0
 
 Recruiters:
 
