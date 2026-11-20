@@ -1,9 +1,8 @@
--- The recruiting drawer (Phase 13; data in Recruit.lua): two tabs on the main window's RIGHT edge, up by
--- the version number, in the style of our tab on the game's guild window (UI/GuildButton.lua):
---   top:    Guild recruiting (the guild crest). A blank page for now; filled in after the addon page.
---   below:  Addon recruiting (the handshake). A gold "!" on it until I've said who got me onto the addon.
--- Clicking a tab slides a panel out to the right, from under the window, like the voice drawer does on the
--- left (UI/Voice.lua), on that tab's page; clicking the open tab again slides it shut.
+-- The addon recruiting drawer (Phase 13; data in Recruit.lua): a handshake tab on the main window's RIGHT
+-- edge, up by the version number, in the style of our tab on the game's guild window (UI/GuildButton.lua),
+-- with a gold "!" until I've said who got me onto the addon. Clicking it slides a panel out to the right,
+-- from under the window, like the voice drawer does on the left (UI/Voice.lua); again slides it shut.
+-- (A Guild recruiting tab above it was planned and dropped, 21 Nov; the page code still allows a second.)
 --
 -- Addon recruiting: who got me onto it (the question until answered, then a short note), the guildies
 -- online without the addon (Share), and the leaderboard (All time / This month). Everything under the
@@ -26,7 +25,7 @@ local BODY_ANSWERED, BODY_ASKING = -82, -150   -- where Share starts: under my n
 
 local holder, panel, tabs
 local open = false              -- starts shut each login
-local page = "addon"            -- "addon" or "guild"
+local page = "addon"            -- the only page (see the top)
 local period = "all"
 local shareOffset, pickOffset = 0, 0
 
@@ -86,7 +85,6 @@ end
 
 local function ShowPage()
     panel.addon:SetShown(page == "addon")
-    panel.guild:SetShown(page == "guild")
     -- The open page's tab glows (as on hover). A "checked" overlay washed the icon out to blank.
     for key, t in pairs(tabs) do
         t.sel = open and key == page
@@ -94,7 +92,7 @@ local function ShowPage()
     end
 end
 
--- Open or shut the drawer. which = "addon" / "guild" picks the page (and a click on the page already
+-- Open or shut the drawer. which = a page ("addon", the only one) picks it (and a click on the page already
 -- open shuts it); state = true / false forces it.
 function UI.ToggleRecruit(state, which)
     if not holder then return end
@@ -416,15 +414,6 @@ local function BuildAddonPage()
     return p
 end
 
--- Guild recruiting: blank for now (to be filled in after the addon page is settled).
-local function BuildGuildPage()
-    local p = CreateFrame("Frame", nil, panel)
-    p:SetAllPoints()
-    PageHead(p, UI.CREST, L.GUILDREC_TITLE, L.GUILDREC_SUB)
-    p:Hide()
-    return p
-end
-
 local function MakeTab(frame, key, icon, y, tip)
     local t = CreateFrame("Button", nil, frame)
     t:SetSize(32, 32)
@@ -460,12 +449,10 @@ local function Build(frame)
     panel:EnableMouse(true)
     panel:Hide()
     panel.addon = BuildAddonPage()
-    panel.guild = BuildGuildPage()
 
     -- The tabs ride along the drawer's right edge. They belong to the window, not the holder (it clips).
     tabs = {}
-    tabs.guild = MakeTab(frame, "guild", UI.CREST, -14, { L.GUILDREC_TITLE, L.GUILDREC_TAB_TIP })
-    tabs.addon = MakeTab(frame, "addon", HANDSHAKE, -14 - 49, function()
+    tabs.addon = MakeTab(frame, "addon", HANDSHAKE, -14, function()
         local lines = { L.RECRUIT_TITLE, L.RECRUIT_TAB_TIP }
         if ns.Recruit.NeedsAnswer() then lines[#lines + 1] = ns.GOLD .. L.RECRUIT_TAB_ASK .. "|r" end
         return lines

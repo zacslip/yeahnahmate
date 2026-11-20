@@ -167,8 +167,8 @@ local function Build(p)
     end)
     p.msPost:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
-    -- Recruiting messages (bottom, full width). Addon recruiting: what Share puts in the whisper
-    -- (Recruit.lua); saved as typed, empty = the default. The guild recruiting message goes under it later.
+    -- Addon recruiting (bottom, full width): what Share puts in the whisper (Recruit.lua); saved as typed,
+    -- empty = the default.
     Header(p, L.SET_RECRUIT_HEAD, 0, -304, 736)
     local label = Text(p, L.SET_RECRUIT_MSG, "GameFontHighlightSmall", 4, -334)
     local e = CreateFrame("EditBox", nil, p, "InputBoxTemplate")

@@ -20,14 +20,15 @@ Tick(2)
 UI.Open("home")
 local tab, drawer = UI.recruitTab, UI.recruitPanel
 local panel = drawer.addon
-check(tab and panel and UI.recruitTabs.guild, "the window has both tabs (guild above, addon below) and the drawer")
+check(tab and panel and UI.recruitTabs.guild == nil, "the window has the addon recruiting tab (no guild tab) and the drawer")
+check(tab._pt and tab._pt[5] == -14, "the tab sits up by the version")
 check(UI.recruitHolder._pt and UI.recruitHolder._pt[2] == YeahNahMateFrame and tostring(UI.recruitHolder._pt[3]):find("RIGHT", 1, true),
     "on the window's right edge")
 check(tab.bang:IsShown(), "a ! on the tab: I haven't answered")
 check(not UI.RecruitOpen(), "shut at first")
 tab:Click()
 Tick(0.5)
-check(UI.RecruitOpen() and drawer:IsShown() and panel:IsShown() and not drawer.guild:IsShown(), "click: it slides open on the addon page")
+check(UI.RecruitOpen() and drawer:IsShown() and panel:IsShown(), "click: it slides open")
 
 -- The question, with Bluey suggested (he shared with me).
 check(panel.question:IsShown() and not panel.answer:IsShown(), "the question shows")
@@ -94,19 +95,16 @@ check(ns.settings.recruitMsg == nil and edit:GetText() == L.RECRUIT_MSG_DEFAULT,
 
 check(#ns.db.errors == 0, "no errors " .. tostring(ns.db.errors[1] and ns.db.errors[1].msg))
 
--- The layout: once answered, Share moves up into the question's space (no gap); the guild tab swaps pages.
+-- The layout: once answered, Share moves up into the question's space (no gap); the tab opens and shuts.
 check(panel.body.top == -82, "answered: Share moved up into the question's space (no gap)")
 UI.Open("home")
-local guildTab = UI.recruitTabs.guild
-guildTab:Click()
-check(UI.RecruitOpen() and UI.RecruitPage() == "guild" and drawer.guild:IsShown() and not panel:IsShown(), "guild tab: the guild page (blank for now)")
-guildTab:Click()
-check(not UI.RecruitOpen(), "clicking the open tab again shuts it")
+if UI.RecruitOpen() then tab:Click() end
+check(not UI.RecruitOpen(), "clicking the open tab shuts it")
 tab:Click()
-check(UI.RecruitOpen() and UI.RecruitPage() == "addon" and panel:IsShown(), "addon tab: back on the addon page")
+check(UI.RecruitOpen() and panel:IsShown(), "and again opens it")
 
 -- The open tab glows (its icon stays); the shut one doesn't.
-check(tab.sel == true and UI.recruitTabs.guild.sel == false, "the open page's tab is the lit one")
+check(tab.sel == true, "the open tab glows")
 
 -- Settings: the Welcome button at the top; the recruiting messages at the bottom; no Privacy box.
 UI.Select("settings")
