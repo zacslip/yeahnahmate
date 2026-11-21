@@ -148,6 +148,43 @@ local function BuildGear()
     UI.settingsButton = gear
 end
 
+-- Show on map: the window stays open but drops behind the world map, and comes back when the map closes.
+-- Only our own frame's layer changes. The map is only looked at, never touched or hooked.
+local behindMap = false
+local MAP_CHECK, MAP_OPEN_WAIT = 0.2, 1     -- how often to look; how long the map gets to appear
+
+local function ComeBack(raise)
+    if not behindMap then return end
+    behindMap = false
+    if frame then
+        frame:SetFrameStrata("DIALOG")
+        if raise then frame:Raise() end
+    end
+end
+
+function UI.IsBehindMap() return behindMap end
+
+function UI.SendBehindMap()
+    if not frame or not frame:IsShown() or not WorldMapFrame then return false end
+    frame:SetFrameStrata("LOW")
+    local run = {}
+    behindMap = run
+    local waited, seen = 0, false
+    local function Look()
+        if behindMap ~= run then return end     -- already back, or a newer trip to the map
+        if WorldMapFrame:IsShown() then
+            seen = true
+        elseif seen or waited >= MAP_OPEN_WAIT then
+            ComeBack(true)
+            return
+        end
+        waited = waited + MAP_CHECK
+        C_Timer.After(MAP_CHECK, function() ns.Safe(Look) end)
+    end
+    C_Timer.After(MAP_CHECK, function() ns.Safe(Look) end)
+    return true
+end
+
 local function FootText()
     if ns.Sim and ns.Sim.IsOn() and not ns.Sim.shots then return "|cffff8040" .. L.SIM_FOOT .. "|r" end
     return L.FOOT_TIP
@@ -271,6 +308,11 @@ local function Build()
     -- In combat the game doesn't let addons change whether keys pass through, so Escape still closes
     -- the window there but the game also sees that press (it may clear your target).
     frame:SetScript("OnKeyDown", function(self, key)
+        -- Behind the map, every key is the map's and the game's: Escape closes the map, not this.
+        if behindMap then
+            if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+            return
+        end
         if InCombatLockdown() then
             if key == "ESCAPE" then self:Hide() end
             return
@@ -285,6 +327,7 @@ local function Build()
     -- Escape turns key pass-through off for that one press; turn it back on as soon as the window
     -- is hidden, so a window opened later (even in combat, when it can't be changed) never eats keys.
     frame:SetScript("OnHide", function(self)
+        ComeBack(false)
         C_Timer.After(0, function()
             if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
         end)
@@ -342,11 +385,16 @@ end
 
 function UI.Toggle()
     if not frame then Build() end
+    if behindMap then           -- /ynm while it's behind the map: bring it to the front
+        ComeBack(true)
+        return
+    end
     if frame:IsShown() then frame:Hide() else frame:Show() end
 end
 
 function UI.Open(key)
     if not frame then Build() end
+    ComeBack(true)
     if key then current = key end
     if frame:IsShown() then UI.Select(current) else frame:Show() end
 end

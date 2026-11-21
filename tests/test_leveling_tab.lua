@@ -351,9 +351,43 @@ mapRow:Click()
 Tick(1)
 check(openedMap == wanted.map and UI.LevelingPinnedQuest().id == wanted.id, "clicking pins it and opens the map there")
 check(#SENT == sentBefore, "the map click sends nothing")
+-- The window waits behind the map, leaves Escape to the map, and comes back when it closes.
+local win
+for _, o in ipairs(CREATED) do if o._name == "YeahNahMateFrame" then win = o end end
+check(win:IsShown() and UI.IsBehindMap() and win:GetFrameStrata() == "LOW", "Show on map: the window stays open, behind the map")
+check(g.questPanel:IsShown() and mapRow.map:GetText():find(L.GUIDE_PINNED, 1, true) and g.questPanel.clear:IsShown(), "same list behind it, marked Pinned")
+WorldMapFrame:Show()
+Tick(1)
+win:GetScript("OnKeyDown")(win, "ESCAPE")
+check(win:IsShown() and UI.IsBehindMap(), "Escape is left to the map")
+Tick(5)
+check(UI.IsBehindMap(), "it stays behind while the map is open")
+WorldMapFrame:Hide()
+Tick(1)
+check(not UI.IsBehindMap() and win:IsShown() and win:GetFrameStrata() == "DIALOG", "the map closes: the window is back in front")
+win:GetScript("OnKeyDown")(win, "ESCAPE")
+check(not win:IsShown(), "and Escape closes it again as normal")
 UI.Open()
 Tick(1)
-check(g.questPanel:IsShown() and mapRow.map:GetText():find(L.GUIDE_PINNED, 1, true) and g.questPanel.clear:IsShown(), "back from the map: same list, marked Pinned")
+check(g.questPanel:IsShown(), "reopened on the same quest list")
+-- /ynm while it's behind an open map brings it to the front.
+WorldMapFrame:Show()
+check(UI.SendBehindMap() and win:GetFrameStrata() == "LOW", "behind the map again")
+UI.Toggle()
+check(win:IsShown() and not UI.IsBehindMap() and win:GetFrameStrata() == "DIALOG", "/ynm brings it to the front")
+Tick(2)
+check(win:GetFrameStrata() == "DIALOG", "and the old check doesn't push it back")
+-- Closing it while behind the map leaves it normal next time.
+UI.SendBehindMap()
+win:Hide()
+check(not UI.IsBehindMap() and win:GetFrameStrata() == "DIALOG", "hidden while behind: back to normal")
+WorldMapFrame:Hide()
+UI.Open()
+Tick(1)
+-- A map that never appears doesn't leave the window stuck behind.
+UI.SendBehindMap()
+Tick(2)
+check(not UI.IsBehindMap() and win:GetFrameStrata() == "DIALOG", "the map never opened: the window comes back")
 -- In combat: the pin goes in, the map isn't touched.
 openedMap = nil
 local realCombat = InCombatLockdown

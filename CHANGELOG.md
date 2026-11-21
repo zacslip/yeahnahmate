@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.24.1
+
+- Show on map no longer closes the addon. The window waits behind the map and comes back when you close it.
+- Leveling guide: quests with a quest giver in each faction's city now send you to your own, not the enemy's.
+- Leveling guide: Skyborne players now see their own versions of quests.
+- If a guildie turns off recipe sharing, that now reaches guildies who were offline at the time.
+- Guildies who just logged in no longer lose part of their catch-up (events, requests, questions).
+- A broken addon message from someone else no longer causes an error.
+- Clans: Ask for an invite no longer stays stuck on Asked when a new organiser starts the meeting.
+
 ## 0.24.0
 
 - Dungeon level ranges now match the game's Group Finder, and dungeons your faction can't use are no longer listed.

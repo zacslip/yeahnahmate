@@ -2,7 +2,7 @@
 ## Title: Yeah Nah Mate Quests
 ## Notes: Dungeon quest data for Yeah Nah Mate's leveling guide. Adapted from Questie (GPLv3).
 ## Author: zacslip
-## Version: 0.24.0
+## Version: 0.24.1
 ## RequiredDeps: YeahNahMate
 ## X-License: GPL-3.0
 

@@ -220,8 +220,8 @@ end
 
 function UI.LevelingPinnedQuest() return pin and pin.quest end
 
--- A click: pin where it starts and open the map there. The game's own call, never in combat. If it
--- can't open, the pin is still there for when the player presses M.
+-- A click: pin where it starts and open the map there, with this window waiting behind it. The game's
+-- own call, never in combat. If it can't open, the pin is still there for when the player presses M.
 local function ShowOnMap(q)
     local g = page.guide
     PlacePin(q)
@@ -231,7 +231,8 @@ local function ShowOnMap(q)
     end
     if opened then
         g.questHint = nil
-        UI.Toggle()             -- our window sits above the map; /ynm brings the same list back
+        UI.SendBehindMap()
+        UI.Dirty()              -- the row now says Pinned
     else
         g.questHint = L.GUIDE_PINNED_PRESS_M
         UI.Dirty()

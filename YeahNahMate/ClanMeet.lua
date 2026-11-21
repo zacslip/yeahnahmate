@@ -269,8 +269,10 @@ ns.Comm.On("CMT", function(msg, from, channel, isSelf)
     if msg.on == true then
         local isNew = M.active[race] == nil or M.active[race].organiser ~= from
         M.active[race] = { organiser = from, since = GetServerTime() }
-        M.asked[race] = isNew and nil or M.asked[race]
-        if isNew then ns.Fire("CLANMEET_STARTED", race, from) end
+        if isNew then
+            M.asked[race] = nil         -- a new organiser: I can ask them
+            ns.Fire("CLANMEET_STARTED", race, from)
+        end
     elseif M.active[race] and M.active[race].organiser == from then
         M.active[race] = nil
         M.asked[race] = nil

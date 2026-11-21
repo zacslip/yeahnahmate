@@ -41,9 +41,12 @@ check(Comm.quiet.skipped == 1, "and counted")
 Hear("Offline Olly")
 mark = #SENT
 check(Comm.Send({ t = "ZZ" }, "WHISPER", "Offline Olly", "NORMAL") == true and ToThem("Offline Olly", mark) == 1, "just heard from them: the old roster is doubted")
-Tick(25)
+Tick(40)
 mark = #SENT
-check(Comm.Send({ t = "ZZ" }, "WHISPER", "Offline Olly", "NORMAL") == false, "a while later the roster is believed")
+check(Comm.Send({ t = "ZZ" }, "WHISPER", "Offline Olly", "NORMAL") == true, "40 s later the roster could still be out of date")
+Tick(40)
+mark = #SENT
+check(Comm.Send({ t = "ZZ" }, "WHISPER", "Offline Olly", "NORMAL") == false, "past a roster refresh it's believed")
 
 -- 2. Long replies go one at a time, in order, and all arrive.
 Add("Online Ollie")

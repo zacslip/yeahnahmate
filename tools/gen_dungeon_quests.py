@@ -137,6 +137,16 @@ black = open(os.path.join(ADDONS, "Questie", "Database", "Corrections", "Questie
 BLACK = {int(x) for x in re.findall(r"^\s*\[(\d+)\]\s*=\s*true", black, re.M)}
 A_MASK, H_MASK = 77 | (1 << 32), 178 | (1 << 33)
 
+# Race ids aren't always bit + 1 (the Skyborne are bits 32 and 33, races 95 and 96): use QuestieDB's table.
+race_text = open(os.path.join(ADDONS, "QuestieDB", "src", "corrections", "enum", "expansions.lua"), encoding="utf-8").read()
+race_text = race_text[race_text.index("constants.raceMaskById"):]
+race_text = race_text[:race_text.index("}")]
+RACE_BY_BIT = {int(mask).bit_length() - 1: int(rid) for rid, mask in re.findall(r"\[(\d+)\]\s*=\s*(\d+)", race_text)}
+
+
+def race_ids(mask):
+    return [RACE_BY_BIT.get(b, b + 1) for b in range(40) if mask >> b & 1]
+
 
 def only(ids):
     got = {home.get(i) for i in ids}
@@ -155,17 +165,33 @@ def spot(kind, i):
     return None
 
 
-def starter(q):
+def starter(q, side):
+    """Who starts it and where, plus { A = ..., H = ... } when each faction has its own quest giver."""
     st = tbl("Quest", q, 2)
-    for kind, field in (("Npc", 1), ("Object", 2)):
-        ids = seq(at(st, field))
-        for i in ids:
-            s = spot(kind, i)
-            if s: return (row(kind, i).get(1), *s)
-        if ids: return (row(kind, ids[0]).get(1), None, None, None)
+    npcs = seq(at(st, 1))
+    placed, by_side = [], {}
+    for i in npcs:
+        s = spot("Npc", i)
+        if not s: continue
+        r = row("Npc", i)
+        entry = (r.get(1), *s)
+        placed.append(entry)
+        friendly = r.get(13) or ""
+        for f in "AH":
+            if f in str(friendly) and f not in by_side: by_side[f] = entry
+    if placed:
+        main = by_side.get(side, placed[0])
+        both = side == "B" and "A" in by_side and "H" in by_side and by_side["A"] != by_side["H"]
+        return (*main, by_side if both else None)
+    if npcs: return (row("Npc", npcs[0]).get(1), None, None, None, None)
+    objects = seq(at(st, 2))
+    for i in objects:
+        s = spot("Object", i)
+        if s: return (row("Object", i).get(1), *s, None)
+    if objects: return (row("Object", objects[0]).get(1), None, None, None, None)
     items = seq(at(st, 3))
-    if items: return (row("Item", items[0]).get(1), None, None, None)
-    return (None, None, None, None)
+    if items: return (row("Item", items[0]).get(1), None, None, None, None)
+    return (None, None, None, None, None)
 
 
 out = collections.defaultdict(list)
@@ -194,21 +220,29 @@ for k in list(store):
     if not a and not h: continue
     side = "B" if a and h else "A" if a else "H"
     whole = {"B": A_MASK | H_MASK, "A": A_MASK, "H": H_MASK}[side]
-    only_races = [] if races == 0 or races & whole == whole else [b + 1 for b in range(40) if races >> b & 1]
-    giver, ui, x, y = starter(q)
+    only_races = [] if races == 0 or races & whole == whole else race_ids(races)
+    giver, ui, x, y, places = starter(q, side)
     out[g].append(dict(id=q, name=r.get(1), lvl=lvl, req=r.get(4) or 0, side=side, cls=cls, races=only_races,
-                       giver=giver, ui=ui, x=x, y=y, how=how,
+                       giver=giver, ui=ui, x=x, y=y, places=places, how=how,
                        pre=seq(tbl("Quest", q, 12)) + seq(tbl("Quest", q, 13))))
 
 
 def lua(s): return '"' + str(s).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def places_lua(p):
+    """",{A={giver,map,x,y},H={...}}" when each faction has its own quest giver, else nothing."""
+    if not p: return ""
+    one = lambda e: "{" + lua(e[0]) + f",{e[1]},{e[2]},{e[3]}" + "}"
+    return ",{A=" + one(p["A"]) + ",H=" + one(p["H"]) + "}"
+
+
 with open(OUT, "w", encoding="utf-8", newline="\n") as f, open(REVIEW, "w", encoding="utf-8") as rv:
     f.write("-- Yeah Nah Mate Quests: dungeon quest data for Yeah Nah Mate's leveling guide.\n")
     f.write("-- Adapted from Questie and QuestieDB by the Questie contributors. Licensed under GPLv3: see gpl-3.0.md and NOTICE.md.\n")
     f.write("--\n-- QUESTS, the quests of each dungeon: { id, name, level, required level, side (A, H, B), class mask,\n")
-    f.write("--   races (or false), who starts it, map id, x, y }. No map position: it starts inside the dungeon or from an item.\n")
+    f.write("--   races (or false), who starts it, map id, x, y, and { A = ..., H = ... } if each faction has its own quest giver }.\n")
+    f.write("--   No map position: it starts inside the dungeon or from an item.\n")
     f.write("YeahNahMateQuestData = {}\nlocal D = YeahNahMateQuestData\n\nD.QUESTS = {\n")
     variants, earlier = collections.defaultdict(list), set()
     for g in GROUPS:
@@ -228,8 +262,8 @@ with open(OUT, "w", encoding="utf-8", newline="\n") as f, open(REVIEW, "w", enco
         for q in rows:
             rv.write(f"{q['lvl']:>2} {q['side']} {'C' if q['cls'] else ' '}{'R' if q['races'] else ' '} {q['how'][0]} {q['name']} <- {q['giver']} {'' if q['ui'] else '(no map)'}\n")
             races = "{" + ",".join(map(str, q["races"])) + "}" if q["races"] else "false"
-            where = f"{q['ui']},{q['x']},{q['y']}" if q["ui"] else "false"
-            f.write(f"        {{{q['id']},{lua(q['name'])},{q['lvl']},{q['req']},\"{q['side']}\",{q['cls']},{races},{lua(q['giver'] or '')},{where}}},\n")
+            where = f"{q['ui']},{q['x']},{q['y']}" if q["ui"] else "false,false,false"
+            f.write(f"        {{{q['id']},{lua(q['name'])},{q['lvl']},{q['req']},\"{q['side']}\",{q['cls']},{races},{lua(q['giver'] or '')},{where}{places_lua(q['places'])}}},\n")
         f.write("    },\n")
     f.write("}\n\n-- Other ids of the same quest name: another version, or another step with that name.\n")
     f.write("D.VARIANTS = {\n")
@@ -254,14 +288,14 @@ with open(OUT, "w", encoding="utf-8", newline="\n") as f, open(REVIEW, "w", enco
         if not a and not h: a = h = True
         side = "B" if a and h else "A" if a else "H"
         whole = {"B": A_MASK | H_MASK, "A": A_MASK, "H": H_MASK}[side]
-        only_races = [] if races == 0 or races & whole == whole else [b + 1 for b in range(40) if races >> b & 1]
+        only_races = [] if races == 0 or races & whole == whole else race_ids(races)
         need_all, need_any = seq(tbl("Quest", i, 12)), seq(tbl("Quest", i, 13))
         negative += sum(p < 0 for p in need_all + need_any)
         need_all, need_any = [p for p in need_all if p > 0], [p for p in need_any if p > 0]
-        giver, ui, x, y = starter(i)
+        giver, ui, x, y, places = starter(i, side)
         for p in need_all + need_any: add_step(p)
         steps[i] = dict(name=r.get(1), lvl=r.get(5) or 0, side=side, cls=r.get(7) or 0, races=only_races, giver=giver,
-                        ui=ui, x=x, y=y, all=need_all, any=need_any, alt=[p for p in seq(tbl("Quest", i, 16)) if p > 0])
+                        ui=ui, x=x, y=y, places=places, all=need_all, any=need_any, alt=[p for p in seq(tbl("Quest", i, 16)) if p > 0])
 
 
     sys.setrecursionlimit(5000)
@@ -275,14 +309,15 @@ with open(OUT, "w", encoding="utf-8", newline="\n") as f, open(REVIEW, "w", enco
 
 
     f.write("\n-- Each quest on the way to a listed one: { name, level, side, class mask, races, who starts it, map id, x, y,\n")
-    f.write("--   needs all of these first, needs one of these first, doing one of these counts as doing this }.\n")
+    f.write("--   needs all of these first, needs one of these first, doing one of these counts as doing this,\n")
+    f.write("--   and { A = ..., H = ... } if each faction has its own quest giver }.\n")
     f.write("D.STEPS = {\n")
     for i in sorted(k for k, v in steps.items() if v):
         s = steps[i]
         races = "{" + ",".join(map(str, s["races"])) + "}" if s["races"] else "false"
         where = f"{s['ui']},{s['x']},{s['y']}" if s["ui"] else "false,false,false"
         alt = "{" + ",".join(map(str, s["alt"])) + "}" if s["alt"] else "false"
-        f.write(f"    [{i}] = {{{lua(s['name'])},{s['lvl']},\"{s['side']}\",{s['cls']},{races},{lua(s['giver'] or '')},{where},{ids(s['all'])},{ids(s['any'])},{alt}}},\n")
+        f.write(f"    [{i}] = {{{lua(s['name'])},{s['lvl']},\"{s['side']}\",{s['cls']},{races},{lua(s['giver'] or '')},{where},{ids(s['all'])},{ids(s['any'])},{alt}{places_lua(s['places'])}}},\n")
     f.write("}\n")
     print("chain steps", sum(1 for v in steps.values() if v), "negative prerequisites skipped", negative)
 print("done", sum(len(v) for v in out.values()), "rows before de-dupe")

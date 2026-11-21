@@ -742,7 +742,9 @@ ns.Comm.On("REQ", function(msg, from, channel, isSelf)
             local owner = type(msg.n[i]) == "string" and ns.Key(msg.n[i]) or nil
             local e = owner and store[owner]
             if e and owner ~= from then
-                ns.Comm.Send({ t = "PROF", o = owner, pv = e.pv, p = e.off and false or e.p }, "WHISPER", from, "BULK")
+                local list = e.p                -- false says they've stopped sharing
+                if e.off then list = false end
+                ns.Comm.Send({ t = "PROF", o = owner, pv = e.pv, p = list }, "WHISPER", from, "BULK")
             end
         end
     end

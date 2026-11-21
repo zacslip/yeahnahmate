@@ -142,8 +142,12 @@ function G.Quests(key)
         if ForMe(me, q[5], q[6], q[7]) then
             local row = seen[q[2]]
             if not row then
-                row = { id = q[1], name = q[2], level = q[3], req = q[4], giver = q[8] ~= "" and q[8] or nil,
-                        map = q[9] or nil, x = q[10], y = q[11], ids = {} }
+                -- A quest both factions can take may have a quest giver in each one's city.
+                local own = q[12] and me.side and q[12][me.side]
+                local giver = own and own[1] or q[8]
+                row = { id = q[1], name = q[2], level = q[3], req = q[4], giver = giver ~= "" and giver or nil,
+                        map = own and own[2] or q[9] or nil, x = own and own[3] or q[10] or nil,
+                        y = own and own[4] or q[11] or nil, ids = {} }
                 seen[q[2]] = row
                 list[#list + 1] = row
             end
@@ -216,11 +220,13 @@ local function NextStep(me, id, seen)
     return id
 end
 
-local function StepPlace(id, fallback)
+local function StepPlace(me, id, fallback)
     local s = G.QUEST_STEPS and G.QUEST_STEPS[id]
     if not s then return fallback end
-    return { id = id, name = s[1], level = s[2], giver = s[6] ~= "" and s[6] or nil,
-             map = s[7] or nil, x = s[8] or nil, y = s[9] or nil }
+    local own = s[13] and me.side and s[13][me.side]    -- this faction's own quest giver
+    local giver = own and own[1] or s[6]
+    return { id = id, name = s[1], level = s[2], giver = giver ~= "" and giver or nil,
+             map = own and own[2] or s[7] or nil, x = own and own[3] or s[8] or nil, y = own and own[4] or s[9] or nil }
 end
 
 -- Where this quest stands: final = its last step, target = the quest to go and get now,
@@ -239,7 +245,7 @@ function G.QuestPlan(q)
         end
     end
     if not final then return { final = q.id, target = q, locked = false } end
-    local target = StepPlace(nextId, q)
+    local target = StepPlace(me, nextId, q)
     return { final = final, target = target, locked = target.name ~= q.name }
 end
 

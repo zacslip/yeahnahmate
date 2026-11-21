@@ -154,7 +154,10 @@ end
 
 local QUIET = 5                 -- seconds after our last whisper to someone that the line is hidden
 local GONE = 30                 -- seconds we hold whispers after the server said they aren't playing
-local HEARD_GRACE = 20          -- seconds after hearing from someone that an "offline" roster is doubted
+-- Seconds after hearing from someone that an "offline" roster is doubted. Longer than the roster can be
+-- out of date (about a minute), so catch-up for someone who just logged in isn't thrown away. If they
+-- really have gone, the first whisper gets "No player named", which drops the rest of their queue.
+local HEARD_GRACE = 75
 local STUCK_WAIT = 20           -- seconds before the next queued message goes if the last never finished
 
 local outbox = {}               -- person -> queue of BULK whispers, one on its way at a time
@@ -424,7 +427,10 @@ function Comm.Receive(text, channel, sender, fast)
         heard[who], gone[who] = GetTime(), nil
         Comm.got[msg.t] = (Comm.got[msg.t] or 0) + 1
         if not QUIET_IN[msg.t] then
-            ns.Log("got " .. Describe(msg) .. " from " .. from .. (channel == "WHISPER" and " (whisper)" or ""))
+            -- The log line reads fields nobody has checked yet: junk in them must not stop the handlers.
+            local ok, what = pcall(Describe, msg)
+            if not ok then what = "a malformed " .. tostring(msg.t) .. " message" end
+            ns.Log("got " .. what .. " from " .. from .. (channel == "WHISPER" and " (whisper)" or ""))
         end
     end
     -- Each handler on its own: several modules answer the same type (REQ has seven), and one
