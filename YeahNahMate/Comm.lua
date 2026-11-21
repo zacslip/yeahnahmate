@@ -142,6 +142,172 @@ local function Count(t, n)
     return n .. " " .. (n == 1 and name[1] or name[2])
 end
 
+---------------------------------------------------------------------------------------------------
+-- Whispers to someone who has just logged off. Each one that fails makes the game print "No player
+-- named ... is currently playing", and a sync reply can be dozens of pieces. Three layers:
+--   1. Don't send to someone the roster says is offline (unless we heard from them moments ago: the
+--      roster can be a minute old, and someone who just logged in must still get their replies).
+--   2. BULK whispers go one message at a time per person. The first "No player named" line for them
+--      drops the rest of their queue.
+--   3. The pieces already on their way: that line is hidden from chat, only for a name the addon
+--      whispered in the last few seconds. Not with the gamepad UI, where we leave the chat alone.
+
+local QUIET = 5                 -- seconds after our last whisper to someone that the line is hidden
+local GONE = 30                 -- seconds we hold whispers after the server said they aren't playing
+local HEARD_GRACE = 20          -- seconds after hearing from someone that an "offline" roster is doubted
+local STUCK_WAIT = 20           -- seconds before the next queued message goes if the last never finished
+
+local outbox = {}               -- person -> queue of BULK whispers, one on its way at a time
+local recent = {}               -- person -> until when a "No player named" line is ours
+local typed = {}                -- person -> until when the player's own whisper box wants to see that line
+local gone = {}                 -- person -> until when we hold whispers
+local heard = {}                -- person -> when we last got a message from them
+local skipLogged = {}           -- person -> when the log last said we skipped them
+local filtering = false
+Comm.quiet = { hidden = 0, dropped = 0, skipped = 0 }
+
+local function Fold(name)
+    return (ns.Key(name) or tostring(name)):lower()
+end
+
+-- Blizzard's gamepad UI is on (Forever's controller mode).
+local function GamepadUI()
+    local current = C_InputInterfaceStyle and C_InputInterfaceStyle.GetCurrentStyle
+    local gamepad = Enum and Enum.InputDeviceInterfaceType and Enum.InputDeviceInterfaceType.Gamepad
+    if not current or gamepad == nil then return false end
+    local ok, style = pcall(current)
+    return ok and style == gamepad
+end
+
+-- Who a "No player named" line is about (folded), or nil. Never reads a secret value.
+local notFoundPattern
+local function NotFoundName(text)
+    if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return nil end
+    if notFoundPattern == nil then
+        local f = ERR_CHAT_PLAYER_NOT_FOUND_S
+        if type(f) ~= "string" then return nil end
+        f = f:gsub("%%%d?%$?s", "\001", 1)
+        f = f:gsub("([%^%$%(%)%.%[%]%*%+%-%?%%])", "%%%1")
+        notFoundPattern = "^" .. f:gsub("\001", "(.+)") .. "$"
+    end
+    local who = text:match(notFoundPattern)
+    return who and Fold(who) or nil
+end
+
+-- The chat filter: true hides the line.
+function Comm.QuietLine(_, _, text)
+    local ok, hide = pcall(function()
+        if GamepadUI() then return false end
+        local who = NotFoundName(text)
+        if not who or not recent[who] then return false end
+        local now = GetTime()
+        if now > recent[who] or (typed[who] and now <= typed[who]) then return false end
+        Comm.quiet.hidden = Comm.quiet.hidden + 1
+        return true
+    end)
+    return ok and hide == true
+end
+
+local function WatchChat()
+    if filtering or GamepadUI() then return end
+    local add = rawget(_G, "ChatFrame_AddMessageEventFilter")
+    if type(add) ~= "function" then return end
+    filtering = true
+    pcall(add, "CHAT_MSG_SYSTEM", Comm.QuietLine)
+end
+
+-- May an addon whisper go to them now?
+function Comm.Reachable(target)
+    local who = Fold(target)
+    local now = GetTime()
+    if gone[who] then
+        if now < gone[who] then return false end
+        gone[who] = nil
+    end
+    local m = ns.Guild.Get(target)
+    if m and m.online == false and not (heard[who] and now - heard[who] <= HEARD_GRACE) then return false end
+    return true
+end
+
+-- Hand one whisper to AceComm. done() runs when its last piece has left.
+local function Whisper(prefix, text, target, prio, done)
+    local who = Fold(target)
+    recent[who] = GetTime() + QUIET
+    WatchChat()
+    Comm:SendCommMessage(prefix, text, "WHISPER", target, prio, function(_, sent, total)
+        recent[who] = GetTime() + QUIET     -- from when each piece really left
+        if done and sent >= total then done() end
+    end)
+end
+
+local function DropQueue(who, q)
+    Comm.quiet.dropped = Comm.quiet.dropped + #q
+    if #q > 0 then ns.Log("dropped " .. #q .. " queued whispers: " .. who .. " has logged off") end
+    wipe(q)
+    if outbox[who] == q then outbox[who] = nil end
+end
+
+-- Send this person's next message once the one before has finished. (A loop, not a call from the
+-- callback: the send library can call back at once, and a long queue would run out of stack.)
+local function Pump(who)
+    local q = outbox[who]
+    if not q or q.pumping then return end
+    q.pumping = true
+    while not q.busy do
+        local item = table.remove(q, 1)
+        if not item then
+            if outbox[who] == q then outbox[who] = nil end
+            break
+        end
+        if not Comm.Reachable(item.target) then
+            Comm.quiet.dropped = Comm.quiet.dropped + 1
+            DropQueue(who, q)
+            break
+        end
+        local token = {}
+        q.busy = token
+        local function Done()
+            if q.busy ~= token then return end
+            q.busy = nil
+            Pump(who)
+        end
+        if not ns.Safe(Whisper, item.prefix, item.text, item.target, "BULK", Done) then
+            q.busy = nil
+        else
+            C_Timer.After(STUCK_WAIT + #item.text / 100, function() ns.Safe(Done) end)
+        end
+    end
+    q.pumping = false
+end
+
+local function SendWhisper(prefix, text, target, prio)
+    if prio ~= "BULK" then
+        -- Short, and usually the player's own click: straight out, not behind a sync reply.
+        Whisper(prefix, text, target, prio)
+        return
+    end
+    local who = Fold(target)
+    local q = outbox[who]
+    if not q then
+        q = {}
+        outbox[who] = q
+    end
+    q[#q + 1] = { prefix = prefix, text = text, target = target }
+    Pump(who)
+end
+
+ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
+    local who = NotFoundName(text)
+    if not who or not recent[who] then return end       -- not someone the addon whispered
+    gone[who] = GetTime() + GONE
+    if outbox[who] then DropQueue(who, outbox[who]) end
+end)
+
+-- The player's own whisper box: if that person's offline, they should be told.
+ns.Listen("WHISPERED", function(to)
+    if type(to) == "string" then typed[Fold(to)] = GetTime() + QUIET end
+end)
+
 -- Send a message table on GUILD, or WHISPER to one guildmate. Returns true if handed to AceComm.
 -- fast: positions of the near lane only, on their own prefix (ns.PREFIX_POS).
 function Comm.Send(msg, channel, target, prio, fast)
@@ -171,6 +337,15 @@ function Comm.Send(msg, channel, target, prio, fast)
         end
     end
     if not Comm.CanSend(channel) then return false end
+    if channel == "WHISPER" and not Comm.Reachable(target) then
+        Comm.quiet.skipped = Comm.quiet.skipped + 1
+        local who, now = Fold(target), GetTime()
+        if not skipLogged[who] or now - skipLogged[who] > GONE then
+            skipLogged[who] = now
+            ns.Log("not whispering " .. target .. ": they're offline")
+        end
+        return false
+    end
     -- "v" is the protocol version on every message; a module's own version field must be named differently.
     assert(msg.v == nil or msg.v == ns.PROTOCOL, "message field 'v' is reserved for the protocol version")
     msg.v = ns.PROTOCOL
@@ -179,7 +354,12 @@ function Comm.Send(msg, channel, target, prio, fast)
         ns.Log("not sent, too big: " .. msg.t .. " (" .. #text .. " bytes)")
         return false
     end
-    Comm:SendCommMessage(fast and ns.PREFIX_POS or ns.PREFIX, text, channel, target, prio or "NORMAL")
+    local prefix = fast and ns.PREFIX_POS or ns.PREFIX
+    if channel == "WHISPER" then
+        SendWhisper(prefix, text, target, prio or "NORMAL")
+    else
+        Comm:SendCommMessage(prefix, text, channel, target, prio or "NORMAL")
+    end
     Comm.sent[msg.t] = (Comm.sent[msg.t] or 0) + 1
     ns.Log("sent my " .. Describe(msg) .. (channel == "GUILD" and " to the guild" or (" to " .. target)))
     ns.Fire("SENT", msg, channel, target)
@@ -239,6 +419,9 @@ function Comm.Receive(text, channel, sender, fast)
         return
     end
     if not isSelf then
+        -- A real message from them: they're online, whatever the roster last said.
+        local who = Fold(from)
+        heard[who], gone[who] = GetTime(), nil
         Comm.got[msg.t] = (Comm.got[msg.t] or 0) + 1
         if not QUIET_IN[msg.t] then
             ns.Log("got " .. Describe(msg) .. " from " .. from .. (channel == "WHISPER" and " (whisper)" or ""))
@@ -379,6 +562,18 @@ Comm.On("HI", function(msg, from, channel, isSelf)
         end)
     end
 end)
+
+--@do-not-package@
+-- /ynm dev whispertest: five long addon whispers to a name nobody has, so the real game answers with
+-- its real "No player named" line. For the Whispers section of /ynmdev.
+ns.devCommands.whispertest = function()
+    local name = "Ynmtest Nobodyhere"
+    gone[Fold(name)] = nil
+    for i = 1, 5 do
+        Comm.Send({ t = "ZZT", n = i, x = string.rep("x", 1200) }, "WHISPER", name, "BULK")
+    end
+end
+--@end-do-not-package@
 
 -- Say hi once the game has settled after login (ChatThrottleLib holds messages for the first
 -- seconds anyway), and again when we join a guild.

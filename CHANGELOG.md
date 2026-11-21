@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1
+
+- No more "No player named ... is currently playing" spam when a guildie logs off while the addon is sharing data with them. The addon now stops whispering them, and hides any leftover line. If you whisper someone offline yourself through the addon's whisper box, you still get told.
+
 ## 0.23.0
 
 - Better error reports. `/ynm errors` now shows the version and time of each error and marks ones from older versions, which may already be fixed.

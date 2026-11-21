@@ -27,6 +27,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Clans.lua`, `ClanMeet.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`); clan meetings (`CMT`, `CAK`, and "inv" whispers read on the organiser's side). |
 | `ClanChallenge.lua` | Leadership challenges (`CHG`; results only from those who settle them) and second in command (`DEP`). |
 | `Milestones.lua` | Milestone and welcome cards (`BRD` kinds `ms`, `wel`), posting them (`MSF`, `MSW`). |
+| `Comm.lua` whispers | Skips offline guildies, sends bulk whispers one at a time per person, and stops (and hides the game's line) when the server says they've gone. |
 | `Report.lua` | `/ynm errors` (version on each error, old ones marked, `clear`) and the copyable error report in the About panel. |
 | `VoiceCleanup.lua` | Proximity voice was removed in 0.22.0: puts back volumes it left turned down and deletes its old settings. |
 | `Breakdown.lua` | The guild breakdown page's numbers. |
