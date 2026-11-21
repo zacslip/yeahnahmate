@@ -9,22 +9,27 @@ local W, H = 760, 552               -- the guild header adds 52 to the mock-up's
 
 -- Tabs in order (Calendar before Dungeons; Legends; a GM tab), each as wide as its
 -- word so twelve fit in one row (12 + widths + 4 between = 724 of 760). The GM tab only shows for the guild master and their managers.
+-- Settings has no tab: it opens from the gear in the header. The last tab's name follows my level (UI/Leveling.lua).
 -- Each page file calls UI.AddPage(key, build, refresh).
 local function Managing() return ns.Board ~= nil and ns.Board.CanManage() end
 local TABS = {
     { "home", L.TAB_HOME, 46 }, { "roster", L.TAB_ROSTER, 52 }, { "clans", L.TAB_CLANS, 50 },
     { "calendar", L.TAB_CALENDAR, 64 }, { "dungeons", L.TAB_DUNGEONS, 68 }, { "professions", L.TAB_PROFESSIONS, 80 },
     { "ask", L.TAB_ASK, 38 }, { "legends", L.TAB_LEGENDS, 62 }, { "streamers", L.TAB_STREAMERS, 70 },
-    { "info", L.TAB_INFO, 38 }, { "gm", L.TAB_GM, 36, Managing }, { "settings", L.TAB_SETTINGS, 64 },
+    { "info", L.TAB_INFO, 38 }, { "gm", L.TAB_GM, 36, Managing }, { "leveling", L.TAB_LEVELING, 64 },
 }
 
 local pages = {}                -- key -> { build, refresh, frame }
-local frame, title, foot, tabButtons, header
+local frame, title, foot, tabButtons, header, gear
 local current = "home"
+local beforeSettings = "home"   -- the gear's second click goes back here
+local entered                   -- the page last moved to (for onEnter)
 local dirty = false
 
-function UI.AddPage(key, build, refresh)
-    pages[key] = { build = build, refresh = refresh }
+-- onEnter (optional) runs when the player moves to this page from another one, not when the window
+-- is closed and opened again on the same page.
+function UI.AddPage(key, build, refresh, onEnter)
+    pages[key] = { build = build, refresh = refresh, onEnter = onEnter }
 end
 
 -- The title bar is small and just says what this is; the guild gets the big header below it.
@@ -71,7 +76,7 @@ local function BuildHeader()
     header.me:SetPoint("TOPRIGHT", -10, -10)
     header.me:SetJustifyH("RIGHT")
     header.ver = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    header.ver:SetPoint("TOPRIGHT", -36, -30)     -- room on its right for the About "i" (UI/About.lua)
+    header.ver:SetPoint("TOPRIGHT", -60, -30)     -- room on its right for the About "i" and the Settings gear
     header.ver:SetJustifyH("RIGHT")
 end
 
@@ -109,6 +114,40 @@ local function RefreshHeader()
     end
 end
 
+-- The Settings gear, right of the "i". One click opens Settings, another goes back to where I was.
+local function BuildGear()
+    gear = CreateFrame("Button", nil, header)
+    gear:SetSize(20, 20)
+    if UI.aboutButton then
+        gear:SetPoint("LEFT", UI.aboutButton, "RIGHT", 4, 0)
+    else
+        gear:SetPoint("TOPRIGHT", -10, -28)
+    end
+    local icon = gear:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)    -- trims the icon's square border
+    gear:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    gear.sel = gear:CreateTexture(nil, "OVERLAY")
+    gear.sel:SetColorTexture(1, 0.82, 0, 1)
+    gear.sel:SetPoint("TOPLEFT", gear, "BOTTOMLEFT", 0, -1)
+    gear.sel:SetPoint("TOPRIGHT", gear, "BOTTOMRIGHT", 0, -1)
+    gear.sel:SetHeight(2)
+    gear.sel:Hide()
+    gear:SetScript("OnClick", function()
+        UI.Select(current == "settings" and beforeSettings or "settings")
+    end)
+    gear:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(L.TAB_SETTINGS, 1, 1, 1)
+        GameTooltip:AddLine(L.GEAR_TIP, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    gear:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    UI.settingsButton = gear
+end
+
 local function FootText()
     if ns.Sim and ns.Sim.IsOn() and not ns.Sim.shots then return "|cffff8040" .. L.SIM_FOOT .. "|r" end
     return L.FOOT_TIP
@@ -121,6 +160,7 @@ local function LayoutTabs()
         local b = tabButtons[t[1]]
         local on = not t[4] or t[4]()
         b:SetShown(on)
+        if t[1] == "leveling" and UI.LevelingTabName then b:SetText(UI.LevelingTabName()) end
         if on then
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", x, -82)
@@ -166,17 +206,24 @@ function UI.DirtySlow()
 end
 
 -- Pages without a tab of their own, and the tab they belong under (it stays lit while they show).
-local UNDER = { breakdown = "home" }
+-- Settings belongs to the gear, so no tab is lit while it shows.
+local UNDER = { breakdown = "home", settings = "gear" }
 
 function UI.Select(key)
     if not pages[key] then key = "home" end
+    if key == "settings" and current ~= "settings" then beforeSettings = current end
     current = key
     local tab = UNDER[key] or key
     for k, b in pairs(tabButtons) do
         if k == tab then b:LockHighlight(); b.sel:Show() else b:UnlockHighlight(); b.sel:Hide() end
     end
+    if gear then gear.sel:SetShown(key == "settings") end
     for k, p in pairs(pages) do
         if p.frame then p.frame:SetShown(k == key) end
+    end
+    if key ~= entered then
+        entered = key
+        if pages[key].onEnter and pages[key].frame then pages[key].onEnter(pages[key].frame) end
     end
     RefreshNow()
 end
@@ -254,6 +301,7 @@ local function Build()
     BuildHeader()
     -- The "i" left of the version: commands and help (UI/About.lua).
     if UI.BuildAbout then UI.BuildAbout(frame, header) end
+    BuildGear()
 
     tabButtons = {}
     for i, t in ipairs(TABS) do

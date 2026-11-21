@@ -447,21 +447,6 @@ local function Build(p)
     BuildDay(p)
     BuildForm(p)
     UI.GatherBuild(p, X, RIGHT_W)
-    -- Raid roster: a placeholder for now. The button sits under the month.
-    p.raidBtn = Button(p, L.RAID_ROSTER, 110, 0, -364, function()
-        p.mode = (p.mode ~= "raids") and "raids" or nil
-        UI.Dirty()
-    end, 22)
-    local r = Box(p, X - 4, -28, RIGHT_W + 4, 220)
-    r.title = Text(r, ns.GOLD .. L.RAID_ROSTER .. "|r", "GameFontNormalLarge", 12, -12, 240)
-    r.soon = Text(r, L.COMING_SOON, "GameFontHighlight", 12, -40, 240)
-    r.text = Text(r, L.RAID_SOON_TEXT, "GameFontHighlightSmall", 12, -66, 240)
-    r.text:SetWordWrap(true)
-    r.text:SetHeight(110)
-    r.text:SetJustifyV("TOP")
-    Button(r, L.BACK, 70, 12, -184, function() p.mode = nil; UI.Dirty() end, 22)
-    r:Hide()
-    p.raidBox = r
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -675,17 +660,6 @@ local function Refresh(p)
 
     local selT = Noon(y, m, p.sel)
     local past = Key(selT) < todayKey
-    -- Raid roster (coming soon) takes the right side while it's open.
-    local inRaids = p.mode == "raids"
-    p.raidBox:SetShown(inRaids)
-    if inRaids then
-        p.form:Hide()
-        p.gatherFrame:Hide()
-        for _, w in ipairs({ p.dayTitle, p.newBtn, p.empty, p.more }) do w:Hide() end
-        for _, b in ipairs(p.details) do b:Hide() end
-        p.dayPager.Set(1, 1, 1)
-        return
-    end
     -- The Gather list takes the right side while the organiser has it open.
     if p.mode == "gather" and not ns.Gather.Mine() then p.mode = nil end
     local inGather = p.mode == "gather"

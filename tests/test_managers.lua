@@ -36,7 +36,7 @@ check(X("Calendar") < X("Dungeons") and X("Roster") < X("Calendar") and X("Ask")
     "Home, Roster, Calendar, Dungeons, ... Ask, Legends, Streamers")
 check(Tab("GM") and not Tab("GM"):IsShown(), "no GM tab for a member")
 local right = 0
-for _, label in ipairs({ "Home", "Roster", "Calendar", "Dungeons", "Professions", "Ask", "Legends", "Streamers", "Info", "Settings" }) do
+for _, label in ipairs({ "Home", "Roster", "Calendar", "Dungeons", "Professions", "Ask", "Legends", "Streamers", "Info", "Leveling" }) do
     local b = Tab(label)
     right = math.max(right, X(label) + b._w)
 end

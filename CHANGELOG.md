@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.24.0
+
+- Dungeon level ranges now match the game's Group Finder, and dungeons your faction can't use are no longer listed.
+- Settings moved out of the tab row to a gear icon at the top right, next to the "i".
+- New Leveling tab, which becomes Raids at level 60, with buttons inside to see either. The raid roster moved here from the Calendar and is still coming soon.
+- Leveling guide: the zones and dungeons for your level and faction. Zones show their range and the levels they're best at. Dungeons show their range, boss level, the level they're best from, where they are and anything you need to get in.
+- Click a dungeon to see its quests for your faction and class, marked In log or Done. Click a quest to pin where it starts and open the map there.
+- Quest chains: a quest you can't take yet says what it needs next, hovering shows the whole chain with your progress, and the map pin goes to the next quest you need.
+- The quest lists come in a small second addon, Yeah Nah Mate Quests, included in the same download. Its quest data is adapted from [Questie](https://github.com/Questie/Questie) (GPLv3). You don't need Questie installed.
+
 ## 0.23.1
 
 - No more "No player named ... is currently playing" spam when a guildie logs off while the addon is sharing data with them. The addon now stops whispering them, and hides any leftover line. If you whisper someone offline yourself through the addon's whisper box, you still get told.

@@ -41,10 +41,34 @@ check(top.hot and top.rol, "at level 15, Hall of Thanes and Ruins of Lordaeron a
 local list, first = D.ByLevel(22)
 local ordered = true
 for i = 2, #list do if list[i].min < list[i - 1].min then ordered = false end end
-check(ordered and #list == 35, "ByLevel keeps level order")
+check(ordered and #list == 34, "ByLevel keeps level order, without what Horde can't use")
 check(first and list[first].dist == 0 and list[first].min <= 22 and list[first].max >= 22, "ByLevel finds the first one for my level")
 for i = 1, (first or 1) - 1 do if list[i].dist == 0 then first = nil end end
 check(first ~= nil, "nothing earlier fits")
+-- The game's Group Finder ranges, the boss levels, and "best from" (2 under the boss, at most 60).
+local GAME = { hot = { 13, 20 }, rol = { 15, 22 }, wc = { 15, 24 }, sfk = { 20, 30 }, exc = { 26, 33 }, dal = { 28, 35 },
+               smgy = { 30, 38 }, smlib = { 33, 41 }, drown = { 35, 42 }, smarm = { 36, 44 }, smcath = { 38, 46 },
+               krol = { 40, 47 }, zf = { 44, 54 }, alcaz = { 48, 55 }, st = { 50, 60 }, dme = { 54, 60 },
+               dmw = { 56, 60 }, dmn = { 56, 60 }, ubrs = { 59, 60 } }
+for k, r in pairs(GAME) do
+    check(D.BY_KEY[k].min == r[1] and D.BY_KEY[k].max == r[2], "game range for " .. k)
+end
+check(D.BY_KEY.rfd.boss == 41 and D.BY_KEY.rfd.best == 39, "Razorfen Downs: boss 41, best from 39")
+check(D.BY_KEY.ubrs.boss == 62 and D.BY_KEY.ubrs.best == 60, "best from stops at the level cap")
+for _, d in ipairs(D.LIST) do
+    check(type(d[5]) == "number" and D.BY_KEY[d[1]].best <= 60, "boss level for " .. d[1])
+end
+-- Faction: hidden from what I can pick, but a key from a message or old save still reads.
+local function Lists(key)
+    for _, d in ipairs(D.MyList()) do if d[1] == key then return true end end
+    return false
+end
+check(not Lists("stocks") and Lists("rfc") and #D.MyList() == 34, "Horde: no Stockade, Ragefire listed")
+check(D.BY_KEY.stocks ~= nil and D.Name("stocks") == "The Stockade", "a hidden dungeon's key still reads")
+D.pretendFaction = "Alliance"
+check(Lists("stocks") and not Lists("rfc") and #D.MyList() == 34, "Alliance: Stockade listed, no Ragefire")
+check(Lists("hot") and Lists("rol"), "Hall of Thanes and Ruins of Lordaeron are for both")
+D.pretendFaction = nil
 -- A group for a new dungeon can be posted and is accepted from a guildie.
 check(D.Post("dal", "t", { t = 1, h = 1, d = 3 }, ""), "a City of Dalaran group can be posted")
 

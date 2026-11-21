@@ -165,7 +165,8 @@ do
     end
     local _, first = ns.Dungeons.ByLevel(UnitLevel("player"))
     check(#shown > 0 and inOrder, "dungeon picker rows go up in level")
-    check(first and shown[1].key == ns.Dungeons.LIST[math.min(first, #ns.Dungeons.LIST - #f.rows + 1)][1],
+    local mine = ns.Dungeons.MyList()
+    check(first and shown[1].key == mine[math.min(first, #mine - #f.rows + 1)][1],
         "the picker opens at my level (" .. tostring(shown[1] and shown[1].name) .. ")")
 end
 -- both lines start red and Post is off until a dungeon and my role are picked.

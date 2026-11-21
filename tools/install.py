@@ -1,9 +1,9 @@
 """Copy the addon into WoW Forever's AddOns folder, after the offline tests pass.
 
-    python tools/install.py              the addon (YeahNahMate/)
+    python tools/install.py              the addon (YeahNahMate/ and YeahNahMate_Quests/)
     python tools/install.py --no-tests   skip the tests (don't, unless you know why)
 
-Then /reload in game. Only the YeahNahMate folder inside AddOns is ever touched.
+Then /reload in game. Only those two folders inside AddOns are ever touched.
 
 Where WoW Forever is (its _forever_ folder), first that's set:
     the WOW_FOREVER environment variable
@@ -37,7 +37,6 @@ TARGET = os.path.join(WOW, "Interface", "AddOns", "YeahNahMate")
 
 def main():
     args = sys.argv[1:]
-    source = os.path.join(ROOT, "YeahNahMate")
     if "--no-tests" not in args:
         r = subprocess.run([sys.executable, os.path.join(ROOT, "tests", "run.py")])
         if r.returncode != 0:
@@ -45,13 +44,15 @@ def main():
     addons = os.path.dirname(TARGET)
     if not os.path.isdir(addons):
         sys.exit(f"WoW Forever AddOns folder not found: {addons}\nSet WOW_FOREVER to the _forever_ folder.")
-    # Only ever replace our own folder.
+    # Only ever replace our own folders.
     assert os.path.basename(TARGET) == "YeahNahMate" and os.path.basename(addons) == "AddOns"
-    if os.path.isdir(TARGET):
-        shutil.rmtree(TARGET)
-    shutil.copytree(source, TARGET)
-    count = sum(len(f) for _, _, f in os.walk(TARGET))
-    print(f"Installed {os.path.relpath(source, ROOT)} -> {TARGET} ({count} files). /reload in game.")
+    for name in ("YeahNahMate", "YeahNahMate_Quests"):
+        source, target = os.path.join(ROOT, name), os.path.join(addons, name)
+        if os.path.isdir(target):
+            shutil.rmtree(target)
+        shutil.copytree(source, target)
+        count = sum(len(f) for _, _, f in os.walk(target))
+        print(f"Installed {name} -> {target} ({count} files). /reload in game.")
 
 
 if __name__ == "__main__":

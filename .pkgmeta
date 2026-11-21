@@ -1,9 +1,11 @@
 # BigWigs packager (https://github.com/BigWigsMods/packager). The addon lives in YeahNahMate/ inside
-# the repo; the zip holds just that folder. The libraries are already in YeahNahMate/libs (no externals).
+# the repo, with its GPL quest data beside it in YeahNahMate_Quests/; the zip holds just those two folders.
+# The libraries are already in YeahNahMate/libs (no externals).
 package-as: YeahNahMate
 
 move-folders:
   YeahNahMate/YeahNahMate: YeahNahMate
+  YeahNahMate/YeahNahMate_Quests: YeahNahMate_Quests
 
 ignore:
   - tests

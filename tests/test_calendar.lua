@@ -248,18 +248,11 @@ end
 check(#UISpecialFrames == 0 and PanelManagerCalls == 0, "no taint tripwires touched")
 check(#ERRORS == 0, "no errors (" .. (ERRORS[1] or "none") .. ")")
 
--- Raid roster: a "coming soon" panel for now; it opens and closes and sends nothing.
+-- The raid roster moved to the Leveling / Raids tab (tests/test_leveling_tab.lua).
 do
     ns.UI.Open("calendar")
     local cal
-    for _, o in ipairs(CREATED) do if o.raidBox then cal = o end end
-    Tick(4)             -- the click-everything sweep above also picked roles on the Clans tab (sent 3 s later)
-    local before = #SENT
-    cal.raidBtn:Click()
+    for _, o in ipairs(CREATED) do if o.newBtn and o.dayTitle then cal = o end end
     Tick(1)
-    check(cal.raidBox:IsShown() and not cal.newBtn:IsShown(), "Raid roster opens the coming-soon panel")
-    cal.raidBtn:Click()
-    Tick(1)
-    check(not cal.raidBox:IsShown() and cal.newBtn:IsShown(), "clicking it again goes back to the day")
-    check(#SENT == before, "Raid roster sends nothing")
+    check(cal and cal.raidBtn == nil and cal.raidBox == nil and cal.newBtn:IsShown(), "no raid roster on the Calendar")
 end

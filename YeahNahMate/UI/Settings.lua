@@ -1,4 +1,4 @@
--- Settings tab. Only settings for features that exist; the rest arrive with their phase.
+-- Settings page, opened from the gear in the window's header. Only settings for features that exist.
 local ADDON, ns = ...
 local L = ns.L
 local UI = ns.UI

@@ -243,7 +243,7 @@ check(v.posts[1]:IsShown() and v.posts[2]:IsShown(), "the thread shows both answ
 -- Reply with a dungeon picked from the list.
 v.dungeon:Click()
 local picker = ns.UI.AskPicker()
-check(picker:IsShown() and #picker.items == #ns.Dungeons.LIST, "the dungeon picker lists every dungeon")
+check(picker:IsShown() and #picker.items == #ns.Dungeons.MyList(), "the dungeon picker lists every dungeon my faction can use")
 picker.rows[1]:Click()
 check(#page.replyLinks == 1 and page.replyLinks[1].k == "d", "picking one adds the link")
 v.reply:SetText("Or take the boat from Ratchet")

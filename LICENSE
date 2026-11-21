@@ -22,3 +22,6 @@ SOFTWARE.
 
 Bundled third-party libraries in YeahNahMate/libs/ are under their own licences;
 see YeahNahMate/libs/LIBRARIES.md.
+
+The YeahNahMate_Quests/ folder is not covered by this licence. It holds quest data
+adapted from Questie and is licensed under GPLv3; see YeahNahMate_Quests/NOTICE.md.

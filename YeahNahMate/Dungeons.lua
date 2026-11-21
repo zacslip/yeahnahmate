@@ -23,39 +23,64 @@ local L = ns.L
 local D = {}
 ns.Dungeons = D
 
--- WoW Forever's dungeons: key, name, suggested levels. Forever is NOT Classic Era: it launched
--- (4 Nov 2026) with 35 dungeons, the Classic ones plus 9 new ones (marked "Forever"). The new ones
--- were checked against the game's own LFGDungeons/Map tables (Hall of Thanes, Ruins of Lordaeron,
--- Excavation Site, City of Dalaran are in the Dungeon Finder; the other five are in the files
--- unnamed) and the published level ranges. Keys never change: they travel in messages.
+-- WoW Forever's dungeons: key, name, level range, boss level, and the only faction that can use it
+-- (nil = both). Forever launched (4 Nov 2026) with 35 dungeons, the Classic ones plus 9 new ones
+-- (marked "Forever"). Ranges are the game's Group Finder with Show All Level Ranges; The Stockade
+-- isn't offered to Horde, so its range is from the guides. Boss level = the last boss, or the
+-- highest-level boss in the new dungeons, where the order isn't certain. Ragefire Chasm as Horde
+-- only is unconfirmed: it needs a look on an Alliance character. Keys never change: they travel in
+-- messages, and BY_KEY keeps every dungeon so a hidden one still reads properly.
 D.LIST = {
-    { "hot", "Hall of Thanes", 13, 18 },                -- Forever: beneath Ironforge
-    { "rfc", "Ragefire Chasm", 13, 18 },
-    { "rol", "Ruins of Lordaeron", 15, 20 },            -- Forever: above the Undercity
-    { "wc", "Wailing Caverns", 17, 24 }, { "dm", "The Deadmines", 17, 26 },
-    { "sfk", "Shadowfang Keep", 22, 30 }, { "bfd", "Blackfathom Deeps", 24, 32 }, { "stocks", "The Stockade", 24, 32 },
-    { "exc", "Excavation Site: Wetlands", 26, 31 },     -- Forever: above Whelgar's Excavation
-    { "smgy", "SM: Graveyard", 26, 36 },
-    { "dal", "City of Dalaran", 28, 33 },               -- Forever: Alterac Mountains (attunement quest)
-    { "gnomer", "Gnomeregan", 29, 38 }, { "rfk", "Razorfen Kraul", 29, 38 },
-    { "smlib", "SM: Library", 29, 39 }, { "smarm", "SM: Armory", 32, 42 },
-    { "drown", "The Drowned City", 35, 40 },            -- Forever: off the Stranglethorn coast
-    { "smcath", "SM: Cathedral", 35, 45 },
-    { "rfd", "Razorfen Downs", 37, 46 },
-    { "krol", "Krol'dok Stronghold", 40, 45 },          -- Forever: Riverglades
-    { "ulda", "Uldaman", 41, 51 }, { "zf", "Zul'Farrak", 42, 50 },
-    { "mara", "Maraudon", 46, 55 },
-    { "alcaz", "Alcaz Prison", 48, 53 },                -- Forever: Alcaz Island, Dustwallow Marsh
-    { "st", "Sunken Temple", 50, 56 }, { "brd", "Blackrock Depths", 52, 60 },
-    { "lbrs", "Lower Blackrock Spire", 55, 60 }, { "dme", "Dire Maul East", 55, 60 },
-    { "blackmaw", "Blackmaw Hold", 55, 60 },            -- Forever: behind the gate in Azshara
-    { "dmw", "Dire Maul West", 57, 60 }, { "dmn", "Dire Maul North", 57, 60 }, { "scholo", "Scholomance", 58, 60 },
-    { "strat", "Stratholme: Main Gate", 58, 60 }, { "stratsg", "Stratholme: Service Gate", 58, 60 },
-    { "shaper", "Shaper's Terrace", 58, 60 },           -- Forever: Un'Goro Crater
-    { "ubrs", "Upper Blackrock Spire", 58, 60 },
+    { "rfc", "Ragefire Chasm", 13, 18, 16, "Horde" },
+    { "hot", "Hall of Thanes", 13, 20, 16 },            -- Forever: beneath Ironforge
+    { "rol", "Ruins of Lordaeron", 15, 22, 20 },        -- Forever: above the Undercity
+    { "wc", "Wailing Caverns", 15, 24, 22 }, { "dm", "The Deadmines", 17, 26, 21 },
+    { "sfk", "Shadowfang Keep", 20, 30, 26 }, { "bfd", "Blackfathom Deeps", 24, 32, 28 },
+    { "stocks", "The Stockade", 24, 32, 29, "Alliance" },
+    { "exc", "Excavation Site: Wetlands", 26, 33, 31 }, -- Forever: above Whelgar's Excavation
+    { "dal", "City of Dalaran", 28, 35, 33 },           -- Forever: Alterac Mountains (attunement quest)
+    { "gnomer", "Gnomeregan", 29, 38, 34 }, { "rfk", "Razorfen Kraul", 29, 38, 33 },
+    { "smgy", "SM: Graveyard", 30, 38, 34 }, { "smlib", "SM: Library", 33, 41, 37 },
+    { "drown", "The Drowned City", 35, 42, 40 },        -- Forever: off the Stranglethorn coast
+    { "smarm", "SM: Armory", 36, 44, 40 }, { "rfd", "Razorfen Downs", 37, 46, 41 },
+    { "smcath", "SM: Cathedral", 38, 46, 42 },
+    { "krol", "Krol'dok Stronghold", 40, 47, 45 },      -- Forever: Riverglades
+    { "ulda", "Uldaman", 41, 51, 47 }, { "zf", "Zul'Farrak", 44, 54, 48 },
+    { "mara", "Maraudon", 46, 55, 51 },
+    { "alcaz", "Alcaz Prison", 48, 55, 53 },            -- Forever: Alcaz Island, Dustwallow Marsh
+    { "st", "Sunken Temple", 50, 60, 55 }, { "brd", "Blackrock Depths", 52, 60, 59 },
+    { "dme", "Dire Maul East", 54, 60, 58 }, { "lbrs", "Lower Blackrock Spire", 55, 60, 60 },
+    { "blackmaw", "Blackmaw Hold", 55, 60, 60 },        -- Forever: behind the gate in Azshara
+    { "dmw", "Dire Maul West", 56, 60, 61 }, { "dmn", "Dire Maul North", 56, 60, 62 },
+    { "scholo", "Scholomance", 58, 60, 61 },
+    { "strat", "Stratholme: Main Gate", 58, 60, 62 }, { "stratsg", "Stratholme: Service Gate", 58, 60, 62 },
+    { "shaper", "Shaper's Terrace", 58, 60, 62 },       -- Forever: Un'Goro Crater
+    { "ubrs", "Upper Blackrock Spire", 59, 60, 62 },
 }
 D.BY_KEY = {}
-for _, d in ipairs(D.LIST) do D.BY_KEY[d[1]] = { key = d[1], name = d[2], min = d[3], max = d[4] } end
+for _, d in ipairs(D.LIST) do
+    D.BY_KEY[d[1]] = { key = d[1], name = d[2], min = d[3], max = d[4], boss = d[5],
+                       best = math.min(d[5] - 2, 60), side = d[6] }   -- best: 2 under the boss, so hits still land
+end
+
+-- Can my faction use this dungeon? Unknown faction: show it. pretendFaction is for the dev console.
+local function MyFaction()
+    return D.pretendFaction or (UnitFactionGroup and UnitFactionGroup("player"))
+end
+D.Faction = MyFaction
+local function ForMe(side)
+    local mine = MyFaction()
+    return not side or not mine or side == mine
+end
+
+-- The dungeons my faction can use, lowest level first: what every picker lists.
+function D.MyList()
+    local list = {}
+    for _, d in ipairs(D.LIST) do
+        if ForMe(d[6]) then list[#list + 1] = d end
+    end
+    return list
+end
 
 D.ROLES = { t = true, h = true, d = true }
 D.GROUP_TIME = 7200             -- a group lasts 2 hours
@@ -71,7 +96,7 @@ function D.Name(key) local d = D.BY_KEY[key]; return d and d.name or tostring(ke
 -- Dungeons sorted by how close they are to a level (fits first, then nearest).
 function D.ForLevel(level)
     local list = {}
-    for _, d in ipairs(D.LIST) do
+    for _, d in ipairs(D.MyList()) do
         local dist = (level < d[3]) and (d[3] - level) or (level > d[4]) and (level - d[4]) or 0
         list[#list + 1] = { key = d[1], name = d[2], min = d[3], max = d[4], dist = dist }
     end
@@ -86,7 +111,7 @@ end
 -- distance from my level (0 = fits). Also the index of the first one that fits, to scroll to.
 function D.ByLevel(level)
     local list, first = {}, nil
-    for i, d in ipairs(D.LIST) do
+    for i, d in ipairs(D.MyList()) do
         local dist = (level < d[3]) and (d[3] - level) or (level > d[4]) and (level - d[4]) or 0
         list[i] = { key = d[1], name = d[2], min = d[3], max = d[4], dist = dist }
         if dist == 0 and not first then first = i end
@@ -97,7 +122,7 @@ end
 -- Is this dungeon right for my level? (Inside its range, or a couple of levels under.)
 function D.AtMyLevel(key)
     local d = D.BY_KEY[key]
-    if not d then return false end
+    if not d or not ForMe(d.side) then return false end
     local me = UnitLevel("player") or 1
     return me >= d.min - 2 and me <= d.max
 end

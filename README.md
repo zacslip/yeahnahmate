@@ -42,4 +42,6 @@ each version: [CHANGELOG.md](CHANGELOG.md).
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Bundled libraries keep their own licences, see
-[YeahNahMate/libs/LIBRARIES.md](YeahNahMate/libs/LIBRARIES.md).
+[YeahNahMate/libs/LIBRARIES.md](YeahNahMate/libs/LIBRARIES.md). The dungeon quest data in
+`YeahNahMate_Quests/` is adapted from [Questie](https://github.com/Questie/Questie) and is GPLv3, see
+[its notice](YeahNahMate_Quests/NOTICE.md).

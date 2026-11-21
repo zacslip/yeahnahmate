@@ -195,7 +195,7 @@ local function OpenPicker(kind, target)
         -- Dungeons near my level first, then the rest in order.
         local lvl = UnitLevel and UnitLevel("player") or 0
         local near, rest = {}, {}
-        for _, d in ipairs(ns.Dungeons.LIST) do
+        for _, d in ipairs(ns.Dungeons.MyList()) do
             local it = { label = d[2], info = d[3] .. "-" .. d[4], value = { k = "d", id = d[1] } }
             if lvl >= d[3] - 3 and lvl <= d[4] then near[#near + 1] = it else rest[#rest + 1] = it end
         end
