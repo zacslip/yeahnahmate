@@ -32,7 +32,15 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 **Dungeons**
 - Post a group with the roles you need. Guildies at the right level get a pop-up, sign up as tank, healer or DPS, and you invite them with a click.
 - **I'm available**: say which roles and dungeons you'd run and for how long, and you show on everyone's list. Nobody gets left in the dungeon.
-- Every Forever dungeon, in level order.
+- Every Forever dungeon your faction can use, in level order, with the game's own level ranges.
+
+**Leveling guide** (new)
+- **Zones for your level and faction**, with each zone's range and the levels it's best at.
+- **Dungeons for your level**, with the boss level, the level you'll hit it comfortably from, where it is, and any key or attunement you need.
+- **Dungeon quests**: click a dungeon to see its quests for your faction and class, marked In log or Done.
+- **Quest chains**: see what a locked quest needs next and your progress through the whole chain.
+- **Show on map**: click a quest to pin where to go and open the map there.
+- At level 60 the tab becomes **Raids**, where the raid roster is coming. The guide stays one click away.
 
 **Calendar**
 - Guild events (social nights and dungeon runs; raids coming with the raid roster) with Going, Maybe or Can't, plus your role.
@@ -59,7 +67,7 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - Officers set up shout-outs for when a guildie hits a level, reaches a profession skill, learns to ride, loots a legendary or earns a title. They post in guild chat, as a pop-up for guildies with the addon, or both.
 - A welcome line in guild chat for new members, posted by an officer who's online with the addon.
 
-**Clans** (new)
+**Clans**
 - The guild by race: every clan side by side, each with its leader (found from the guild ranks), its rank title, and its members with their roles. Sort by roles or name; your own clan is lit up in gold.
 - **Clan meetings**: the clan's leader clicks Start meeting. The clan gets a pop-up to ask for an invite, or anyone can just whisper the leader "inv". The leader's list shows who asked, who's close and who was there before; click a name to invite. Disband (two clicks) for layer trouble.
 - **Challenges** for the leadership: sign up with one click, withdraw any time. The guild master and Clan moderators mark them Won or Lost.
@@ -89,6 +97,8 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 
 ## Settings
 
+Open them with the gear at the top right of the window.
+
 - Choose what to share, switch each kind of pop-up on or off, pick the pop-up sound, and set the dot size, the ring colour and where dots show.
 - Your alts in the guild link up automatically, so points and titles follow you, not just one character.
 
@@ -100,5 +110,6 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 
 **Want to help build it?** The code is on [GitHub](https://github.com/zacslip/yeahnahmate); the [contributing guide](https://github.com/zacslip/yeahnahmate/blob/main/CONTRIBUTING.md) explains how to set up and send a change.
 
-Built with help from Claude (Anthropic's AI), and tested in game by a real guild. Free and open source
-(MIT). Be decent, have a laugh, and work work.
+**Credits and licences:** Yeah Nah Mate is MIT licensed. The included Yeah Nah Mate Quests addon contains dungeon quest data adapted from [Questie](https://github.com/Questie/Questie) and is licensed under GPLv3. You don't need Questie installed, and this addon isn't made or endorsed by the Questie team.
+
+Built with help from Claude (Anthropic's AI), and tested in game by a real guild. Free and open source. Be decent, have a laugh, and work work.

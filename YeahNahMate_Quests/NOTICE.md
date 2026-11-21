@@ -9,7 +9,11 @@ Quest data adapted from [Questie](https://github.com/Questie/Questie) (version 1
 quests leading to them, cut down to each quest's name, levels, who can take it, who starts it, where, and
 what comes before it, and reformatted for this addon. Crafting and tier turn-ins were removed.
 
-This folder is licensed under the GNU General Public License, version 3: see [gpl-3.0.md](gpl-3.0.md).
-The rest of Yeah Nah Mate is under its own licence (MIT).
+**How it's built:** `tools/gen_dungeon_quests.py` in the
+[Yeah Nah Mate repository](https://github.com/zacslip/yeahnahmate) makes `DungeonQuests.lua` from an installed
+copy of QuestieDB.
+
+This folder and that script are licensed under the GNU General Public License, version 3: see
+[gpl-3.0.md](gpl-3.0.md). The rest of Yeah Nah Mate is under its own licence (MIT).
 
 The Questie name and logo belong to the Questie project. This addon is not made or endorsed by the Questie team.

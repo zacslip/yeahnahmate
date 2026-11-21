@@ -190,6 +190,9 @@ local notice = ReadFile("YeahNahMate_Quests/NOTICE.md")
 check(notice:find("Questie", 1, true) and notice:find("What was changed", 1, true), "the notice credits Questie and says what changed")
 check(ReadFile("YeahNahMate_Quests/DungeonQuests.lua"):find("Adapted from Questie", 1, true), "the data file carries the credit")
 check(ReadFile(".pkgmeta"):find("YeahNahMate/YeahNahMate_Quests: YeahNahMate_Quests", 1, true), "the release package includes the quest folder")
+check(ReadFile("tools/gen_dungeon_quests.py"):find("GNU General Public License", 1, true) and notice:find("tools/gen_dungeon_quests.py", 1, true),
+    "the script that builds the data is published, under the GPL, and the notice says where")
+check(ReadFile("LICENSE"):find("tools/gen_dungeon_quests.py", 1, true), "the MIT licence doesn't claim the GPL parts")
 
 -- Quest data: every group is known, every line well formed.
 local groups = 0
