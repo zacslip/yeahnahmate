@@ -530,7 +530,7 @@ local replied = {}              -- name -> GetTime() of our last reply
 
 -- Other modules add their fields to our HI (Status.lua adds level, zone and group size).
 local function NewHi(ask)
-    local msg = { t = "HI", ver = ns.VERSION, ask = ask or nil }
+    local msg = { t = "HI", ver = ns.ANNOUNCED_VERSION, ask = ask or nil }
     ns.Fire("HI_OUT", msg)
     return msg
 end
@@ -543,7 +543,7 @@ Comm.On("HI", function(msg, from, channel, isSelf)
     local ver = type(msg.ver) == "string" and msg.ver:sub(1, 20) or "?"
     if isSelf then
         Comm.selfEcho = GetServerTime()
-        Comm.SeeUser(from, ver)
+        Comm.SeeUser(from, ns.VERSION)      -- my real version, even if a test copy announces another
         ns.Log("our own hello came back from the server (guild messages work)")
         return
     end

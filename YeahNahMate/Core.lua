@@ -268,6 +268,19 @@ function ns.CompareVersions(a, b)
     return 0
 end
 
+-- The version we tell the guild. Guildies treat the highest version they hear as the latest, so a
+-- test copy of an unreleased version must not announce itself: tools/install.py stamps its .toc with
+-- the last released version (X-Released). CurseForge copies have no stamp and announce their own.
+function ns.AnnouncedVersion(version, released)
+    if type(released) == "string" and released:match("^%d+%.%d+%.%d+$")
+        and ns.CompareVersions(released, version) < 0 then
+        return released
+    end
+    return version
+end
+ns.ANNOUNCED_VERSION = ns.AnnouncedVersion(ns.VERSION,
+    C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "X-Released"))
+
 ---------------------------------------------------------------------------------------------------
 -- Saved data. YeahNahMateDB is per account. Per-guild data lives under guilds[<guild key>].
 
