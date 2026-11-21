@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Yeah Nah Mate
-## Notes: Guild map, roster, dungeon finder, calendar, professions and proximity voice, shared only with your guildmates.
+## Notes: Guild map, roster, dungeon finder, calendar and professions, shared only with your guildmates.
 ## Author: zacslip
-## Version: 0.21.1
+## Version: 0.22.0
 ## SavedVariables: YeahNahMateDB
 ## IconTexture: Interface\AddOns\YeahNahMate\Media\crestmini
 ## AddonCompartmentFunc: YeahNahMate_OnAddonCompartmentClick
@@ -42,10 +42,9 @@ Recruit.lua
 Breakdown.lua
 Sim.lua
 Probe.lua
-VoiceProbe.lua
 ClanProbe.lua
 IdeaProbe.lua
-Voice.lua
+VoiceCleanup.lua
 UI\Widgets.lua
 UI\Window.lua
 UI\About.lua
@@ -70,7 +69,6 @@ UI\Info.lua
 UI\GMMilestones.lua
 UI\GM.lua
 UI\Settings.lua
-UI\Voice.lua
 UI\Recruit.lua
 UI\GuildButton.lua
 UI\Minimap.lua

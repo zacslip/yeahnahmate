@@ -38,7 +38,7 @@ local realPrint = ns.Print
 ns.Print = function(s) printed[#printed + 1] = s end
 for _, c in ipairs(UI.ABOUT_COMMANDS) do
     local first = c[1]:match("^/ynm%s*(%S*)")
-    if first ~= "" and first ~= "voice" then
+    if first ~= "" then
         printed = {}
         ns.Slash(first)
         check(printed[1] ~= L.HELP, c[1] .. " is a real command")

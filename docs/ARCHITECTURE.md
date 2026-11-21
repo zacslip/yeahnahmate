@@ -27,10 +27,9 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Clans.lua`, `ClanMeet.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`); clan meetings (`CMT`, `CAK`, and "inv" whispers read on the organiser's side). |
 | `ClanChallenge.lua` | Leadership challenges (`CHG`; results only from those who settle them) and second in command (`DEP`). |
 | `Milestones.lua` | Milestone and welcome cards (`BRD` kinds `ms`, `wel`), posting them (`MSF`, `MSW`). |
-| `Voice.lua` | Proximity voice: guildies' voice volume by distance, on Blizzard's voice chat (`VGRP`). |
+| `VoiceCleanup.lua` | Proximity voice was removed in 0.22.0: puts back volumes it left turned down and deletes its old settings. |
 | `Breakdown.lua` | The guild breakdown page's numbers. |
-| `Bindings.xml` | The key binding for proximity voice on/off (Options > Keybindings > AddOns). |
-| `Sim.lua`, `Probe.lua`, `VoiceProbe.lua`, `ClanProbe.lua` | Developer tools (`/ynm dev ...`), left out of the CurseForge build. |
+| `Sim.lua`, `Probe.lua`, `ClanProbe.lua` | Developer tools (`/ynm dev ...`), left out of the CurseForge build. |
 | `UI/*.lua` | The window, one file per tab, the minimap button, pop-ups (`Toast`), the whisper box. |
 | `libs/` | Third-party libraries, unchanged (`libs/LIBRARIES.md`). |
 
@@ -119,7 +118,7 @@ at the same local time instead would make players in different time zones disagr
 
 `YeahNahMateDB` (per account): `settings`, `window`, `chars` (per character: my group, my
 availability, my recipes, milestones done), `guilds[<guild name>]` (everything shared), `errors` and
-`log` (the last 50 errors and 300 message log lines, for bug reports), `voice` (volumes to put back).
+`log` (the last 50 errors and 300 message log lines, for bug reports), `voice` (only until `VoiceCleanup.lua` has put old volumes back).
 Positions are never saved.
 
 ## Testing

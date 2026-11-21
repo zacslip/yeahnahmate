@@ -1,7 +1,7 @@
 # Yeah Nah Mate
 
 A guild addon for **WoW Forever**: your guildmates on the map, a levelling roster, guild dungeon
-groups, a guild calendar, who can craft what, questions and answers, and proximity voice. Made in the
+groups, a guild calendar, who can craft what, and questions and answers. Made in the
 WoW Forever guild *Loktar Yeah Nah*; it works for any guild.
 
 Everything is shared only with your guildmates who also run the addon, through the game's own guild
@@ -22,11 +22,8 @@ professions are shared, and can turn it off any time.
 - **Ask**: questions to the guild with quest, item and dungeon links; the most helpful answerer is the Lore Master.
 - **Legends, Streamers, Info**: guild titles, guildies' Twitch cards, the officers' message and Discord invite.
 - **GM tab**: managers, which ranks moderate each tab, and milestone shout-outs in guild chat.
-- **Proximity voice**: in Blizzard's guild voice chat, hear guildies louder the closer they are.
 
-| Dungeons | Proximity voice |
-|---|---|
-| ![Dungeons tab](docs/images/dungeons.jpg) | ![Voice panel](docs/images/voice.jpg) |
+![The Dungeons tab](docs/images/dungeons.jpg)
 
 ## How it's made
 

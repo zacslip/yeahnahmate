@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.0
+
+- Proximity voice is gone, with its speaker tab, group voice button, `/ynm voice` and key binding. The guild wasn't using it and the game's own voice chat does the job. Blizzard's voice chat itself isn't touched.
+- If a crash ever left a guildie's voice volume turned down, the addon puts it back. Old voice settings and old voice errors are cleared.
+
 ## 0.21.1
 
 - Settings tidied: the share message box uses the whole width; the Welcome page button sits at the bottom under "What the addon shares"; "Minimap button" no longer runs into the nameplates tick.

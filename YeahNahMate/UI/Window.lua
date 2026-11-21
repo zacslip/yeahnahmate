@@ -288,8 +288,6 @@ local function Build()
     foot = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     foot:SetPoint("BOTTOMLEFT", 14, 10)
 
-    -- The voice drawer on the left edge (UI/Voice.lua).
-    if UI.BuildVoiceDrawer then UI.BuildVoiceDrawer(frame) end
     -- The Recruiters drawer on the right edge, by the version (UI/Recruit.lua).
     if UI.BuildRecruitDrawer then UI.BuildRecruitDrawer(frame) end
 end

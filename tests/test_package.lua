@@ -25,7 +25,7 @@ check(#unpaired == 0, "do-not-package markers pair up around dev commands (" .. 
 
 -- The probes are dev tools from top to bottom: nothing of theirs runs in the player version (no
 -- event listeners on guild chat, loot or addon messages, no chat line).
-for _, f in ipairs({ "YeahNahMate/Probe.lua", "YeahNahMate/VoiceProbe.lua", "YeahNahMate/ClanProbe.lua", "YeahNahMate/IdeaProbe.lua" }) do
+for _, f in ipairs({ "YeahNahMate/Probe.lua", "YeahNahMate/ClanProbe.lua", "YeahNahMate/IdeaProbe.lua" }) do
     local kept = read(f):gsub("%-%-@do%-not%-package@.-%-%-@end%-do%-not%-package@", "")
     local code = kept:gsub("%-%-[^\n]*", "")
     check(not code:find("RegisterEvent", 1, true) and not code:find("SendChatMessage", 1, true) and not code:find("CreateFrame", 1, true),

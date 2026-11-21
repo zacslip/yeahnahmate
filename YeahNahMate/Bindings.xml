@@ -1,6 +1,0 @@
-<!-- Key bindings (Esc > Options > Keybindings > AddOns > Yeah Nah Mate). The names are set in Voice.lua. -->
-<Bindings>
-    <Binding name="YEAHNAHMATE_VOICE" header="YEAHNAHMATE" category="ADDONS">
-        YeahNahMate_VoiceToggle()
-    </Binding>
-</Bindings>

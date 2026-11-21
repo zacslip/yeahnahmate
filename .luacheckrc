@@ -17,7 +17,5 @@ files["YeahNahMate/Strings.lua"] = { max_line_length = false }   -- one line per
 globals = {
     "YeahNahMateDB",                                        -- saved variables (.toc)
     "SLASH_YEAHNAHMATE1", "SLASH_YEAHNAHMATE2", "SlashCmdList",
-    "BINDING_HEADER_YEAHNAHMATE", "BINDING_NAME_YEAHNAHMATE_VOICE",   -- Bindings.xml
-    "YeahNahMate_VoiceToggle",                              -- the key binding's handler
     "YeahNahMate_OnAddonCompartmentClick",                  -- .toc AddonCompartmentFunc
 }

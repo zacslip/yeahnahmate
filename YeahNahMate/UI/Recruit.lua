@@ -1,7 +1,7 @@
 -- The addon recruiting drawer (Phase 13; data in Recruit.lua): a handshake tab on the main window's RIGHT
 -- edge, up by the version number, in the style of our tab on the game's guild window (UI/GuildButton.lua),
 -- with a gold "!" until I've said who got me onto the addon. Clicking it slides a panel out to the right,
--- from under the window, like the voice drawer does on the left (UI/Voice.lua); again slides it shut.
+-- from under the window; again slides it shut.
 -- (A Guild recruiting tab above it was planned and dropped, 21 Nov; the page code still allows a second.)
 --
 -- Addon recruiting: who got me onto it (the question until answered, then a short note), the guildies

@@ -273,7 +273,6 @@ ns.DEFAULTS = {
             answer = true,      -- someone's going to my event
             qanswer = true,     -- an answer to my question, a reply to my answer (Questions.lua)
             milestone = true,   -- a guildie's milestone (Milestones.lua)
-            voice = true,       -- a guildie in my group moved it to group voice (Voice.lua)
         },
         popupSound = true,
         remind = true,          -- reminder 15 minutes before events I'm going to
@@ -281,13 +280,6 @@ ns.DEFAULTS = {
         soundChannel = 1,       -- which of the game's volume sliders it follows (1 Master, 2 Effects, 3 Dialog)
         linkAlts = true,        -- link my characters in the guild (Alts.lua; 0.12.0)
         qAlert = false,         -- the small alert for every new question (opt in on the Ask tab; UI/QAlert.lua)
-        voiceOn = false,        -- Proximity voice (the voice drawer; Voice.lua)
-        voiceRange = "normal",  -- close | normal | far (Voice.RANGES)
-        voiceQuietest = 0,      -- % of their volume when far away
-        voiceGroupFull = true,  -- my party/raid always at full volume
-        voiceUnplaced = "normal", -- guildies with no position: "normal" or "quiet"
-        voiceCurve = "even",    -- how the volume fades: even | natural (Voice.CURVES)
-        voiceAlways = {},       -- guildies always heard at full volume (name -> true)
         -- qAlertPos: where the player dragged that alert
         -- sharePosition: nil until the player answers the first-run question, then true/false
     },
@@ -416,8 +408,6 @@ function ns.Slash(input)
     elseif cmd == "reset" then
         if ns.UI and ns.UI.ResetPosition then ns.UI.ResetPosition() end
         ns.Print(L.RESET_DONE)
-    elseif cmd == "voice" then
-        if ns.Voice then ns.Voice.Command(rest) end
     elseif cmd == "dev" then
         local sub, arg = rest:match("^(%S*)%s*(.-)$")
         local fn = ns.devCommands[sub]

@@ -59,13 +59,6 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - Officers set up shout-outs for when a guildie hits a level, reaches a profession skill, learns to ride, loots a legendary or earns a title. They post in guild chat, as a pop-up for guildies with the addon, or both.
 - A welcome line in guild chat for new members, posted by an officer who's online with the addon.
 
-**Proximity voice**
-- Hear guildies louder the closer they are, in Blizzard's own guild voice chat. No extra program: the addon just turns each guildie's volume up and down by how far away they are.
-- A speaker tab on the side of the window: click it for the voice panel, right-click to turn Proximity on or off. Its colour shows where you're at: grey off, gold not in guild voice yet, green on, blue group voice.
-- Pick how far voices carry (Close, Normal, Far), whether far-away guildies go silent or stay faint, and an even or natural fade. Your group is always at full volume, and you can click anyone in the list to always hear them.
-- **Group voice**: in a party or raid, one click moves you to the group's own private voice chat. Guildies in the group get a pop-up to join; Back to guild voice takes you home.
-- Your own volume for each guildie stays the top, mutes are left alone, and everyone's volume goes back to normal when you turn it off, leave voice or log out. Only guildies who run the addon can be placed.
-
 **Clans** (new)
 - The guild by race: every clan side by side, each with its leader (found from the guild ranks), its rank title, and its members with their roles. Sort by roles or name; your own clan is lit up in gold.
 - **Clan meetings**: the clan's leader clicks Start meeting. The clan gets a pop-up to ask for an invite, or anyone can just whisper the leader "inv". The leader's list shows who asked, who's close and who was there before; click a name to invite. Disband (two clicks) for layer trouble.
@@ -86,11 +79,10 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - Nothing leaves the game. The addon only uses the game's own hidden addon messages, to your guild or whispered to one guildmate. Nothing goes to other players, other guilds or any website.
 - The first time it loads, it asks whether to share your **map position** and your **professions**. You can change either in Settings any time, and off means nothing is sent.
 - No automation: every invite, whisper and sign-up is your own click. The only thing it ever says in guild chat by itself is a milestone or welcome your officers set up, and you can switch off your own milestone posts in Settings.
-- Proximity voice only changes volumes on your own game, and only joins a voice channel when you click to.
 
 ## Light on your game
 
-- Your position goes out a few times a minute while you move, and once a minute while you stand still. With Proximity voice on and a guildie in voice nearby, it goes every 3 seconds while you move, so voices follow smoothly.
+- Your position goes out a few times a minute while you move, and once a minute while you stand still. With a guildie close by, it goes more often so their minimap dot moves smoothly.
 - It's built and tested for a guild of 500-600 members with everyone running it.
 - It uses about 2 MB of memory; Settings shows the figure.
 - It tells you when a guildie has a newer version, so everyone stays up to date.
@@ -102,7 +94,7 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 
 ---
 
-**Slash commands:** `/ynm` opens the window, `/ynm voice` turns proximity voice on or off (also `/ynm voice group`, `guild`, `leave`, or set a key under Keybindings > AddOns), `/ynm log` shows recent addon messages, `/ynm errors` shows any errors.
+**Slash commands:** `/ynm` opens the window, `/ynm log` shows recent addon messages, `/ynm errors` shows any errors.
 
 **Feedback and bugs:** post in the comments, or open an issue on [GitHub](https://github.com/zacslip/yeahnahmate/issues). If something breaks, `/ynm errors` shows what went wrong, so include that.
 

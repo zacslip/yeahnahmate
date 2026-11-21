@@ -14,9 +14,6 @@ local POP_KINDS = {
     { "qanswer", "SET_POP_QANSWER" }, { "milestone", "SET_POP_MILESTONE" },
 }
 UI.POP_KINDS = POP_KINDS
--- Pop-ups switched somewhere else: "voice" in the voice drawer (UI/Voice.lua). Every kind in
--- settings.pop must be in one of the two (tests/test_popswitch.lua).
-UI.POP_ELSEWHERE = { voice = true }
 
 -- Our own memory use. UpdateAddOnMemoryUsage walks every addon and can hitch for a moment, so it
 -- runs only when the Settings tab is shown (not on redraws), at most every 10 s, never in combat.

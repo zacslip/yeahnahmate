@@ -66,45 +66,13 @@ function Map.MyPosition()
     return mapID, x, y
 end
 
--- Where a guildie probably is now (proximity voice: volumes must not jitter between positions).
--- From their last two positions: the way they were heading, guessed at most GUESS_MAX seconds past
--- the last one. Their last spot as it is when: only one position, they changed map, the last one is
--- older than STALE (they stopped), or the jump was too fast to be running (a teleport, a hearth).
-local GUESS_MAX, STALE, MAX_SPEED = 3, 6, 40    -- seconds, seconds, yards a second
--- The heading is worked out once per position (Heading), so a guess is plain arithmetic: the map
--- library's distances make garbage, and gliding dots ask for a guess five times a second.
-local function Heading(p)
-    p.vx, p.vy, p.headAt = nil, nil, p.at
-    if not p.pat or p.pm ~= p.m then return end
-    local span = p.at - p.pat
-    if span < 0.5 or span > 20 then return end
-    local yards = HBD:GetZoneDistance(p.m, p.px, p.py, p.m, p.x, p.y)
-    if not yards or yards / span > MAX_SPEED then return end
-    p.vx, p.vy = (p.x - p.px) / span, (p.y - p.py) / span
-end
-Map.Heading = Heading
-function Map.Estimate(name)
-    local p = Map.pos[name]
-    if not p then return nil end
-    if p.headAt ~= p.at then Heading(p) end
-    local age = GetTime() - p.at
-    if not p.vx or age > STALE then return p.m, p.x, p.y end
-    local t = math.min(age, GUESS_MAX)
-    local x = math.max(0, math.min(1, p.x + p.vx * t))
-    local y = math.max(0, math.min(1, p.y + p.vy * t))
-    return p.m, x, y
-end
-
 -- Yards from me to a guildie's dot, or nil (no dot, different continent, or I'm in an instance).
--- estimate: where they probably are now (Map.Estimate) rather than their last position.
-function Map.Distance(name, estimate)
+function Map.Distance(name)
     local p = Map.pos[name]
     if not p then return nil end
     local m, x, y = Map.MyPosition()
     if not m then return nil end
-    local pm, px, py = p.m, p.x, p.y
-    if estimate then pm, px, py = Map.Estimate(name) end
-    local d = HBD:GetZoneDistance(m, x, y, pm, px, py)
+    local d = HBD:GetZoneDistance(m, x, y, p.m, p.x, p.y)
     return d
 end
 
@@ -242,12 +210,11 @@ ns.Comm.On("POS", function(msg, from, channel, isSelf)
     end
     local p = Map.pos[from]
     if not p then p = {}; Map.pos[from] = p end     -- one table per guildie, reused
-    -- The one before, for guessing where they're heading (Map.Estimate).
-    if p.at then p.pm, p.px, p.py, p.pat = p.m, p.x, p.y, p.at end
+    -- When the one before came in, for how long a gliding dot takes to get here.
+    p.pat = p.at
     p.m, p.x, p.y, p.at = m, x, y, GetTime()
     -- How long the last gap was: a gliding dot takes that long to reach this position.
     p.gap = p.pat and (p.at - p.pat) or nil
-    Heading(p)
     Map.Place(from)
     ns.Fire("POSITIONS")
 end)
@@ -477,8 +444,8 @@ local sentReal = false          -- a real position went out since the last "off"
 
 local function Round(v) return math.floor(v * 10000 + 0.5) / 10000 end
 
--- interval, prio: proximity voice's fast lane (Voice.lua) sends every few seconds instead, as
--- NORMAL; everything else uses Map.Interval() and BULK.
+-- interval, prio: the near lane sends more often instead, as NORMAL; everything else uses
+-- Map.Interval() and BULK.
 function Map.Tick(interval, prio)
     if not ns.me or not IsInGuild() then return end
     local m, x, y
@@ -502,7 +469,8 @@ function Map.Tick(interval, prio)
     local moved = m ~= last.m or math.abs(x - last.x) + math.abs(y - last.y) > step
     local gap = now - last.at
     local iv = interval or Map.Interval()
-    -- Fast lane only: one more when I stop, so guildies' guesses stop too (Map.Estimate).
+    -- Fast lane only: one more when I stop, so dots land where I stopped (0.21.1 and older also
+    -- guess from it).
     local stopped = interval and not moved and last.moving
     local slack = interval and 0.05 or 0   -- fast lane: allow for timer jitter (3 s, not 4)
     if ((moved or stopped) and gap >= iv - slack) or gap >= KEEPALIVE then

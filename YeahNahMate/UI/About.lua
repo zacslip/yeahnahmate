@@ -5,16 +5,11 @@ local ADDON, ns = ...
 local L = ns.L
 local UI = ns.UI
 
-local PW, PH = 440, 344
+local PW, PH = 440, 234
 
--- Slash commands, as Core.lua's ns.Slash and Voice.Command handle them (dev commands left out).
+-- Slash commands, as Core.lua's ns.Slash handles them (dev commands left out).
 local COMMANDS = {
     { "/ynm", "ABOUT_CMD_OPEN" },
-    { "/ynm voice", "ABOUT_CMD_VOICE" },
-    { "/ynm voice join", "ABOUT_CMD_VJOIN" },
-    { "/ynm voice group", "ABOUT_CMD_VGROUP" },
-    { "/ynm voice guild", "ABOUT_CMD_VGUILD" },
-    { "/ynm voice leave", "ABOUT_CMD_VLEAVE" },
     { "/ynm log", "ABOUT_CMD_LOG" },
     { "/ynm errors", "ABOUT_CMD_ERRORS" },
     { "/ynm reset", "ABOUT_CMD_RESET" },
@@ -62,10 +57,9 @@ local function BuildPanel(window, header)
         UI.Text(panel, L[c[2]], "GameFontHighlightSmall", 130, y, PW - 142)
         y = y - 16
     end
-    Wrapped(panel, ns.GREY .. L.ABOUT_KEYS .. "|r", "GameFontHighlightSmall", 16, y - 2, PW - 28, 26)
 
-    UI.Header(panel, L.ABOUT_PROBLEM, 12, y - 32, PW - 24)
-    Wrapped(panel, L.ABOUT_PROBLEM_TEXT, "GameFontHighlightSmall", 16, y - 54, PW - 28, 56)
+    UI.Header(panel, L.ABOUT_PROBLEM, 12, y - 6, PW - 24)
+    Wrapped(panel, L.ABOUT_PROBLEM_TEXT, "GameFontHighlightSmall", 16, y - 28, PW - 28, 56)
 
     panel:SetScript("OnShow", Refresh)
     panel:Hide()
