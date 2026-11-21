@@ -428,8 +428,8 @@ function Comm.Receive(text, channel, sender, fast)
         Comm.got[msg.t] = (Comm.got[msg.t] or 0) + 1
         if not QUIET_IN[msg.t] then
             -- The log line reads fields nobody has checked yet: junk in them must not stop the handlers.
-            local ok, what = pcall(Describe, msg)
-            if not ok then what = "a malformed " .. tostring(msg.t) .. " message" end
+            local described, what = pcall(Describe, msg)
+            if not described then what = "a malformed " .. tostring(msg.t) .. " message" end
             ns.Log("got " .. what .. " from " .. from .. (channel == "WHISPER" and " (whisper)" or ""))
         end
     end
