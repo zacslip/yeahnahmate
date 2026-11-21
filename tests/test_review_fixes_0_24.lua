@@ -1,8 +1,9 @@
 -- Bugs from the 0.24.0 code review: each one stays fixed.
 math.randomseed(241)
 YeahNahMateDB = nil
+dofile("tests/fake_questiedb.lua")
+LibQuestieDB = FakeQuestieDB()
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
-LoadAddon("YeahNahMate_Quests", "YeahNahMate_Quests")
 LOGGED_IN = true
 FireEvent("PLAYER_LOGIN")
 Tick(3)

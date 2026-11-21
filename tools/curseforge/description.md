@@ -110,6 +110,6 @@ Open them with the gear at the top right of the window.
 
 **Want to help build it?** The code is on [GitHub](https://github.com/zacslip/yeahnahmate); the [contributing guide](https://github.com/zacslip/yeahnahmate/blob/main/CONTRIBUTING.md) explains how to set up and send a change.
 
-**Credits and licences:** Yeah Nah Mate is MIT licensed. The included Yeah Nah Mate Quests addon contains dungeon quest data adapted from [Questie](https://github.com/Questie/Questie) and is licensed under GPLv3. You don't need Questie installed, and this addon isn't made or endorsed by the Questie team.
+**Credits and licences:** Yeah Nah Mate is MIT licensed. The leveling guide's dungeon quest lists are powered by [QuestieDB](https://www.curseforge.com/wow/addons/questiedb), the free quest database made by the [Questie](https://github.com/Questie/Questie) team. Big thanks to them for all their work. It's an optional dependency: install it and keep it ticked in your AddOns list to see those lists. Everything else works without it. This addon isn't made or endorsed by the Questie team.
 
 Built with help from Claude (Anthropic's AI), and tested in game by a real guild. Free and open source. Be decent, have a laugh, and work work.

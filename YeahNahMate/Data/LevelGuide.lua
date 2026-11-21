@@ -6,15 +6,27 @@ local _, ns = ...
 local G = {}
 ns.LevelGuide = G
 
--- The quest data is a separate addon that loads after this one (YeahNahMate_Quests, GPLv3), so it's
--- read when asked for. Without it the guide still works and just has no quest lists.
+-- Quest lists come live from QuestieDB (Data/LiveQuests.lua), read when asked for.
+-- Without it the guide still works and just has no quest lists.
 local QUEST_DATA = { QUESTS = "QUESTS", QUEST_VARIANTS = "VARIANTS", QUEST_EARLIER = "EARLIER", QUEST_STEPS = "STEPS" }
 setmetatable(G, { __index = function(_, key)
-    local field, data = QUEST_DATA[key], YeahNahMateQuestData
-    return field and data and data[field] or nil
+    local field = QUEST_DATA[key]
+    if not field then return nil end
+    local data = ns.LiveQuests.Data()
+    return data and data[field] or nil
 end })
 
-function G.HasQuestData() return YeahNahMateQuestData ~= nil end
+function G.HasQuestData() return ns.LiveQuests.Data() ~= nil end
+
+-- What to tell the player when there are no quest lists to show (heading, text, steps); nil when there are.
+function G.QuestDataNote()
+    if G.HasQuestData() then return nil end
+    local L = ns.L
+    if ns.LiveQuests.Status() == "missing" then
+        return L.GUIDE_NO_QUEST_DATA, L.GUIDE_NO_QUEST_DATA_TEXT, L.GUIDE_NO_QUEST_DATA_STEPS
+    end
+    return L.GUIDE_QUEST_DATA_OLD, L.GUIDE_QUEST_DATA_OLD_TEXT, L.GUIDE_QUEST_DATA_OLD_STEPS
+end
 
 G.ZONES = {
     { "Durotar", 1, 10, false, { 5, 10 } },
@@ -105,7 +117,7 @@ G.DUNGEONS = {
     ubrs = { where = "Blackrock Mountain", tag = "key", note = "The Seal of Ascension gets you in." },
 }
 
--- Wings of one place share their quests (Data/DungeonQuests.lua). Other dungeons use their own key.
+-- Wings of one place share their quests (Data/LiveQuests.lua). Other dungeons use their own key.
 local QUEST_GROUP = { smgy = "scarlet", smlib = "scarlet", smarm = "scarlet", smcath = "scarlet",
                       dme = "diremaul", dmw = "diremaul", dmn = "diremaul", lbrs = "spire", ubrs = "spire",
                       stratsg = "strat" }

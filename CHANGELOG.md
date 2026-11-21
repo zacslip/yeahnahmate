@@ -2,6 +2,8 @@
 
 ## 0.24.1
 
+- Dungeon quest lists are now powered directly by QuestieDB, the free quest database made by the Questie team, so they stay up to date with all their work. Install QuestieDB and keep it ticked in your AddOns list to see them. Everything else works without it. The Yeah Nah Mate Quests folder is gone, so it's safe to delete if it's still in your AddOns.
+- Leveling guide: quest givers in Dun Morogh can now be shown on the map.
 - Show on map no longer closes the addon. The window waits behind the map and comes back when you close it.
 - Leveling guide: quests with a quest giver in each faction's city now send you to your own, not the enemy's.
 - Leveling guide: Skyborne players now see their own versions of quests.

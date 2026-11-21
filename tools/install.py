@@ -1,9 +1,10 @@
 """Copy the addon into WoW Forever's AddOns folder, after the offline tests pass.
 
-    python tools/install.py              the addon (YeahNahMate/ and YeahNahMate_Quests/)
+    python tools/install.py              the addon (YeahNahMate/)
     python tools/install.py --no-tests   skip the tests (don't, unless you know why)
 
-Then /reload in game. Only those two folders inside AddOns are ever touched.
+Then /reload in game. Only our folders inside AddOns are ever touched (YeahNahMate, and the old
+YeahNahMate_Quests is removed if it's there).
 
 A copy newer than the last release (version tag) is stamped with that release (X-Released in the
 installed .toc), so it doesn't tell guildies an unreleased version is out. The game reads a .toc at
@@ -73,7 +74,11 @@ def main():
         sys.exit(f"WoW Forever AddOns folder not found: {addons}\nSet WOW_FOREVER to the _forever_ folder.")
     # Only ever replace our own folders.
     assert os.path.basename(TARGET) == "YeahNahMate" and os.path.basename(addons) == "AddOns"
-    for name in ("YeahNahMate", "YeahNahMate_Quests"):
+    old_quests = os.path.join(addons, "YeahNahMate_Quests")
+    if os.path.isdir(old_quests):
+        shutil.rmtree(old_quests)
+        print("Removed the old YeahNahMate_Quests folder. Restart the game fully.")
+    for name in ("YeahNahMate",):
         source, target = os.path.join(ROOT, name), os.path.join(addons, name)
         if os.path.isdir(target):
             shutil.rmtree(target)

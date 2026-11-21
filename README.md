@@ -42,6 +42,6 @@ each version: [CHANGELOG.md](CHANGELOG.md).
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Bundled libraries keep their own licences, see
-[YeahNahMate/libs/LIBRARIES.md](YeahNahMate/libs/LIBRARIES.md). The dungeon quest data in
-`YeahNahMate_Quests/`, and `tools/gen_dungeon_quests.py` that builds it, are adapted from
-[Questie](https://github.com/Questie/Questie) and are GPLv3, see [the notice](YeahNahMate_Quests/NOTICE.md).
+[YeahNahMate/libs/LIBRARIES.md](YeahNahMate/libs/LIBRARIES.md). The leveling guide's dungeon quest
+lists read from [QuestieDB](https://github.com/Questie/Questie), an optional dependency that isn't included
+and keeps its own licence.

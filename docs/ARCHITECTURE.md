@@ -22,7 +22,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Requests.lua` | Craft requests and the Crafty Bugger title (`RQ`, `CL`, `RQX`). |
 | `Questions.lua` | Ask the Guild and the Lore Master title (`QQ`, `QA`, `QM`). |
 | `Dungeons.lua` | Group posts, sign-ups and "I'm available" (`GRP`, `SIGN`, `ANS`, `AVL`, `DMX`). |
-| `Data/LevelGuide.lua` | The leveling guide: zones and dungeons for my level and faction, dungeon quests and their chains. Local only, sends nothing. Its quest data is the separate GPLv3 addon `YeahNahMate_Quests/`, read through the global `YeahNahMateQuestData`; without it the guide has no quest lists. |
+| `Data/LevelGuide.lua` | The leveling guide: zones and dungeons for my level and faction, dungeon quests and their chains. Local only, sends nothing. Quest lists come from `Data/LiveQuests.lua`, which reads the optional QuestieDB addon's public API and stores none of its data. |
 | `Calendar.lua`, `Gather.lua` | Guild events and answers (`EVT`, `RSVP`, `EVR`, `EVM`); gathering for an event (`GTH`, `GAK`). |
 | `Board.lua` | Guild info, managers, which ranks moderate each tab, streamer cards (`BRD`). |
 | `Clans.lua`, `ClanMeet.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`); clan meetings (`CMT`, `CAK`, and "inv" whispers read on the organiser's side). |

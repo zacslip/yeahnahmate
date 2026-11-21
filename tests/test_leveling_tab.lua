@@ -1,6 +1,8 @@
 -- The Settings gear and the combined Leveling / Raids tab.
 math.randomseed(24)
 YeahNahMateDB = nil
+dofile("tests/fake_questiedb.lua")
+LibQuestieDB = nil
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
 LOGGED_IN = true
 FireEvent("PLAYER_LOGIN")
@@ -158,22 +160,36 @@ check(g.dungeons.offset == 0 and g.noDungeons:IsShown() and g.noDungeons:GetText
 UI.SetLevelingPretend(nil)
 Tick(1)
 
--- The quest data is its own GPL addon. Without it the guide still works, with no quest lists.
-check(not G.HasQuestData() and G.QUESTS == nil and #G.Quests("rfd") == 0, "no quest addon: no quests, no error")
-check(G.QuestState({ id = 1, ids = { 1 } }) == nil and G.QuestPlan({ id = 1, name = "x", ids = { 1 } }).locked == false, "no quest addon: status and chain are safe")
+-- QuestieDB is optional. Without it the guide still works, with no quest lists.
+check(not G.HasQuestData() and G.QUESTS == nil and #G.Quests("rfd") == 0, "no QuestieDB: no quests, no error")
+check(G.QuestState({ id = 1, ids = { 1 } }) == nil and G.QuestPlan({ id = 1, name = "x", ids = { 1 } }).locked == false, "no QuestieDB: status and chain are safe")
 UI.SetLevelingPretend(40)
 UI.Select("home"); UI.Select("leveling")
 Tick(1)
 UI.LevelingOpenDungeon("rfd")
 Tick(1)
-check(g.questPanel.empty:IsShown() and g.questPanel.empty:GetText() == L.GUIDE_NO_QUEST_DATA, "no quest addon: the list says what's missing")
+do
+    local q = g.questPanel
+    check(q.notice:IsShown() and q.notice.heading:GetText() == L.GUIDE_NO_QUEST_DATA and q.notice.icon ~= nil, "no QuestieDB: a notice with a warning icon")
+    check(q.notice.text:GetText() == L.GUIDE_NO_QUEST_DATA_TEXT and q.notice.steps:GetText():find("Install QuestieDB", 1, true), "and it says what to do")
+    check(q.notice.footer:GetText() == L.GUIDE_QUEST_DATA_FOOTER, "and that everything else still works")
+    check(not q.empty:IsShown() and not q.hint:IsShown() and not q.heads[1]:IsShown(), "the empty list's headings and hint make way for it")
+end
+-- A version we can't read, or one that fails while reading: a clear note, never an error.
+LibQuestieDB = FakeQuestieDB({ old = true })
+ns.LiveQuests.Reset()
+check(ns.LiveQuests.Status() == "old" and #G.Quests("rfd") == 0 and G.QuestDataNote() == L.GUIDE_QUEST_DATA_OLD, "a QuestieDB we can't read: says to update")
+LibQuestieDB = FakeQuestieDB({ broken = true })
+ns.LiveQuests.Reset()
+check(#G.Quests("rfd") == 0 and ns.LiveQuests.Status() == "failed" and G.QuestDataNote() == L.GUIDE_QUEST_DATA_OLD, "QuestieDB fails while reading: no error, a note")
 g.questPanel.back:Click()
 Tick(1)
 UI.SetLevelingPretend(nil)
 Tick(1)
-LoadAddon("YeahNahMate_Quests", "YeahNahMate_Quests")
-check(G.HasQuestData() and G.QUESTS ~= nil and G.QUEST_STEPS ~= nil, "the quest addon's data is picked up")
--- Its licence and credit travel with it, it matches the main version, and the release includes it.
+LibQuestieDB = FakeQuestieDB()
+ns.LiveQuests.Reset()
+check(G.HasQuestData() and G.QUESTS ~= nil and G.QUEST_STEPS ~= nil and G.QuestDataNote() == nil, "QuestieDB's quests are picked up")
+-- It's a listed optional dependency, and none of its data ships with us.
 local function ReadFile(path)
     local f = io.open(path, "rb")
     if not f then return "" end
@@ -181,18 +197,21 @@ local function ReadFile(path)
     f:close()
     return s
 end
-local questToc, mainToc = ReadFile("YeahNahMate_Quests/YeahNahMate_Quests.toc"), ReadFile("YeahNahMate/YeahNahMate.toc")
-check(questToc:match("## Version: ([%d%.]+)") == mainToc:match("## Version: ([%d%.]+)"), "both addons have the same version")
-check(questToc:find("## RequiredDeps: YeahNahMate", 1, true) and questToc:find("## X-License: GPL-3.0", 1, true), "quest addon: needs the main addon, says GPL")
-check(not mainToc:find("DungeonQuests", 1, true), "the main addon doesn't carry the GPL data")
-check(ReadFile("YeahNahMate_Quests/gpl-3.0.md"):find("GNU GENERAL PUBLIC LICENSE", 1, true), "the GPL text is in the folder")
-local notice = ReadFile("YeahNahMate_Quests/NOTICE.md")
-check(notice:find("Questie", 1, true) and notice:find("What was changed", 1, true), "the notice credits Questie and says what changed")
-check(ReadFile("YeahNahMate_Quests/DungeonQuests.lua"):find("Adapted from Questie", 1, true), "the data file carries the credit")
-check(ReadFile(".pkgmeta"):find("YeahNahMate/YeahNahMate_Quests: YeahNahMate_Quests", 1, true), "the release package includes the quest folder")
-check(ReadFile("tools/gen_dungeon_quests.py"):find("GNU General Public License", 1, true) and notice:find("tools/gen_dungeon_quests.py", 1, true),
-    "the script that builds the data is published, under the GPL, and the notice says where")
-check(ReadFile("LICENSE"):find("tools/gen_dungeon_quests.py", 1, true), "the MIT licence doesn't claim the GPL parts")
+local mainToc = ReadFile("YeahNahMate/YeahNahMate.toc")
+check(mainToc:find("## OptionalDeps: QuestieDB", 1, true), "QuestieDB is listed as optional")
+check(not mainToc:find("## RequiredDeps", 1, true) and not mainToc:find("## Dependencies", 1, true), "and isn't required")
+check(ReadFile("YeahNahMate_Quests/DungeonQuests.lua") == "" and ReadFile("tools/gen_dungeon_quests.py") == "", "no copied quest data or its generator")
+check(not ReadFile(".pkgmeta"):find("YeahNahMate_Quests", 1, true), "the release has no quest data folder")
+check(ReadFile(".pkgmeta"):find("optional%-dependencies:%s+%- questiedb"), "CurseForge lists QuestieDB as optional")
+-- Quests a player can't get stay out, and a giver in zone 1 keeps its map pin.
+local function InData(id)
+    for _, list in pairs(G.QUESTS) do
+        for _, q in ipairs(list) do if q[1] == id then return q end end
+    end
+end
+check(not InData(7668) and not G.QUEST_STEPS[7668], "quests not in the game are left out")
+check(InData(2926) and InData(2926)[9] == 1426, "a quest giver in Dun Morogh has a map place")
+check(InData(97000) ~= nil, "a quest for a new dungeon's boss is linked by the boss's id")
 
 -- Quest data: every group is known, every line well formed.
 local groups = 0
@@ -334,6 +353,7 @@ for _, r in ipairs(g.dungeons.rows) do if r.item and r.item.key == "rfd" then rf
 rfdRow:Click()
 Tick(1)
 check(g.questPanel:IsShown() and not g.lists:IsShown() and g.questPanel.title:GetText():find("Razorfen Downs", 1, true), "clicking a dungeon opens its quests")
+check(not g.questPanel.notice:IsShown() and g.questPanel.heads[1]:IsShown() and g.questPanel.hint:IsShown(), "with QuestieDB: no notice, the normal list")
 local mapRow, noMapRow
 for _, r in ipairs(g.quests.rows) do
     if r.item and r.place.map and not mapRow then mapRow = r end

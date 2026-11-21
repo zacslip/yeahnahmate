@@ -323,13 +323,31 @@ local function BuildQuests(g)
     end, 22)
     q.title = Text(q, "", "GameFontNormalLarge", 82, -33, 500)
     q.clear = Button(q, L.GUIDE_CLEAR_PIN, 120, 616, -30, ClearPin, 22)
-    Text(q, L.GUIDE_LEVEL, "GameFontDisableSmall", 6, -59, 34, "CENTER")
-    Text(q, L.GUIDE_QUEST, "GameFontDisableSmall", 46, -59, 300)
-    Text(q, L.GUIDE_STATUS, "GameFontDisableSmall", 340, -59, 70, "CENTER")
-    Text(q, L.GUIDE_STARTS, "GameFontDisableSmall", 414, -59, 190)
+    q.heads = {
+        Text(q, L.GUIDE_LEVEL, "GameFontDisableSmall", 6, -59, 34, "CENTER"),
+        Text(q, L.GUIDE_QUEST, "GameFontDisableSmall", 46, -59, 300),
+        Text(q, L.GUIDE_STATUS, "GameFontDisableSmall", 340, -59, 70, "CENTER"),
+        Text(q, L.GUIDE_STARTS, "GameFontDisableSmall", 414, -59, 190),
+    }
     g.quests = RowList(q, 0, 736, -74, 22, 14, MakeQuestRow, FillQuestRow)
     q.empty = Text(q, L.GUIDE_NO_QUESTS, "GameFontDisableSmall", 6, -80, 700)
     q.hint = Text(q, "", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, 580)
+
+    -- No QuestieDB, or one we can't read: a clear notice in place of the list.
+    local n = Box(q, 40, -84, 656, 264)
+    q.notice = n
+    n.icon = n:CreateTexture(nil, "ARTWORK")
+    n.icon:SetSize(64, 64)
+    n.icon:SetPoint("TOPLEFT", 22, -24)
+    n.icon:SetTexture("Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew")
+    n.heading = Text(n, "", "GameFontNormalHuge", 104, -26, 530)
+    n.text = Text(n, "", "GameFontHighlightLarge", 104, -66, 530)
+    n.text:SetWordWrap(true)
+    n.steps = Text(n, "", "GameFontHighlightLarge", 104, -122, 530)
+    n.steps:SetWordWrap(true)
+    n.steps:SetSpacing(5)
+    n.footer = Text(n, L.GUIDE_QUEST_DATA_FOOTER, "GameFontNormalLarge", 104, -216, 530)
+    n:Hide()
 end
 
 local function RefreshQuests(g)
@@ -337,9 +355,17 @@ local function RefreshQuests(g)
     q.title:SetText(ns.GOLD .. d.name .. "|r  " .. ns.GREY .. "(" .. d.min .. "-" .. d.max .. ")|r")
     local list = ns.LevelGuide.Quests(g.questKey)
     g.quests.Set(list)
-    q.empty:SetText(ns.LevelGuide.HasQuestData() and L.GUIDE_NO_QUESTS or L.GUIDE_NO_QUEST_DATA)
-    q.empty:SetShown(#list == 0)
+    local heading, text, steps = ns.LevelGuide.QuestDataNote()
+    q.notice:SetShown(heading ~= nil)
+    if heading then
+        q.notice.heading:SetText(heading)
+        q.notice.text:SetText(text)
+        q.notice.steps:SetText(steps)
+    end
+    for _, head in ipairs(q.heads) do head:SetShown(not heading) end
+    q.empty:SetShown(#list == 0 and not heading)
     q.clear:SetShown(pin ~= nil and pin.quest ~= nil)
+    q.hint:SetShown(not heading)
     q.hint:SetText(g.questHint or L.GUIDE_QUEST_HINT)
 end
 
