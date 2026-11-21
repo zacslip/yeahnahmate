@@ -5,13 +5,14 @@ local ADDON, ns = ...
 local L = ns.L
 local UI = ns.UI
 
-local PW, PH = 440, 234
+local PW, PH = 440, 276
 
 -- Slash commands, as Core.lua's ns.Slash handles them (dev commands left out).
 local COMMANDS = {
     { "/ynm", "ABOUT_CMD_OPEN" },
     { "/ynm log", "ABOUT_CMD_LOG" },
     { "/ynm errors", "ABOUT_CMD_ERRORS" },
+    { "/ynm errors clear", "ABOUT_CMD_ERRCLEAR" },
     { "/ynm reset", "ABOUT_CMD_RESET" },
 }
 UI.ABOUT_COMMANDS = COMMANDS
@@ -32,6 +33,54 @@ local function Refresh()
     if ns.Comm.newest then line = line .. "  " .. string.format(L.ABOUT_NEWER, ns.Comm.newest)
     else line = line .. "  " .. ns.GREY .. L.ABOUT_UPTODATE .. "|r" end
     panel.version:SetText(line)
+end
+
+-- The copy box: over the panel, the report already selected for Ctrl+C. It can't be typed over.
+local function BuildCopy()
+    local c = UI.Box(panel, 0, 0, PW, PH)
+    c:SetFrameLevel(panel:GetFrameLevel() + 10)
+    if c.SetBackdropColor then c:SetBackdropColor(0.05, 0.05, 0.05, 1) end
+    c:EnableMouse(true)
+    UI.Text(c, ns.GOLD .. L.REPORT_BOX_TITLE .. "|r", "GameFontNormal", 12, -10)
+    Wrapped(c, L.REPORT_BOX_HINT, "GameFontHighlightSmall", 12, -30, PW - 24, 40)
+
+    local box = UI.Box(c, 12, -74, PW - 24, PH - 114)
+    local scroll = CreateFrame("ScrollFrame", nil, box, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 8, -8)
+    scroll:SetPoint("BOTTOMRIGHT", -28, 8)
+    local edit = CreateFrame("EditBox", nil, scroll)
+    edit:SetMultiLine(true)
+    edit:SetFontObject(GameFontHighlightSmall or "GameFontHighlightSmall")
+    edit:SetWidth(PW - 72)
+    edit:SetHeight(PH - 130)
+    edit:SetAutoFocus(false)
+    scroll:SetScrollChild(edit)
+    c.edit = edit
+
+    local function Select()
+        edit:SetFocus()
+        edit:HighlightText()
+    end
+    edit:SetScript("OnEscapePressed", function() c:Hide() end)
+    edit:SetScript("OnTextChanged", function(self, userInput)
+        if userInput then
+            self:SetText(c.text or "")
+            self:HighlightText()
+        end
+    end)
+    edit:SetScript("OnMouseUp", Select)
+    box:EnableMouse(true)
+    box:SetScript("OnMouseDown", Select)
+
+    c.back = UI.Button(c, L.REPORT_BACK, 90, PW - 102, -(PH - 32), function() c:Hide() end)
+    c:SetScript("OnShow", function()
+        c.text = ns.Report.Text()
+        edit:SetText(c.text)
+        Select()
+    end)
+    c:SetScript("OnHide", function() edit:ClearFocus() end)
+    c:Hide()
+    panel.copy = c
 end
 
 local function BuildPanel(window, header)
@@ -59,9 +108,12 @@ local function BuildPanel(window, header)
     end
 
     UI.Header(panel, L.ABOUT_PROBLEM, 12, y - 6, PW - 24)
-    Wrapped(panel, L.ABOUT_PROBLEM_TEXT, "GameFontHighlightSmall", 16, y - 28, PW - 28, 56)
+    Wrapped(panel, L.ABOUT_PROBLEM_TEXT, "GameFontHighlightSmall", 16, y - 28, PW - 28, 42)
+    BuildCopy()
+    panel.copyBtn = UI.Button(panel, L.REPORT_BTN, 150, 16, y - 72, function() panel.copy:Show() end)
 
     panel:SetScript("OnShow", Refresh)
+    panel:SetScript("OnHide", function() panel.copy:Hide() end)
     panel:Hide()
 end
 
@@ -99,3 +151,10 @@ end
 
 -- For tests.
 function UI.AboutPanel() return panel end
+
+-- Straight to the report (the dev console's button).
+function UI.OpenErrorReport()
+    if UI.Open then UI.Open() end
+    if not (panel and panel:IsShown()) then UI.aboutButton:Click() end
+    panel.copy:Show()
+end

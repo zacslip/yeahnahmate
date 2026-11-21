@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0
+
+- Better error reports. `/ynm errors` now shows the version and time of each error and marks ones from older versions, which may already be fixed.
+- `/ynm errors clear` wipes the list, so you can see whether an error comes back.
+- **Copy error report** in the About panel (the "i" by the version): your addon and game versions, recent errors and other addons, ready to paste into Discord or a CurseForge comment. Nothing is sent by itself.
+
 ## 0.22.0
 
 - Proximity voice is gone, with its speaker tab, group voice button, `/ynm voice` and key binding. The guild wasn't using it and the game's own voice chat does the job. Blizzard's voice chat itself isn't touched.

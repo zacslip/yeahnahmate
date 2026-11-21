@@ -25,22 +25,37 @@ end
 
 ---------------------------------------------------------------------------------------------------
 -- Errors: caught, kept (the last 50, repeats counted), and passed on to the game's error handler.
+-- Repeats are counted per addon version, so an old error's count can't look like it's still happening.
 
 local pendingErrors = {}         -- errors before the saved data is loaded
 
-local function SaveError(err, stack)
+-- The game's version and build, e.g. "1.60.1.70790".
+local clientBuild
+function ns.ClientBuild()
+    -- This runs while handling an error, so it must never cause one (ns.Public is set further down).
+    if clientBuild == nil and GetBuildInfo and ns.Public then
+        local ok, version, build = pcall(GetBuildInfo)
+        version, build = ok and ns.Public(version, "string"), ok and ns.Public(build, "string")
+        clientBuild = (version and build) and (version .. "." .. build) or false
+    end
+    return clientBuild or nil
+end
+
+local function SaveError(err, stack, count)
     err = tostring(err)
+    count = count or 1
     local list = ns.db and ns.db.errors or pendingErrors
     for _, e in ipairs(list) do
-        if e.msg == err then
-            e.count = (e.count or 1) + 1
+        if e.msg == err and e.ver == ns.VERSION then
+            e.count = (e.count or 1) + count
             e.last = GetServerTime()
+            e.build = ns.ClientBuild()
             return
         end
     end
     list[#list + 1] = {
-        msg = err, count = 1, at = GetServerTime(), last = GetServerTime(),
-        ver = ns.VERSION, stack = stack,
+        msg = err, count = count, at = GetServerTime(), last = GetServerTime(),
+        ver = ns.VERSION, build = ns.ClientBuild(), stack = stack,
     }
     while #list > 50 do table.remove(list, 1) end
 end
@@ -340,7 +355,7 @@ ns.OnEvent("ADDON_LOADED", function(name)
         ns.settings.popups = nil
     end
     -- Errors from before the saved data loaded.
-    for _, e in ipairs(pendingErrors) do SaveError(e.msg, e.stack) end
+    for _, e in ipairs(pendingErrors) do SaveError(e.msg, e.stack, e.count) end
     wipe(pendingErrors)
     -- The message log lives in saved data, so it is still there after a /reload.
     local saved = ns.db.log
@@ -386,16 +401,6 @@ local function ShowLog()
     if ns.Comm and ns.Comm.Summary then print("  " .. ns.Comm.Summary()) end
 end
 
-local function ShowErrors()
-    local list = ns.db and ns.db.errors or {}
-    if #list == 0 then ns.Print(L.ERRORS_NONE) return end
-    ns.Print(string.format(L.ERRORS_HEADER, #list))
-    for i = math.max(1, #list - 2), #list do
-        local e = list[i]
-        print("  " .. ((e.count or 1) > 1 and ("(x" .. e.count .. ") ") or "") .. e.msg)
-    end
-end
-
 function ns.Slash(input)
     input = strtrim(strlower(input or ""))
     local cmd, rest = input:match("^(%S*)%s*(.-)$")
@@ -404,7 +409,7 @@ function ns.Slash(input)
     elseif cmd == "log" then
         ShowLog()
     elseif cmd == "errors" then
-        ShowErrors()
+        ns.Report.Command(rest)
     elseif cmd == "reset" then
         if ns.UI and ns.UI.ResetPosition then ns.UI.ResetPosition() end
         ns.Print(L.RESET_DONE)

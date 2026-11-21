@@ -132,6 +132,7 @@ next version when your change is something players will notice.
 
 ## Reporting bugs and ideas
 
-Use the issue templates. For a bug, `/ynm errors` shows the last errors, and the full text is in
+Use the issue templates. For a bug, the About panel's **Copy error report** gives the version, game build, recent errors and
+other addons in one block; `/ynm errors` shows the last errors, and the full text is in
 `WTF/Account/<account>/SavedVariables/YeahNahMate.lua` (`errors` and `log`) after a `/reload`.
 Please remove other players' names before posting.
