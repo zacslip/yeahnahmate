@@ -8,7 +8,8 @@ ns.LevelGuide = G
 
 -- Quest lists come live from QuestieDB (Data/LiveQuests.lua), read when asked for.
 -- Without it the guide still works and just has no quest lists.
-local QUEST_DATA = { QUESTS = "QUESTS", QUEST_VARIANTS = "VARIANTS", QUEST_EARLIER = "EARLIER", QUEST_STEPS = "STEPS" }
+local QUEST_DATA = { QUESTS = "QUESTS", QUEST_VARIANTS = "VARIANTS", QUEST_EARLIER = "EARLIER", QUEST_STEPS = "STEPS",
+                     QUEST_LEADS = "LEADS" }
 setmetatable(G, { __index = function(_, key)
     local field = QUEST_DATA[key]
     if not field then return nil end
@@ -72,6 +73,43 @@ G.ZONES = {
     { "Mount Hyjal", 55, 60, { 57, 59 }, { 57, 59 } },
     { "Winterspring", 55, 60, { 56, 60 }, { 56, 60 } },
 }
+
+-- A zone's map id, asked of the game by name, so the new Forever zones need no table of ours.
+-- Kept once the game has answered; nil if it has no such zone.
+local MAP_ROOTS = { 1414, 1415, 947 }     -- Kalimdor, Eastern Kingdoms, then all of Azeroth
+local MAP_TYPE_ZONE = 3
+local zoneMaps
+function G.ZoneMap(name)
+    if not zoneMaps then
+        if not (C_Map and C_Map.GetMapChildrenInfo) then return nil end
+        local found, any = {}, false
+        for _, root in ipairs(MAP_ROOTS) do
+            local ok, children = pcall(C_Map.GetMapChildrenInfo, root, MAP_TYPE_ZONE, true)
+            for _, info in ipairs(ok and type(children) == "table" and children or {}) do
+                if type(info.name) == "string" and not found[info.name] then
+                    found[info.name] = info.mapID
+                    any = true
+                end
+            end
+        end
+        if not any then return nil end
+        zoneMaps = found
+    end
+    return zoneMaps[name]
+end
+
+-- A map's name from the game, for the quest lists' Location column. Nil if it doesn't know it.
+local mapNames = {}
+function G.MapName(mapID)
+    if not mapID then return nil end
+    if mapNames[mapID] then return mapNames[mapID] end
+    if not (C_Map and C_Map.GetMapInfo) then return nil end
+    local ok, info = pcall(C_Map.GetMapInfo, mapID)
+    local name = ok and type(info) == "table" and info.name
+    if type(name) ~= "string" or name == "" then return nil end
+    mapNames[mapID] = name
+    return name
+end
 
 -- Dungeons, by the keys in Dungeons.lua. where: how to find it. top: the boss level is the highest
 -- boss's, as the fight order isn't certain. tag + note: what you need. enemy: whose land it's in.
@@ -288,6 +326,102 @@ function G.QuestChain(plan)
     end
     Walk(plan.final)
     return out
+end
+
+-- A quest list (a dungeon's key, or "class") as a tree: one root per storyline. Each quest hangs under
+-- the nearest quest that leads to it, looking through any steps that aren't on the list. Adds to each
+-- row: parent, children and depth (indent: a straight chain stays level, a fork steps in); roots also
+-- get chain (in order).
+function G.QuestTree(key)
+    local me, list, byId = Me(), G.Quests(key), {}
+    local steps, leads = G.QUEST_STEPS or {}, G.QUEST_LEADS or {}
+    for _, row in ipairs(list) do
+        row.children = {}
+        for _, id in ipairs(row.ids) do byId[id] = row end
+    end
+    local function Parent(row)
+        local best, seen = nil, {}
+        local Visit
+        local function Check(links)
+            for _, p in ipairs(links or {}) do
+                local other = byId[p]
+                if other and other ~= row then
+                    if not best or other.level > best.level or (other.level == best.level and other.name > best.name) then
+                        best = other
+                    end
+                elseif other == row or StepForMe(me, p) then
+                    Visit(p)
+                end
+            end
+        end
+        Visit = function(id)
+            if seen[id] then return end
+            seen[id] = true
+            local s = steps[id]
+            if s then
+                Check(s[10])
+                Check(s[11])
+            end
+            Check(leads[id])
+        end
+        for _, id in ipairs(row.ids) do Visit(id) end
+        return best
+    end
+    for _, row in ipairs(list) do
+        local p = Parent(row)
+        local up = p
+        while up and up ~= row do up = up.parent end    -- a loop in the data stays two separate rows
+        if p and up ~= row then
+            row.parent = p
+            table.insert(p.children, row)
+        end
+    end
+    local function Walk(node, depth, root)
+        node.depth = depth
+        root.chain[#root.chain + 1] = node
+        local fork = #node.children > 1
+        for _, child in ipairs(node.children) do
+            Walk(child, node == root and 1 or math.min(3, depth + (fork and 1 or 0)), root)
+        end
+    end
+    local roots = {}
+    for _, row in ipairs(list) do
+        if not row.parent then
+            row.chain = {}
+            Walk(row, 0, row)
+            roots[#roots + 1] = row
+        end
+    end
+    return roots, #list
+end
+
+-- How far through a storyline I am: done, total, the quest to work towards, and the status of the
+-- furthest I've got: "done" (all of it, or nothing newer), "log" (a step in my log), "locked" (can't
+-- start it yet) or nil. A quest counts as done once anything after it is: lead-ins can be skipped.
+function G.ChainProgress(root)
+    local isDone, count, inLog = {}, 0, false
+    local function Check(node)
+        local state = G.QuestState(node)
+        local done = state == "done"
+        if state == "log" then inLog = true end
+        for _, child in ipairs(node.children) do
+            if Check(child) then done = true end
+        end
+        isDone[node] = done
+        if done then count = count + 1 end
+        return done
+    end
+    Check(root)
+    local total, focus = #root.chain, root
+    for _, node in ipairs(root.chain) do
+        if not isDone[node] and #node.children == 0 then
+            focus = node
+            break
+        end
+    end
+    local furthest = (count == total and "done") or (inLog and "log") or (count > 0 and "done")
+        or (G.QuestPlan(root).locked and "locked") or nil
+    return count, total, focus, furthest
 end
 
 -- Zones my faction should see at this level: the ones at their best for me first, then nearest.

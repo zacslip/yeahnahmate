@@ -46,7 +46,25 @@ function FakeQuestieDB(opts)
         [2861] = Q("Tabetha's Task", 46, 40, 1176, 0, 0, { 105, 104 }),
         [2926] = Q("Gnogaine", 27, 20, 721, ALLIANCE, 0, { 108 }),
         [97000] = Q("Boss Hunt", 44, 38, 400, 0, 0, { 107 }, nil, { { { 258964 } } }),
+        [9950] = Q("Call of Earth", 4, 4, 215, HORDE, 64, { 107 }),             -- class quests, out in the world
+        [9951] = Q("Call of Fire", 10, 10, 215, HORDE, 64, { 107 }, { 9950 }),
+        [9952] = Q("Call of Water", 20, 20, 215, ALLIANCE, 64, { 103 }),        -- the other faction's
+        [9953] = Q("Warrior's Trial", 10, 10, 215, HORDE, 1, { 107 }),          -- another class's
+        [9954] = Q("Everyone's Errand", 12, 10, 215, HORDE, 1503, { 107 }),     -- names every class: not a class quest
+        [9955] = Q("Daily Totem", 15, 15, 215, HORDE, 64, { 107 }),             -- repeatable: left out
     }
+    QUESTS[9955].specialFlags = 1
+    QUESTS[3343] = Q("Bring the End Again", 43, 37, 722, HORDE, 0, { 102 }, { 3341 })    -- a chain inside a dungeon
+    QUESTS[9949] = Q("Word From The Elder", 3, 1, -82, HORDE, 64, { 107 })       -- an optional lead-in to Call of Earth
+    QUESTS[9949].breadcrumbForQuestId = 9950
+    QUESTS[9956] = Q("Raid Turn-in", 60, 60, 1977, 0, 64, { 107 })               -- endgame gear: not a class quest
+    QUESTS[9957] = Q("Shaman Capstone", 60, 58, -82, HORDE, 64, { 107 })         -- level 60, but in the class's category
+    QUESTS[9958] = Q("Totem Smithing", 30, 25, 215, 0, 64, { 107 })              -- needs a profession
+    QUESTS[9958].requiredSkill = { 164, 100 }
+    QUESTS[9959] = Q("Guild Recipe", 30, 25, -121, 0, 64, { 107 })               -- a profession's category
+    for i = 1, 14 do    -- enough class quests to need scrolling
+        QUESTS[9960 + i] = Q("Shaman Lesson " .. i, 20 + i, 20, 215, HORDE, 64, { 107 })
+    end
 
     local function Entity(rows, fields)
         local e = {}
@@ -73,7 +91,8 @@ function FakeQuestieDB(opts)
             return n == 4
         end,
         Quest = Entity(QUESTS, { "name", "questLevel", "requiredLevel", "zoneOrSort", "requiredRaces", "requiredClasses",
-                                 "specialFlags", "startedBy", "preQuestGroup", "preQuestSingle", "exclusiveTo", "objectives" }),
+                                 "specialFlags", "startedBy", "preQuestGroup", "preQuestSingle", "exclusiveTo", "objectives",
+                                 "nextQuestInChain", "breadcrumbForQuestId", "requiredSkill" }),
         Npc = Entity(npcRows, { "name", "spawns", "friendlyToFaction" }),
         Object = Entity({}, { "name", "spawns" }),
         Item = Entity({}, { "name", "npcDrops" }),

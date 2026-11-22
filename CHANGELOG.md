@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.25.0
+
+- Leveling tab: Zones, Dungeons, Class quests and Raid roster now each have their own full-width page.
+- New Class quests page: your class's quests for your faction and race, with the same In log, Done, Locked, quest chains and Show on map as the dungeon lists. Needs QuestieDB.
+- Click a zone to open it on the world map.
+- Quest lists are now a tree: each storyline is one row with its progress, like 2/6. Click + to see its steps. A closed storyline points you at the next quest to do.
+- Quest rows are coloured by status: green for Done, gold for In log, orange for Locked. A storyline's top row shows the furthest you've got.
+- Quest lists have a new Location column showing the zone a quest starts in.
+- Sort quest lists by clicking a column heading.
+- Clan meetings: whispering for an invite now understands more ways of asking, like "invite me" or "can I get an inv".
+
 ## 0.24.1
 
 - Dungeon quest lists are now powered directly by QuestieDB, the free quest database made by the Questie team, so they stay up to date with all their work. Install QuestieDB and keep it ticked in your AddOns list to see them. Everything else works without it. The Yeah Nah Mate Quests folder is gone, so it's safe to delete if it's still in your AddOns.

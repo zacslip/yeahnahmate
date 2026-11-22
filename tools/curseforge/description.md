@@ -35,10 +35,12 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - Every Forever dungeon your faction can use, in level order, with the game's own level ranges.
 
 **Leveling guide** (new)
-- **Zones for your level and faction**, with each zone's range and the levels it's best at.
+- **Zones for your level and faction**, with each zone's range and the levels it's best at. Click one to open it on the map.
 - **Dungeons for your level**, with the boss level, the level you'll hit it comfortably from, where it is, and any key or attunement you need.
-- **Dungeon quests**: click a dungeon to see its quests for your faction and class, marked In log or Done.
-- **Quest chains**: see what a locked quest needs next and your progress through the whole chain.
+- **Dungeon quests**: click a dungeon to see its quests for your faction and class.
+- **Class quests**: your class's quests for your faction and race, on their own page.
+- **Quest storylines**: each chain is one row with your progress. Open it to see every step, coloured Done, In log or Locked, with where each one starts.
+- **Sort** any quest list by level, name, status, quest giver or location.
 - **Show on map**: click a quest to pin where to go and open the map there.
 - At level 60 the tab becomes **Raids**, where the raid roster is coming. The guide stays one click away.
 
@@ -110,6 +112,6 @@ Open them with the gear at the top right of the window.
 
 **Want to help build it?** The code is on [GitHub](https://github.com/zacslip/yeahnahmate); the [contributing guide](https://github.com/zacslip/yeahnahmate/blob/main/CONTRIBUTING.md) explains how to set up and send a change.
 
-**Credits and licences:** Yeah Nah Mate is MIT licensed. The leveling guide's dungeon quest lists are powered by [QuestieDB](https://www.curseforge.com/wow/addons/questiedb), the free quest database made by the [Questie](https://github.com/Questie/Questie) team. Big thanks to them for all their work. It's an optional dependency: install it and keep it ticked in your AddOns list to see those lists. Everything else works without it. This addon isn't made or endorsed by the Questie team.
+**Credits and licences:** Yeah Nah Mate is MIT licensed. The leveling guide's quest lists are powered by [QuestieDB](https://www.curseforge.com/wow/addons/questiedb), the free quest database made by the [Questie](https://github.com/Questie/Questie) team. Big thanks to them for all their work. It's an optional dependency: install it and keep it ticked in your AddOns list to see those lists. Everything else works without it. This addon isn't made or endorsed by the Questie team.
 
 Built with help from Claude (Anthropic's AI), and tested in game by a real guild. Free and open source. Be decent, have a laugh, and work work.

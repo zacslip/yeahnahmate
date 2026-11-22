@@ -40,22 +40,33 @@ UI.Open("settings")
 Tick(1)
 check(gear.sel:IsShown(), "UI.Open('settings') still works")
 
--- Before 60: the tab says Leveling and opens on the guide.
+-- Before 60: the tab says Leveling and opens on Zones.
 FAKE.level = 40
 UI.Open("leveling")
 Tick(1)
 local tab = TabNamed(L.TAB_LEVELING)
 local p = Page()
-local guideBtn, raidBtn = p.viewButtons.leveling, p.viewButtons.raids
+local zonesBtn, dungeonsBtn, raidBtn = p.viewButtons.zones, p.viewButtons.dungeons, p.viewButtons.raids
+-- Exactly this view's page is open and exactly its button is marked.
 local function Showing(key)
-    local other = key == "raids" and guideBtn or raidBtn
-    local mine = key == "raids" and raidBtn or guideBtn
-    return p.box:IsShown() == (key == "raids") and p.guide:IsShown() == (key == "leveling")
-        and mine.viewSel:IsShown() and not other.viewSel:IsShown()
+    for k, panel in pairs(p.panels) do
+        if panel:IsShown() ~= (k == key) or p.viewButtons[k].viewSel:IsShown() ~= (k == key) then return false end
+    end
+    return p.panels[key] ~= nil
 end
 check(tab ~= nil and tab.sel:IsShown(), "before 60 the tab is Leveling, and lit")
-check(Showing("leveling"), "before 60 it opens on the leveling guide, its button marked")
-check(guideBtn:GetText() == L.LEVELING_GUIDE and raidBtn:GetText() == L.RAID_ROSTER, "both views have a button")
+check(Showing("zones"), "before 60 it opens on Zones, its button marked")
+check(zonesBtn:GetText() == "Zones" and dungeonsBtn:GetText() == "Dungeons" and raidBtn:GetText() == L.RAID_ROSTER, "each view has a button")
+dungeonsBtn:Click()
+Tick(1)
+check(Showing("dungeons"), "the Dungeons button shows only the dungeons")
+FireEvent("PLAYER_LEVEL_UP", 41)
+Tick(1)
+check(Showing("dungeons") and p.guide.dungeonTitle:GetText() == string.format(L.GUIDE_DUNGEONS_FOR, 41), "a level-up redraws Dungeons and stays there")
+FireEvent("PLAYER_LEVEL_UP", 40)
+zonesBtn:Click()
+Tick(1)
+check(Showing("zones"), "the Zones button goes back")
 Tick(5)
 local before = #SENT
 raidBtn:Click()
@@ -69,21 +80,21 @@ check(Showing("raids"), "clicking the open view again leaves it open")
 UI.Select("home")
 UI.Select("leveling")
 Tick(1)
-check(Showing("leveling"), "coming back opens the view for my level")
+check(Showing("zones"), "coming back opens the view for my level")
 
 -- Reaching 60 while it's open: the tab and the view change straight away.
 FireEvent("PLAYER_LEVEL_UP", 60)
 Tick(1)
 check(TabNamed(L.TAB_RAIDS) ~= nil and TabNamed(L.TAB_LEVELING) == nil, "at 60 the tab is Raids")
 check(Showing("raids"), "at 60 it opens on the raid roster")
-guideBtn:Click()
+zonesBtn:Click()
 Tick(1)
-check(Showing("leveling") and TabNamed(L.TAB_RAIDS) ~= nil, "at 60 the guide is still there")
+check(Showing("zones") and TabNamed(L.TAB_RAIDS) ~= nil, "at 60 the guide is still there")
 
 -- The dev console's pretend level.
 UI.SetLevelingPretend(30)
 Tick(1)
-check(TabNamed(L.TAB_LEVELING) ~= nil and Showing("leveling"), "pretend 30: Leveling")
+check(TabNamed(L.TAB_LEVELING) ~= nil and Showing("zones"), "pretend 30: Leveling, on Zones")
 UI.SetLevelingPretend(60)
 Tick(1)
 check(TabNamed(L.TAB_RAIDS) ~= nil and Showing("raids"), "pretend 60: Raids")
@@ -143,8 +154,11 @@ UI.SetLevelingPretend(40)
 UI.Select("home"); UI.Select("leveling")
 Tick(1)
 local g = p.guide
-check(g.zoneTitle:GetText() == string.format(L.GUIDE_ZONES_FOR, 40) and g.dungeonTitle:GetText() == string.format(L.GUIDE_DUNGEONS_FOR, 40), "titles say my level")
+check(g.zoneTitle:GetText() == string.format(L.GUIDE_ZONES_FOR, 40), "the Zones title says my level")
 check(g.zones.rows[1]:IsShown() and g.zones.rows[1].item.best, "a best zone on top")
+dungeonsBtn:Click()
+Tick(1)
+check(g.dungeonTitle:GetText() == string.format(L.GUIDE_DUNGEONS_FOR, 40), "the Dungeons title says my level")
 check(g.dungeons.rows[1]:IsShown() and g.dungeons.rows[1].info:GetText():find("best from", 1, true), "dungeon rows show the boss line")
 g.dungeons.rows[1]:GetScript("OnEnter")(g.dungeons.rows[1])
 g.dungeons.rows[1]:GetScript("OnLeave")(g.dungeons.rows[1])
@@ -224,7 +238,7 @@ for key, list in pairs(G.QUESTS) do
         check(fine, "well-formed quest in " .. key .. ": " .. tostring(q[2]))
     end
 end
-check(groups == 28, "28 quest groups (" .. groups .. ")")
+check(groups == 29, "28 dungeon quest groups and the class quests (" .. groups .. ")")
 local function QuestNamed(key, name)
     for _, q in ipairs(G.Quests(key)) do if q.name == name then return q end end
 end
@@ -348,6 +362,8 @@ UI.Select("home"); UI.Select("leveling")
 Tick(1)
 local openedMap
 C_Map.OpenWorldMap = function(id) openedMap = id end
+dungeonsBtn:Click()
+Tick(1)
 local rfdRow
 for _, r in ipairs(g.dungeons.rows) do if r.item and r.item.key == "rfd" then rfdRow = r end end
 rfdRow:Click()
@@ -361,6 +377,18 @@ for _, r in ipairs(g.quests.rows) do
 end
 check(mapRow and (mapRow.map:GetText() == L.GUIDE_SHOW_MAP or mapRow.map:GetText() == L.GUIDE_SHOW_NEXT), "a quest with a place offers the map")
 check(noMapRow and noMapRow.map:GetText():find(L.GUIDE_NO_MAP, 1, true), "one starting in the dungeon says so")
+check(g.questPanel.heads[5].label:GetText() == L.GUIDE_LOCATION, "the quest list has a Location column")
+check(mapRow.location:GetText() == "Map " .. mapRow.place.map, "a quest's Location is the zone it starts in")
+check(noMapRow.location:GetText() == L.GUIDE_NO_LOCATION, "no map spot: a dash")
+check(G.MapName(nil) == nil, "no map, no name")
+do
+    local realInfo = C_Map.GetMapInfo
+    C_Map.GetMapInfo = function() error("game says no") end
+    check(G.MapName(987654) == nil, "a failing map lookup is safe")
+    C_Map.GetMapInfo = function() return { name = "" } end
+    check(G.MapName(987654) == nil, "and so is an empty name")
+    C_Map.GetMapInfo = realInfo
+end
 Tick(5)
 local sentBefore = #SENT
 noMapRow:Click()
@@ -424,7 +452,7 @@ Tick(1)
 check(UI.LevelingPinnedQuest() == nil and not g.questPanel.clear:IsShown(), "Clear map pin removes it")
 g.questPanel.back:Click()
 Tick(1)
-check(g.lists:IsShown() and not g.questPanel:IsShown(), "Back returns to zones and dungeons")
+check(Showing("dungeons") and g.lists:IsShown() and not g.questPanel:IsShown(), "Back returns to the dungeon list")
 C_Map.OpenWorldMap = nil
 UI.LevelingOpenDungeon("rfd")
 Tick(1)
@@ -434,9 +462,254 @@ check(UI.LevelingPinnedQuest() ~= nil and g.questPanel.hint:GetText() == L.GUIDE
 g.questPanel.clear:Click()
 UI.Select("home"); UI.Select("leveling")
 Tick(1)
-check(g.lists:IsShown(), "leaving the tab goes back to the lists")
+check(Showing("zones") and g.questKey == nil, "leaving the tab goes back to Zones, with no quest list open")
 UI.SetLevelingPretend(nil)
 Tick(1)
+
+-- Clicking a zone opens it on the map.
+do
+    local function ZoneRow(name)
+        for _, r in ipairs(g.zones.rows) do if r.item and r.item.name == name then return r end end
+    end
+    check(G.ZoneMap("The Barrens") == nil, "no zone list from the game: no map, no error")
+    local realChildren = C_Map.GetMapChildrenInfo
+    C_Map.GetMapChildrenInfo = function(root, kind)
+        check(kind == 3, "asks the game for zones")
+        if root == 1414 then return { { mapID = 1413, name = "The Barrens", mapType = 3 } } end
+        if root == 947 then return { { mapID = 9999, name = "The Barrens", mapType = 3 }, { mapID = 2001, name = "Zephras Isle", mapType = 3 } } end
+        return {}
+    end
+    check(G.ZoneMap("The Barrens") == 1413 and G.ZoneMap("Zephras Isle") == 2001, "zones are found by name, the continent's first")
+    check(G.ZoneMap("Nowhere") == nil, "an unknown zone has no map")
+    C_Map.OpenWorldMap = function(id) openedMap = id end
+    UI.SetLevelingPretend(15)
+    UI.Select("home"); UI.Select("leveling")
+    Tick(5)
+    local barrens, silverpine = ZoneRow("The Barrens"), ZoneRow("Silverpine Forest")
+    check(barrens and silverpine and g.zoneKey:GetText():find(L.GUIDE_ZONE_CLICK, 1, true), "the page says zones can be clicked")
+    barrens:GetScript("OnEnter")(barrens); barrens:GetScript("OnLeave")(barrens)
+    silverpine:GetScript("OnEnter")(silverpine); silverpine:GetScript("OnLeave")(silverpine)
+    openedMap = nil
+    local sent, pinned = #SENT, UI.LevelingPinnedQuest()
+    silverpine:Click()
+    check(openedMap == nil, "a zone the game doesn't list does nothing")
+    barrens:Click()
+    Tick(1)
+    check(openedMap == 1413 and UI.IsBehindMap() and win:IsShown(), "clicking a zone opens it on the map, the window waiting behind")
+    check(#SENT == sent and UI.LevelingPinnedQuest() == pinned, "it sends nothing and leaves the quest pin alone")
+    Tick(2)
+    check(not UI.IsBehindMap(), "the window comes back")
+    openedMap = nil
+    local combat = InCombatLockdown
+    InCombatLockdown = function() return true end
+    barrens:Click()
+    Tick(1)
+    InCombatLockdown = combat
+    check(openedMap == nil and g.zoneKey:GetText() == L.GUIDE_ZONE_MAP_FAILED, "in combat: the map is left alone and it says why")
+    barrens:Click()
+    Tick(1)
+    check(openedMap == 1413 and g.zoneKey:GetText():find(L.GUIDE_ZONE_CLICK, 1, true), "out of combat it works again")
+    Tick(2)
+    C_Map.OpenWorldMap, C_Map.GetMapChildrenInfo = nil, realChildren
+    UI.SetLevelingPretend(nil)
+    Tick(1)
+end
+
+-- Class quests: my class and faction, with the same status, chain and map as a dungeon's.
+do
+    local function Has(name) return QuestNamed("class", name) ~= nil end
+    check(Has("Call of Earth") and Has("Call of Fire") and Has("Elemental Aid"), "my class's quests, in the world or a dungeon")
+    check(not Has("Warrior's Trial") and not Has("Brutal Armor"), "not another class's")
+    check(not Has("Call of Water"), "not the other faction's")
+    check(not Has("Everyone's Errand"), "a quest naming every class isn't a class quest")
+    check(not Has("Daily Totem"), "repeatable quests are left out")
+    check(not Has("Raid Turn-in") and Has("Shaman Capstone"), "level 60: the class's own quests, not raid turn-ins")
+    check(not Has("Totem Smithing") and not Has("Guild Recipe"), "profession quests are left out")
+    check(QuestNamed("rfk", "Elemental Aid") ~= nil, "a class quest in a dungeon stays on the dungeon's list too")
+    D.pretendFaction = "Alliance"
+    check(Has("Call of Water") and not Has("Call of Earth"), "Alliance: its own class quests")
+    D.pretendFaction = nil
+
+    local inLog, handedIn = {}, {}
+    local realIndex, realDone = C_QuestLog.GetLogIndexForQuestID, C_QuestLog.IsQuestFlaggedCompleted
+    C_QuestLog.GetLogIndexForQuestID = function(id) return inLog[id] and 1 or nil end
+    C_QuestLog.IsQuestFlaggedCompleted = function(id) return handedIn[id] == true end
+    local function ClassRow(name)
+        for _, r in ipairs(g.quests.rows) do if r.item and r.item.name == name then return r end end
+    end
+    local classBtn = p.viewButtons.class
+    check(classBtn:GetText() == "Class quests", "Class quests has a button")
+    UI.Select("home"); UI.Select("leveling")
+    Tick(1)
+    check(not g.questPanel:IsShown(), "the quest list stays closed on Zones")
+    classBtn:Click()
+    Tick(1)
+    local q = g.questPanel
+    check(Showing("class") and q:IsShown() and not q.back:IsShown(), "the button opens the list, with nothing to go back to")
+    check(q.title:GetText():find("Shaman quests", 1, true) and q.heads[1]:IsShown(), "titled with my class")
+    check(q.title:GetText():find(string.format(L.GUIDE_CLASS_COUNT, 19, 17), 1, true), "it counts quests and storylines")
+    local word = g.quests.rows[1]
+    check(g.quests.offset == 0 and word.item.name == "Word From The Elder", "lowest level first, the lead-in on top")
+    check(word.toggle:IsShown() and word.toggle:GetText() == "+" and word.state:GetText():find("0/3", 1, true), "a closed storyline shows + and its progress")
+    check(word.status == nil and not word.tint:IsShown(), "nothing started: no colour")
+    check(not ClassRow("Call of Earth") and not ClassRow("Call of Fire"), "its steps are tucked away")
+    check(not ClassRow("Shaman Lesson 1").toggle:IsShown(), "a single quest has no +")
+    word:GetScript("OnEnter")(word); word:GetScript("OnLeave")(word)
+    check(word.place.name == "Call of Earth", "a closed storyline points at the quest to do next")
+    word.toggle:Click()
+    Tick(1)
+    check(word.toggle:GetText() == "-" and g.quests.rows[2].item.name == "Call of Earth" and g.quests.rows[3].item.name == "Call of Fire", "+ opens it, steps in order")
+    check(g.quests.rows[2].item.depth == 1 and g.quests.rows[3].item.depth == 1, "a straight chain stays at one indent")
+    check(not g.quests.rows[2].toggle:IsShown(), "steps have no + of their own")
+    local fire = ClassRow("Call of Fire")
+    check(fire.locked and fire.state:GetText():find(L.GUIDE_LOCKED, 1, true) and fire.place.name == "Call of Earth", "a chain step says Locked and points at what's next")
+    check(fire.status == "locked" and fire.tint:IsShown(), "a locked step has the locked colour")
+    check(fire.location:GetText() == "Map 1456", "a locked step's Location is where to go next")
+    check(g.quests.rows[1].status == nil, "and the top row isn't locked: the storyline can be started")
+    fire:GetScript("OnEnter")(fire); fire:GetScript("OnLeave")(fire)
+    openedMap = nil
+    C_Map.OpenWorldMap = function(id) openedMap = id end
+    local sent = #SENT
+    fire:Click()
+    Tick(1)
+    check(openedMap == 1456 and UI.LevelingPinnedQuest().name == "Call of Earth", "Show next step pins the next quest and opens the map")
+    check(#SENT == sent, "it sends nothing")
+    Tick(2)
+    q.clear:Click()
+    Tick(1)
+    inLog[9950] = true
+    FireEvent("QUEST_LOG_UPDATE")
+    Tick(3)
+    check(ClassRow("Call of Earth").state:GetText():find(L.GUIDE_IN_LOG, 1, true), "a quest in my log says In log")
+    check(ClassRow("Call of Earth").status == "log" and g.quests.rows[1].status == "log", "the step and the top row take the In log colour")
+    check(g.quests.rows[1].state:GetText():find("0/3", 1, true), "an open storyline's top row still shows its progress")
+    inLog[9950], handedIn[9950] = nil, true
+    FireEvent("QUEST_TURNED_IN", 9950)
+    Tick(3)
+    check(ClassRow("Call of Earth").state:GetText():find(L.GUIDE_DONE, 1, true) and not ClassRow("Call of Fire").locked, "handed in: Done, and the next one unlocks")
+    check(ClassRow("Call of Earth").status == "done" and ClassRow("Call of Earth").tint:IsShown(), "a done quest is green")
+    check(ClassRow("Call of Fire").status == nil and not ClassRow("Call of Fire").tint:IsShown(), "the open next step has no colour")
+    check(g.quests.rows[1].status == "done", "the top row shows the furthest progress: done")
+    inLog[9951] = true
+    FireEvent("QUEST_LOG_UPDATE")
+    Tick(3)
+    check(g.quests.rows[1].status == "log", "a later step in my log is further: the top row goes to In log")
+    inLog[9951] = nil
+    FireEvent("QUEST_LOG_UPDATE")
+    Tick(3)
+    g.quests.rows[1].toggle:Click()
+    Tick(1)
+    check(g.quests.rows[1].toggle:GetText() == "+" and g.quests.rows[1].state:GetText():find("2/3", 1, true), "- closes it, and a skipped lead-in counts as done")
+    check(g.quests.rows[1].place.name == "Call of Fire", "the closed row now points at the next step")
+    handedIn[9951] = true
+    FireEvent("QUEST_TURNED_IN", 9951)
+    Tick(3)
+    check(g.quests.rows[1].state:GetText():find("3/3", 1, true) and g.quests.rows[1].status == "done", "the whole storyline done, and green")
+    -- Sorting: by any column, reversed, then back to the usual order. Storylines move as a whole.
+    local function Top() return g.quests.rows[1].item.name end
+    local function Sort(col)
+        q.heads[col]:Click()
+        Tick(1)
+    end
+    g.quests.pager.down:Click()
+    Sort(2)
+    check(Top() == "Elemental Aid" and g.quests.offset == 0 and q.heads[2].label:GetText() ~= L.GUIDE_QUEST, "Quest: A to Z, back at the top, with an arrow")
+    Sort(2)
+    check(Top() == "Word From The Elder", "again: Z to A")
+    g.quests.rows[1].toggle:Click()
+    Tick(1)
+    check(Top() == "Word From The Elder" and g.quests.rows[2].item.name == "Call of Earth" and g.quests.rows[3].item.name == "Call of Fire", "an open storyline keeps its steps in order")
+    g.quests.rows[1].toggle:Click()
+    Tick(1)
+    Sort(2)
+    check(Top() == "Word From The Elder" and q.heads[2].label:GetText() == L.GUIDE_QUEST and g.sortKey == nil, "a third click: the usual order")
+    Sort(1)
+    check(Top() == "Word From The Elder", "Level: lowest first")
+    Sort(1)
+    check(Top() == "Shaman Capstone" and q.heads[2].label:GetText() == L.GUIDE_QUEST, "highest first, one arrow only")
+    Sort(1); Sort(3)
+    inLog[9965] = true
+    FireEvent("QUEST_LOG_UPDATE")
+    Tick(3)
+    check(Top() == "Shaman Lesson 5", "Status: in my log first")
+    Sort(3)
+    check(Top() == "Word From The Elder", "reversed: finished first")
+    inLog[9965] = nil
+    Sort(3)
+    -- Empty cells stay at the bottom in both directions; sorting carries over to a dungeon.
+    UI.LevelingOpenDungeon("rfd")
+    Tick(1)
+    Sort(5)
+    local function Last()
+        local last
+        for _, r in ipairs(g.quests.rows) do if r.item and r:IsShown() then last = r end end
+        return last.item.name
+    end
+    check(Last() == "Starts Inside", "Location: no place goes last")
+    Sort(5)
+    check(Last() == "Starts Inside", "and still last reversed")
+    Sort(5)
+    Sort(4)
+    check(q.heads[4].label:GetText() ~= L.GUIDE_STARTS and Top() == "Bring the End", "Starts with sorts by quest giver")
+    q.heads[4]:GetScript("OnEnter")(q.heads[4]); q.heads[4]:GetScript("OnLeave")(q.heads[4])
+    Sort(4); Sort(4)
+    check(g.sortKey == nil, "back to the usual order")
+    classBtn:Click()
+    Tick(1)
+    -- Coming back to it starts at the first storyline I haven't finished.
+    zonesBtn:Click()
+    Tick(1)
+    check(not q:IsShown(), "another view closes the list")
+    classBtn:Click()
+    Tick(1)
+    check(g.quests.offset == 1 and g.quests.rows[1].item.name == "Shaman Lesson 1", "it opens at the first storyline not done")
+    check(g.quests.rows[1].name:GetText() == "Shaman Lesson 1", "rows reused from the tree still draw")
+    UI.LevelingOpenDungeon("rfd")
+    Tick(1)
+    -- A dungeon's quests are the same tree.
+    local bring = ClassRow("Bring the End")
+    check(not g.quests.rows[1].toggle:IsShown() and g.quests.rows[1].item.depth == 0, "a single dungeon quest has no +")
+    check(bring and bring.toggle:IsShown() and bring.state:GetText():find("0/2", 1, true) and not ClassRow("Bring the End Again"), "a dungeon chain is one closed row")
+    bring.toggle:Click()
+    Tick(1)
+    bring = ClassRow("Bring the End")
+    check(bring.toggle:GetText() == "-" and ClassRow("Bring the End Again").item.depth == 1, "+ opens it")
+    handedIn[3341] = true
+    FireEvent("QUEST_TURNED_IN", 3341)
+    Tick(3)
+    check(ClassRow("Bring the End").status == "done" and ClassRow("Bring the End").state:GetText():find("1/2", 1, true), "its top row shows the furthest progress")
+    check(ClassRow("Bring the End Again").status == nil, "and the next step is open")
+    handedIn[3341] = nil
+    ClassRow("Bring the End").toggle:Click()
+    Tick(1)
+    classBtn:Click()
+    Tick(1)
+    check(g.quests.rows[1].toggle:GetText() ~= "-", "each list keeps its own open storylines")
+    -- Dungeons keeps its own quest list and Back.
+    UI.LevelingOpenDungeon("rfd")
+    Tick(1)
+    check(Showing("dungeons") and q:IsShown() and q.back:IsShown() and q.title:GetText():find("Razorfen Downs", 1, true), "a dungeon's list still opens, with Back")
+    classBtn:Click()
+    Tick(1)
+    check(Showing("class") and q.title:GetText():find("Shaman quests", 1, true), "switching shows the class list")
+    dungeonsBtn:Click()
+    Tick(1)
+    check(q:IsShown() and q.title:GetText():find("Razorfen Downs", 1, true), "and back to the dungeon I had open")
+    q.back:Click()
+    Tick(1)
+    -- Without QuestieDB: the same clear notice.
+    LibQuestieDB = nil
+    ns.LiveQuests.Reset()
+    classBtn:Click()
+    Tick(1)
+    check(q.notice:IsShown() and q.notice.heading:GetText() == L.GUIDE_NO_QUEST_DATA and not q.empty:IsShown(), "no QuestieDB: the notice, no error")
+    LibQuestieDB = FakeQuestieDB()
+    ns.LiveQuests.Reset()
+    zonesBtn:Click()
+    Tick(1)
+    C_Map.OpenWorldMap = nil
+    C_QuestLog.GetLogIndexForQuestID, C_QuestLog.IsQuestFlaggedCompleted = realIndex, realDone
+end
 
 check(#UISpecialFrames == 0 and PanelManagerCalls == 0, "no taint tripwires touched")
 check(#ERRORS == 0, "no errors (" .. (ERRORS[1] or "none") .. ")")

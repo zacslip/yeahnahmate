@@ -2,7 +2,8 @@
 -- clan together, and onto one layer: the game moves everyone who joins a group onto the leader's layer.
 --   * The organiser clicks Start meeting. Clan members with the addon get a pop-up and click Ask for
 --     an invite (an addon whisper to the organiser). Any guildie can also just whisper the organiser
---     "inv" (inv, invite, inv pls ...): read from the organiser's own whispers, nothing is sent back.
+--     "inv" (INV, invite, inv pls, can I get an inv ...): read from the organiser's own whispers,
+--     nothing is sent back.
 --   * The organiser's list, top to bottom: Was here (in the group before the last Disband), Asked,
 --     Close by (guildies sharing their position, nearest first), Same zone, Online elsewhere, then In
 --     the group and Offline. Clicking a name invites them (one invite per click); Invite next too.
@@ -56,13 +57,46 @@ function M.ActiveFor(race)
     return nil
 end
 
--- Would this whisper count as asking for an invite? The whole message, any case, spaces and
--- punctuation ignored: inv, invite, inv pls / plz / please, invite pls ...
+-- Would this whisper count as asking for an invite? The whole message has to be a request, in any
+-- case and with any punctuation: inv, INV, invite, inv pls, inv me mate, can I get an inv, can you
+-- invite me, need an inv ... Lines that only mention one don't count: "can I inv you", "inv Bob",
+-- "can I get an inv later". A match only puts the name on the organiser's Asked list.
+local INV_SPELLINGS = { inv = true, invite = true, invit = true, invte = true, inivte = true, ivn = true }
+local POLITE = { hey = true, hi = true, hiya = true, yo = true, oi = true, gday = true, mate = true,
+    bro = true, bud = true, dude = true, man = true, boss = true, legend = true, pls = true, plz = true,
+    plss = true, plzz = true, please = true, thanks = true, thx = true, ty = true, ta = true, cheers = true }
+local SAME_MEANING = { could = "can", may = "can", would = "can", will = "can", u = "you", ya = "you",
+    a = "an", have = "get", grab = "get", got = "get", want = "need" }
+local INV_REQUESTS = {}
+for _, phrase in ipairs({ "inv", "inv me", "can you inv", "can you inv me", "can you get me an inv",
+    "can you give me an inv", "can i get inv", "can i get an inv", "get inv", "get an inv", "get me an inv",
+    "give me an inv", "gimme inv", "gimme an inv", "need inv", "need an inv", "i need inv", "i need an inv",
+    "id like an inv", "any chance of an inv" }) do
+    INV_REQUESTS[phrase] = true
+end
+
+local function IsInvSpelling(word)
+    return INV_SPELLINGS[word] == true or word:match("^inv+$") ~= nil
+end
+
+-- "inv", "invvv", and the same run together with please: "invpls", "inviteplz".
+local function IsInv(word)
+    if IsInvSpelling(word) then return true end
+    local stem = word:match("^(.-)please$") or word:match("^(.-)p?l[sz]e?$")
+    return stem ~= nil and IsInvSpelling(stem)
+end
+
 function M.IsInvWord(text)
     if type(text) ~= "string" then return false end
-    local s = text:lower():gsub("[^%a]", "")
-    return s == "inv" or s == "invite" or s:match("^invp?l[sz]e?$") ~= nil or s:match("^invitep?l[sz]e?$") ~= nil
-        or s == "invplease" or s == "inviteplease"
+    local words = {}
+    for word in text:lower():gsub("'", ""):gmatch("%a+") do
+        if IsInv(word) then
+            words[#words + 1] = "inv"
+        elseif not POLITE[word] then
+            words[#words + 1] = SAME_MEANING[word] or word
+        end
+    end
+    return INV_REQUESTS[table.concat(words, " ")] == true
 end
 
 ---------------------------------------------------------------------------------------------------

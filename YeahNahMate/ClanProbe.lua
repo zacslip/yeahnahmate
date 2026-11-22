@@ -27,9 +27,7 @@ local function How(v, kind)
     return "ok"
 end
 
--- Would this whisper count as asking for an invite? The whole message, any case, spaces and
--- punctuation ignored: inv, invite, inv pls / plz / please, invite pls ...
--- (The real rule lives in ClanMeet.lua.)
+-- Would this whisper count as asking for an invite? (The rule lives in ClanMeet.lua.)
 function ns.ClanProbeInvWord(text) return ns.ClanMeet.IsInvWord(text) end
 
 local function Store()

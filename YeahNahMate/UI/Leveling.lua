@@ -1,5 +1,6 @@
--- The Leveling / Raids tab. Before the level cap it opens on the leveling guide (zones and dungeons
--- for my level and faction), at the cap on the raid roster (coming soon). Both are always one click away.
+-- The Leveling / Raids tab: a row of views (VIEWS, near the end of this file; a new one is one more
+-- entry). Before the level cap it opens on Zones, at the cap on the raid roster (coming soon). Zones
+-- and Dungeons follow my level and faction, and every view is always one click away.
 local _, ns = ...
 local L = ns.L
 local UI = ns.UI
@@ -8,7 +9,7 @@ local Text, Button, Box, Row = UI.Text, UI.Button, UI.Box, UI.Row
 local MAX_LEVEL = 60
 local YELLOW = "|cffffd100"
 local ORANGE = "|cffff8040"
-local ZONE_W, DUNGEON_X, DUNGEON_W = 350, 366, 370
+local LIST_W = 736
 local LIST_BOTTOM = -388        -- where the pagers and colour keys sit
 local PIN_REF = "YeahNahMateGuide"
 local Pins = LibStub("HereBeDragons-Pins-2.0")
@@ -20,7 +21,7 @@ local function Level()
 end
 
 local function DefaultView()
-    return Level() >= MAX_LEVEL and "raids" or "leveling"
+    return Level() >= MAX_LEVEL and "raids" or "zones"
 end
 
 function UI.LevelingTabName()
@@ -32,9 +33,12 @@ function UI.LevelingView()
     return page and page.view or DefaultView()
 end
 
--- Back to the view that suits my level.
-local function ResetView()
-    if page then page.view = nil end
+-- A new level redraws the view I'm on. Only reaching (or leaving) the cap moves me to another one.
+local function LevelChanged()
+    local default = DefaultView()
+    if page and page.defaultView ~= default then
+        page.view, page.defaultView = nil, default
+    end
     UI.Dirty()
 end
 
@@ -42,7 +46,7 @@ end
 function UI.SetLevelingPretend(level)
     UI.levelingPretend = level
     if page then page.guide.questKey = nil end
-    ResetView()
+    LevelChanged()
 end
 
 --@do-not-package@
@@ -59,12 +63,12 @@ end
 
 ns.OnEvent("PLAYER_LEVEL_UP", function(level)
     newLevel = tonumber(level)
-    ResetView()
+    LevelChanged()
 end)
 
 -- Taking or handing in a quest updates In log / Done, only while a quest list is on screen.
 local function QuestsChanged()
-    if page and page:IsVisible() and page.guide.questKey then UI.DirtySlow() end
+    if page and page:IsVisible() and (page.guide.questKey or UI.LevelingView() == "class") then UI.DirtySlow() end
 end
 ns.OnEvent("QUEST_LOG_UPDATE", QuestsChanged)
 ns.OnEvent("QUEST_TURNED_IN", QuestsChanged)
@@ -110,12 +114,48 @@ local function RowList(parent, x, w, top, rowH, count, make, fill)
 end
 
 ---------------------------------------------------------------------------------------------------
--- Zones (left) and dungeons (right)
+-- Zone and dungeon rows
+
+-- Open the world map at this map, with this window waiting behind it. The game's own call, from a
+-- click, never in combat. False if it couldn't open.
+local function OpenMap(mapID)
+    if InCombatLockdown() or not (C_Map and C_Map.OpenWorldMap) then return false end
+    if not pcall(C_Map.OpenWorldMap, mapID) then return false end
+    UI.SendBehindMap()
+    return true
+end
+
+local function ZoneTip(self)
+    self.hl:Show()
+    local z = self.item
+    if not z or not GameTooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(z.name, 1, 1, 1)
+    GameTooltip:AddLine(string.format(L.GUIDE_TIP_RANGE, z.min, z.max))
+    GameTooltip:AddLine(string.format(L.GUIDE_TIP_ZONE_BEST, z.bestMin, z.bestMax))
+    if ns.LevelGuide.ZoneMap(z.name) then
+        GameTooltip:AddLine(L.GUIDE_TIP_ZONE_MAP, 0.25, 1, 0.25)
+    else
+        GameTooltip:AddLine(L.GUIDE_ZONE_NO_MAP, 0.62, 0.62, 0.62)
+    end
+    GameTooltip:Show()
+end
 
 local function MakeZoneRow(r)
-    r.name = Text(r, "", "GameFontHighlightSmall", 6, -5, 190)
-    r.range = Text(r, "", "GameFontHighlightSmall", 196, -5, 54, "CENTER")
-    r.best = Text(r, "", "GameFontHighlightSmall", 254, -5, 90, "CENTER")
+    r.name = Text(r, "", "GameFontHighlightSmall", 6, -5, 400)
+    r.range = Text(r, "", "GameFontHighlightSmall", 420, -5, 120, "CENTER")
+    r.best = Text(r, "", "GameFontHighlightSmall", 560, -5, 170, "CENTER")
+    r:SetScript("OnClick", function(self)
+        local mapID = self.item and ns.LevelGuide.ZoneMap(self.item.name)
+        if not mapID then return end
+        page.guide.zoneHint = not OpenMap(mapID) and L.GUIDE_ZONE_MAP_FAILED or nil
+        UI.Dirty()
+    end)
+    r:SetScript("OnEnter", ZoneTip)
+    r:SetScript("OnLeave", function(self)
+        self.hl:Hide()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
 end
 
 local function FillZoneRow(r, z)
@@ -146,10 +186,11 @@ end
 -- Open a dungeon's quest list.
 function UI.LevelingOpenDungeon(key)
     if not page then UI.Open("leveling") end
-    page.view = "leveling"
+    page.view = "dungeons"
     page.guide.questKey = key
     page.guide.quests.offset = 0
     page.guide.questHint = nil
+    page.guide.treeJump = true
     UI.Dirty()
 end
 
@@ -157,11 +198,11 @@ local function MakeDungeonRow(r)
     r:SetScript("OnClick", function(self)
         if self.item then UI.LevelingOpenDungeon(self.item.key) end
     end)
-    r.name = Text(r, "", "GameFontHighlightSmall", 6, -4, 200)
-    r.tag = Text(r, "", "GameFontNormalSmall", 206, -4, 104, "RIGHT")
-    r.range = Text(r, "", "GameFontHighlightSmall", 314, -4, 50, "RIGHT")
-    r.info = Text(r, "", "GameFontDisableSmall", 6, -19, 190)
-    r.where = Text(r, "", "GameFontDisableSmall", 196, -19, 168, "RIGHT")
+    r.name = Text(r, "", "GameFontHighlightSmall", 6, -4, 340)
+    r.tag = Text(r, "", "GameFontNormalSmall", 350, -4, 250, "RIGHT")
+    r.range = Text(r, "", "GameFontHighlightSmall", 610, -4, 120, "RIGHT")
+    r.info = Text(r, "", "GameFontDisableSmall", 6, -19, 360)
+    r.where = Text(r, "", "GameFontDisableSmall", 370, -19, 360, "RIGHT")
     r:SetScript("OnEnter", DungeonTip)
     r:SetScript("OnLeave", function(self)
         self.hl:Hide()
@@ -225,18 +266,8 @@ function UI.LevelingPinnedQuest() return pin and pin.quest end
 local function ShowOnMap(q)
     local g = page.guide
     PlacePin(q)
-    local opened = false
-    if not InCombatLockdown() and C_Map and C_Map.OpenWorldMap then
-        opened = pcall(C_Map.OpenWorldMap, q.map)
-    end
-    if opened then
-        g.questHint = nil
-        UI.SendBehindMap()
-        UI.Dirty()              -- the row now says Pinned
-    else
-        g.questHint = L.GUIDE_PINNED_PRESS_M
-        UI.Dirty()
-    end
+    g.questHint = not OpenMap(q.map) and L.GUIDE_PINNED_PRESS_M or nil
+    UI.Dirty()                  -- the row now says Pinned
 end
 
 local MAX_CHAIN_LINES = 10
@@ -267,10 +298,13 @@ local function QuestTip(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(q.name, 1, 1, 1)
     GameTooltip:AddLine(string.format(L.GUIDE_QUEST_LEVELS, q.level, q.req))
+    if q.focus then GameTooltip:AddLine(string.format(L.GUIDE_CHAIN_PROGRESS, q.doneCount, q.total), 1, 0.82, 0) end
     if self.locked then
         GameTooltip:AddLine(string.format(L.GUIDE_NEEDS, place.name), 1, 0.5, 0.25, true)
     end
     if place.giver then GameTooltip:AddLine(string.format(L.GUIDE_STARTS_WITH, place.giver)) end
+    local location = ns.LevelGuide.MapName(place.map)
+    if location then GameTooltip:AddLine(string.format(L.GUIDE_LOCATION_TIP, location)) end
     if self.plan then AddChain(self.plan) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine((not place.map and L.GUIDE_NO_MAP_TIP) or (self.locked and L.GUIDE_TIP_NEXT) or L.GUIDE_TIP_MAP,
@@ -280,10 +314,21 @@ end
 
 local function MakeQuestRow(r)
     r.level = Text(r, "", "GameFontHighlightSmall", 6, -5, 34, "CENTER")
-    r.name = Text(r, "", "GameFontHighlightSmall", 46, -5, 290)
-    r.state = Text(r, "", "GameFontNormalSmall", 340, -5, 70, "CENTER")
-    r.giver = Text(r, "", "GameFontDisableSmall", 414, -5, 190)
-    r.map = Text(r, "", "GameFontNormalSmall", 604, -5, 126, "RIGHT")
+    r.name = Text(r, "", "GameFontHighlightSmall", 46, -5, 224)
+    r.state = Text(r, "", "GameFontNormalSmall", 274, -5, 52, "CENTER")
+    r.giver = Text(r, "", "GameFontDisableSmall", 330, -5, 150)
+    r.location = Text(r, "", "GameFontDisableSmall", 484, -5, 130)
+    r.map = Text(r, "", "GameFontNormalSmall", 616, -5, 114, "RIGHT")
+    r.tint = r:CreateTexture(nil, "BACKGROUND", nil, 1)     -- the status colour, under the hover highlight
+    r.tint:SetAllPoints()
+    r.tint:Hide()
+    r.toggle = Button(r, "+", 18, 45, -2, function()        -- open or close a storyline
+        local g = page.guide
+        local open = g.treeOpen[g.treeKey]
+        if r.item then open[r.item.id] = not open[r.item.id] or nil end
+        UI.Dirty()
+    end, 17)
+    r.toggle:Hide()
     r:SetScript("OnClick", function(self)
         if self.place and self.place.map then ShowOnMap(self.place) end
     end)
@@ -294,41 +339,113 @@ local function MakeQuestRow(r)
     end)
 end
 
+-- Status: text colour, row tint (the see-through green and gold of the clan meeting rows), label.
+local STATUS = {
+    done = { ns.GREEN, 0.2, 0.85, 0.3, 0.30, L.GUIDE_DONE },
+    log = { YELLOW, 1, 0.82, 0, 0.22, L.GUIDE_IN_LOG },
+    locked = { ORANGE, 1, 0.5, 0.25, 0.20, L.GUIDE_LOCKED },
+}
+
+-- Where a quest stands. Not started: the place to go is the next quest in the chain. Started or done:
+-- this quest's own.
+local function QuestPlace(quest)
+    local state = ns.LevelGuide.QuestState(quest)
+    local plan = ns.LevelGuide.QuestPlan(quest)
+    return state, plan, state and quest or plan.target, not state and plan.locked
+end
+
 local function FillQuestRow(r, q)
-    local state = ns.LevelGuide.QuestState(q)
-    local plan = ns.LevelGuide.QuestPlan(q)
-    -- Not started: the place to go is the next quest in the chain. Started or done: this quest's own.
-    local place = state and q or plan.target
-    local locked = not state and plan.locked
+    -- A closed storyline stands for the quest I'm working towards in it.
+    local state, plan, place, locked = QuestPlace(q.focus or q)
     r.plan, r.place, r.locked = plan, place, locked
     r.level:SetText(q.level)
-    r.name:SetText(state == "done" and (ns.GREY .. q.name .. "|r") or q.name)
-    r.state:SetText((state == "log" and (YELLOW .. L.GUIDE_IN_LOG .. "|r"))
-        or (state == "done" and (ns.GREEN .. L.GUIDE_DONE .. "|r"))
-        or (locked and (ORANGE .. L.GUIDE_LOCKED .. "|r")) or "")
+    -- A tree: indented by depth, with + / - on a storyline of two or more.
+    local x = 68 + q.depth * 14
+    r.name:ClearAllPoints()
+    r.name:SetPoint("TOPLEFT", x, -5)
+    r.name:SetWidth(270 - x)
+    r.toggle:SetShown(q.summary == true)
+    if q.summary then r.toggle:SetText(page.guide.treeOpen[page.guide.treeKey][q.id] and "-" or "+") end
+    r.name:SetText(q.name)
+    -- The row's colour: its own status, or on a storyline's top row the furthest I've got.
+    local status = q.summary and q.furthest or (not q.summary and (state or (locked and "locked"))) or nil
+    r.status = status
+    local look = STATUS[status]
+    r.tint:SetShown(look ~= nil)
+    if look then r.tint:SetColorTexture(look[2], look[3], look[4], look[5]) end
+    local colour = look and look[1] or ""
+    if q.summary then
+        r.state:SetText(colour .. string.format(L.GUIDE_CHAIN_COUNT, q.doneCount, q.total) .. "|r")
+    else
+        r.state:SetText(look and (colour .. look[6] .. "|r") or "")
+    end
     r.giver:SetText(locked and (ORANGE .. string.format(L.GUIDE_NEEDS, place.name) .. "|r") or place.giver or "")
+    r.location:SetText(ns.LevelGuide.MapName(place.map) or L.GUIDE_NO_LOCATION)
     local pinned = pin and pin.quest and pin.quest.id == place.id
     r.map:SetText((pinned and (ns.GREEN .. L.GUIDE_PINNED .. "|r"))
         or (place.map and (locked and L.GUIDE_SHOW_NEXT or L.GUIDE_SHOW_MAP))
         or (ns.GREY .. L.GUIDE_NO_MAP .. "|r"))
 end
 
-local function BuildQuests(g)
-    local q = CreateFrame("Frame", nil, g)
+-- The quest list's columns: label, x, width, sort key.
+local QUEST_COLS = {
+    { L.GUIDE_LEVEL, 4, 40, "level" }, { L.GUIDE_QUEST, 46, 224, "name" }, { L.GUIDE_STATUS, 274, 54, "status" },
+    { L.GUIDE_STARTS, 330, 150, "giver" }, { L.GUIDE_LOCATION, 484, 130, "location" },
+}
+local SORT_UP = " |TInterface\\Buttons\\Arrow-Up-Up:12:12:0:-2|t"
+local SORT_DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:12:12:0:2|t"
+
+-- Click a column title to sort by it, again to reverse, a third time for the usual order, as on the
+-- Roster. The choice carries across the quest lists until /reload.
+local function ClickQuestSort(g, key)
+    if g.sortKey ~= key then
+        g.sortKey, g.sortDesc = key, false
+    elseif not g.sortDesc then
+        g.sortDesc = true
+    else
+        g.sortKey, g.sortDesc = nil, nil
+    end
+    g.quests.offset = 0
+    UI.Dirty()
+end
+
+local function BuildQuestHeads(g, q)
+    q.heads = {}
+    for _, c in ipairs(QUEST_COLS) do
+        local h = CreateFrame("Button", nil, q)
+        h:SetPoint("TOPLEFT", c[2] - 2, -55)
+        h:SetSize(c[3] + 4, 18)
+        h.label = Text(h, c[1], "GameFontNormalSmall", 2, -4, c[3] + 2)
+        h.key = c[4]
+        h:SetScript("OnClick", function() ClickQuestSort(g, c[4]) end)
+        h:SetScript("OnEnter", function(self)
+            self.label:SetTextColor(1, 1, 1)
+            if GameTooltip then
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:AddLine(L.SORT_TIP, 1, 1, 1)
+                GameTooltip:Show()
+            end
+        end)
+        h:SetScript("OnLeave", function(self)
+            self.label:SetTextColor(1, 0.82, 0)
+            if GameTooltip then GameTooltip:Hide() end
+        end)
+        q.heads[#q.heads + 1] = h
+    end
+end
+
+local function BuildQuests(g, parent)
+    local q = CreateFrame("Frame", nil, parent)
     q:SetAllPoints()
     g.questPanel = q
+    g.treeOpen = {}             -- per list, the storylines I've opened, kept while the game is running
     q.back = Button(q, L.BACK, 70, 0, -30, function()
         g.questKey = nil
         UI.Dirty()
     end, 22)
     q.title = Text(q, "", "GameFontNormalLarge", 82, -33, 500)
     q.clear = Button(q, L.GUIDE_CLEAR_PIN, 120, 616, -30, ClearPin, 22)
-    q.heads = {
-        Text(q, L.GUIDE_LEVEL, "GameFontDisableSmall", 6, -59, 34, "CENTER"),
-        Text(q, L.GUIDE_QUEST, "GameFontDisableSmall", 46, -59, 300),
-        Text(q, L.GUIDE_STATUS, "GameFontDisableSmall", 340, -59, 70, "CENTER"),
-        Text(q, L.GUIDE_STARTS, "GameFontDisableSmall", 414, -59, 190),
-    }
+    BuildQuestHeads(g, q)
     g.quests = RowList(q, 0, 736, -74, 22, 14, MakeQuestRow, FillQuestRow)
     q.empty = Text(q, L.GUIDE_NO_QUESTS, "GameFontDisableSmall", 6, -80, 700)
     q.hint = Text(q, "", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, 580)
@@ -350,10 +467,85 @@ local function BuildQuests(g)
     n:Hide()
 end
 
-local function RefreshQuests(g)
-    local q, d = g.questPanel, ns.Dungeons.BY_KEY[g.questKey]
-    q.title:SetText(ns.GOLD .. d.name .. "|r  " .. ns.GREY .. "(" .. d.min .. "-" .. d.max .. ")|r")
-    local list = ns.LevelGuide.Quests(g.questKey)
+-- Status order, soonest to act on first: in my log, part done, ready, locked, finished.
+local STATUS_ORDER = { log = 1, done = 2, locked = 4 }
+
+-- What a storyline sorts by. It uses the quest I'm working towards whether it's open or closed, so
+-- opening one never moves it. Nil = nothing to show, and those stay at the bottom either way.
+local function SortValue(root, key, focus)
+    if key == "level" then return root.level end
+    if key == "name" then return root.name:lower() end
+    if key == "status" then
+        if root.doneCount == root.total then return 5 end
+        return STATUS_ORDER[root.furthest] or 3
+    end
+    local _, _, place = QuestPlace(focus)
+    local text
+    if key == "giver" then text = place.giver else text = ns.LevelGuide.MapName(place.map) end
+    return text and text:lower() or nil
+end
+
+-- A quest tree as rows: a closed storyline is one row, an open one lists its steps in order.
+-- Also returns how many quests and storylines, and the row of the first storyline not finished.
+local function TreeRows(g, key)
+    local roots, quests = ns.LevelGuide.QuestTree(key)
+    local rows, firstOpen, open = {}, nil, g.treeOpen[key]
+    local values, order, focusOf = {}, {}, {}
+    for i, root in ipairs(roots) do
+        local done, total, focus, furthest = ns.LevelGuide.ChainProgress(root)
+        root.doneCount, root.total, root.furthest = done, total, furthest
+        if total > 1 then root.summary = true end
+        order[root], focusOf[root] = i, focus
+        if g.sortKey then values[root] = SortValue(root, g.sortKey, focus) end
+    end
+    if g.sortKey then
+        local desc = g.sortDesc
+        table.sort(roots, function(a, b)
+            local va, vb = values[a], values[b]
+            if va ~= vb then
+                if va == nil then return false end
+                if vb == nil then return true end
+                if desc then return va > vb end
+                return va < vb
+            end
+            return order[a] < order[b]
+        end)
+    end
+    for _, root in ipairs(roots) do
+        local total = root.total
+        if root.doneCount < total and not firstOpen then firstOpen = #rows + 1 end
+        if total > 1 and not open[root.id] then
+            root.focus = focusOf[root]
+            rows[#rows + 1] = root
+        else
+            for _, node in ipairs(root.chain) do rows[#rows + 1] = node end
+        end
+    end
+    return rows, quests, #roots, firstOpen
+end
+
+-- The quest list for a dungeon's key, or "class" for my class quests.
+local function RefreshQuests(g, key)
+    local q, isClass = g.questPanel, key == "class"
+    g.treeKey = key
+    g.treeOpen[key] = g.treeOpen[key] or {}
+    local list, quests, chains, firstOpen = TreeRows(g, key)
+    -- Opening a list starts at the first storyline I haven't finished.
+    if g.treeJump then
+        g.treeJump = false
+        g.quests.offset = (firstOpen or 1) - 1
+    end
+    if isClass then
+        q.title:SetText(ns.GOLD .. string.format(L.GUIDE_CLASS_TITLE, (UnitClass("player"))) .. "|r  "
+            .. ns.GREY .. "(" .. string.format(L.GUIDE_CLASS_COUNT, quests, chains) .. ")|r")
+    else
+        local d = ns.Dungeons.BY_KEY[key]
+        q.title:SetText(ns.GOLD .. d.name .. "|r  " .. ns.GREY .. "(" .. d.min .. "-" .. d.max .. ")|r")
+    end
+    q.back:SetShown(not isClass)
+    q.title:ClearAllPoints()
+    q.title:SetPoint("TOPLEFT", isClass and 0 or 82, -33)
+    q.empty:SetText(isClass and L.GUIDE_NO_CLASS_QUESTS or L.GUIDE_NO_QUESTS)
     g.quests.Set(list)
     local heading, text, steps = ns.LevelGuide.QuestDataNote()
     q.notice:SetShown(heading ~= nil)
@@ -362,50 +554,60 @@ local function RefreshQuests(g)
         q.notice.text:SetText(text)
         q.notice.steps:SetText(steps)
     end
-    for _, head in ipairs(q.heads) do head:SetShown(not heading) end
+    for i, head in ipairs(q.heads) do
+        head:SetShown(not heading)
+        head.label:SetText(QUEST_COLS[i][1] .. (head.key == g.sortKey and (g.sortDesc and SORT_DOWN or SORT_UP) or ""))
+    end
     q.empty:SetShown(#list == 0 and not heading)
     q.clear:SetShown(pin ~= nil and pin.quest ~= nil)
     q.hint:SetShown(not heading)
     q.hint:SetText(g.questHint or L.GUIDE_QUEST_HINT)
 end
 
-local function BuildGuide(p)
-    local g = CreateFrame("Frame", nil, p)
-    g:SetAllPoints()
-    p.guide = g
-    local lists = CreateFrame("Frame", nil, g)
-    lists:SetAllPoints()
-    g.lists = lists
-    g.zoneTitle = UI.Header(lists, "", 0, -32, ZONE_W)
-    Text(lists, L.GUIDE_ZONE, "GameFontDisableSmall", 6, -53, 190)
-    Text(lists, L.GUIDE_RANGE, "GameFontDisableSmall", 196, -53, 54, "CENTER")
-    Text(lists, L.GUIDE_BEST_AT, "GameFontDisableSmall", 254, -53, 90, "CENTER")
-    g.zones = RowList(lists, 0, ZONE_W, -68, 22, 14, MakeZoneRow, FillZoneRow)
-    g.noZones = Text(lists, L.GUIDE_NO_ZONES, "GameFontDisableSmall", 6, -74, ZONE_W - 12)
-    Text(lists, ns.GREEN .. L.GUIDE_ZONE_KEY .. "|r", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, 200)
+---------------------------------------------------------------------------------------------------
+-- The views
 
-    g.dungeonTitle = UI.Header(lists, "", DUNGEON_X, -32, DUNGEON_W)
-    g.dungeons = RowList(lists, DUNGEON_X, DUNGEON_W, -52, 36, 9, MakeDungeonRow, FillDungeonRow)
-    g.noDungeons = Text(lists, "", "GameFontDisableSmall", DUNGEON_X + 6, -58, DUNGEON_W - 12)
-    Text(lists, ns.GREEN .. L.GUIDE_READY .. "|r  " .. YELLOW .. L.GUIDE_TOUGH .. "|r", "GameFontDisableSmall",
-        DUNGEON_X, LIST_BOTTOM - 3, 220)
-    BuildQuests(g)
+local function BuildZones(panel, p)
+    local g = p.guide
+    g.zoneTitle = UI.Header(panel, "", 0, -32, LIST_W)
+    Text(panel, L.GUIDE_ZONE, "GameFontDisableSmall", 6, -53, 400)
+    Text(panel, L.GUIDE_RANGE, "GameFontDisableSmall", 420, -53, 120, "CENTER")
+    Text(panel, L.GUIDE_BEST_AT, "GameFontDisableSmall", 560, -53, 170, "CENTER")
+    g.zones = RowList(panel, 0, LIST_W, -68, 22, 14, MakeZoneRow, FillZoneRow)
+    g.noZones = Text(panel, L.GUIDE_NO_ZONES, "GameFontDisableSmall", 6, -74, LIST_W - 12)
+    g.zoneKey = Text(panel, "", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, 580)
 end
 
-local function RefreshGuide(g)
-    g.lists:SetShown(not g.questKey)
-    g.questPanel:SetShown(g.questKey ~= nil)
-    if g.questKey then
-        RefreshQuests(g)
-        return
-    end
-    local level = Level()
+local function RefreshZones(p)
+    local g, level = p.guide, Level()
     g.zoneTitle:SetText(string.format(L.GUIDE_ZONES_FOR, level))
-    g.dungeonTitle:SetText(string.format(L.GUIDE_DUNGEONS_FOR, level))
-    local zones, dungeons = ns.LevelGuide.Zones(level), ns.LevelGuide.Dungeons(level)
+    local zones = ns.LevelGuide.Zones(level)
     g.zones.Set(zones)
-    g.dungeons.Set(dungeons)
     g.noZones:SetShown(#zones == 0)
+    g.zoneKey:SetText(g.zoneHint or (ns.GREEN .. L.GUIDE_ZONE_KEY .. "|r  " .. L.GUIDE_ZONE_CLICK))
+end
+
+local function BuildDungeons(panel, p)
+    local g = p.guide
+    local lists = CreateFrame("Frame", nil, panel)
+    lists:SetAllPoints()
+    g.lists = lists
+    g.dungeonTitle = UI.Header(lists, "", 0, -32, LIST_W)
+    g.dungeons = RowList(lists, 0, LIST_W, -52, 36, 9, MakeDungeonRow, FillDungeonRow)
+    g.noDungeons = Text(lists, "", "GameFontDisableSmall", 6, -58, LIST_W - 12)
+    Text(lists, ns.GREEN .. L.GUIDE_READY .. "|r  " .. YELLOW .. L.GUIDE_TOUGH .. "|r", "GameFontDisableSmall",
+        0, LIST_BOTTOM - 3, 300)
+    BuildQuests(g, p)           -- on the page itself: Dungeons and Class quests share it
+end
+
+local function RefreshDungeons(p)
+    local g = p.guide
+    g.lists:SetShown(not g.questKey)
+    if g.questKey then return end
+    local level = Level()
+    g.dungeonTitle:SetText(string.format(L.GUIDE_DUNGEONS_FOR, level))
+    local dungeons = ns.LevelGuide.Dungeons(level)
+    g.dungeons.Set(dungeons)
     g.noDungeons:SetShown(#dungeons == 0)
     if #dungeons == 0 then
         local first = ns.Dungeons.MyList()[1]
@@ -413,26 +615,8 @@ local function RefreshGuide(g)
     end
 end
 
----------------------------------------------------------------------------------------------------
-
-local function Build(p)
-    page = p
-    -- The two views, side by side at the top left; the open one has the gold line, like the main tabs.
-    p.viewButtons = {}
-    for i, v in ipairs({ { "leveling", L.LEVELING_GUIDE }, { "raids", L.RAID_ROSTER } }) do
-        local b = Button(p, v[2], 120, (i - 1) * 124, 0, function()
-            p.view = v[1]
-            UI.Dirty()
-        end, 24)
-        b.viewSel = b:CreateTexture(nil, "OVERLAY")
-        b.viewSel:SetColorTexture(1, 0.82, 0, 1)
-        b.viewSel:SetPoint("BOTTOMLEFT", 8, 2)
-        b.viewSel:SetPoint("BOTTOMRIGHT", -8, 2)
-        b.viewSel:SetHeight(2)
-        p.viewButtons[v[1]] = b
-    end
-    BuildGuide(p)
-    p.box = Box(p, 0, -30, 736, 220)
+local function BuildRaids(panel, p)
+    p.box = Box(panel, 0, -30, LIST_W, 220)
     p.title = Text(p.box, ns.GOLD .. L.RAID_ROSTER .. "|r", "GameFontNormalLarge", 12, -12, 500)
     p.soon = Text(p.box, L.COMING_SOON, "GameFontHighlight", 12, -40, 500)
     p.text = Text(p.box, L.RAID_SOON_TEXT, "GameFontHighlightSmall", 12, -66, 700)
@@ -441,23 +625,75 @@ local function Build(p)
     p.text:SetJustifyV("TOP")
 end
 
+-- The row of views, left to right. To add one: a build(panel, page), an optional refresh(page), a line here.
+local VIEWS = {
+    { key = "zones", label = L.GUIDE_TAB_ZONES, build = BuildZones, refresh = RefreshZones },
+    { key = "dungeons", label = L.TAB_DUNGEONS, build = BuildDungeons, refresh = RefreshDungeons },
+    { key = "class", label = L.GUIDE_TAB_CLASS, build = function() end },    -- draws in the shared quest list
+    { key = "raids", label = L.RAID_ROSTER, build = BuildRaids },
+}
+
+---------------------------------------------------------------------------------------------------
+
+local function SelectView(p, key)
+    local g = p.guide
+    if UI.LevelingView() ~= key then
+        g.quests.offset, g.questHint = 0, nil
+        g.treeJump = true
+    end
+    p.view, g.zoneHint = key, nil
+    UI.Dirty()
+end
+
+-- The dev console: open one of the views.
+function UI.LevelingShow(key)
+    if not page then UI.Open("leveling") end
+    SelectView(page, key)
+end
+
+local function Build(p)
+    page = p
+    p.guide, p.panels, p.viewButtons = {}, {}, {}
+    p.defaultView = DefaultView()
+    -- Side by side at the top left; the open one has the gold line, like the main tabs.
+    for i, v in ipairs(VIEWS) do
+        local panel = CreateFrame("Frame", nil, p)
+        panel:SetAllPoints()
+        p.panels[v.key] = panel
+        v.build(panel, p)
+        local b = Button(p, v.label, 120, (i - 1) * 124, 0, function() SelectView(p, v.key) end, 24)
+        b.viewSel = b:CreateTexture(nil, "OVERLAY")
+        b.viewSel:SetColorTexture(1, 0.82, 0, 1)
+        b.viewSel:SetPoint("BOTTOMLEFT", 8, 2)
+        b.viewSel:SetPoint("BOTTOMRIGHT", -8, 2)
+        b.viewSel:SetHeight(2)
+        p.viewButtons[v.key] = b
+    end
+end
+
 -- Coming to this tab from another opens the view for my level, at the top of the lists. Closing the
 -- window for the map and coming back doesn't count, so the quest list is still there.
 local function OnEnter(p)
     local g = p.guide
-    p.view, g.questKey, g.questHint = nil, nil, nil
+    p.view, g.questKey, g.questHint, g.zoneHint = nil, nil, nil, nil
+    p.defaultView = DefaultView()
     g.zones.offset, g.dungeons.offset = 0, 0
 end
 
 local function Refresh(p)
     local view = UI.LevelingView()
-    p.guide:SetShown(view == "leveling")
-    p.box:SetShown(view == "raids")
-    if view == "leveling" then RefreshGuide(p.guide) end
-    for key, b in pairs(p.viewButtons) do
-        if key == view then b:LockHighlight() else b:UnlockHighlight() end
-        b.viewSel:SetShown(key == view)
+    for _, v in ipairs(VIEWS) do
+        local open = v.key == view
+        local b = p.viewButtons[v.key]
+        p.panels[v.key]:SetShown(open)
+        if open then b:LockHighlight() else b:UnlockHighlight() end
+        b.viewSel:SetShown(open)
+        if open and v.refresh then v.refresh(p) end
     end
+    local g = p.guide
+    local questKey = (view == "class" and "class") or (view == "dungeons" and g.questKey) or nil
+    g.questPanel:SetShown(questKey ~= nil)
+    if questKey then RefreshQuests(g, questKey) end
 end
 
 UI.AddPage("leveling", Build, Refresh, OnEnter)

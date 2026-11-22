@@ -1,4 +1,4 @@
--- The leveling guide's dungeon quests, read live from QuestieDB (an optional dependency) through its
+-- The leveling guide's dungeon and class quests, read live from QuestieDB (an optional dependency) through its
 -- public API. We keep none of its data in this addon: only which zones and bosses belong to which
 -- dungeon, and a few quests to leave out. Without QuestieDB the guide still works, with no quest lists.
 -- Read once, the first time a list is needed. Ids, not names, so it works in every game language.
@@ -79,6 +79,29 @@ local function Seq(t)
 end
 
 local function HasBit(mask, b) return math.floor(mask / 2 ^ b) % 2 == 1 end
+
+-- A class quest is limited to a few classes. A mask naming most of them is just a general quest.
+local CLASS_KEY, MOST_CLASSES = "class", 4
+local function IsClassMask(mask)
+    local count = 0
+    for b = 0, 11 do
+        if HasBit(mask, b) then count = count + 1 end
+    end
+    return count > 0 and count <= MOST_CLASSES
+end
+
+-- The game's own quest category for each class (QuestSort id -> class id).
+local CLASS_SORT = { [-61] = 9, [-81] = 1, [-82] = 7, [-141] = 2, [-161] = 8, [-162] = 4, [-261] = 3, [-262] = 5, [-263] = 11 }
+
+-- In its class's category, or a class-only quest out in a zone while leveling. That leaves out
+-- level 60 raid and gear turn-ins, and profession quests.
+local function IsClassQuest(mask, level, sort, skill)
+    if not IsClassMask(mask) then return false end
+    local class = CLASS_SORT[sort]
+    if class and HasBit(mask, class - 1) then return true end
+    local needsSkill = type(skill) == "table" and (tonumber(skill[1]) or 0) > 0
+    return level < 60 and sort > 0 and not needsSkill
+end
 
 local function Overlaps(a, b)
     for i = 0, 39 do
@@ -249,34 +272,54 @@ local function Build(lib)
         return nil
     end
 
-    -- Each dungeon's quests.
-    local found = {}
+    -- Each dungeon's quests, and the class quests. One quest can be in both lists.
+    local found, leads = {}, {}
     for _, id in ipairs(Quest.GetAllIds()) do
+        -- "This quest leads to that one", which prerequisites don't always say (optional lead-ins).
+        for _, target in ipairs({ Quest.nextQuestInChain(id) or 0, Quest.breadcrumbForQuestId(id) or 0 }) do
+            if type(target) == "number" and target > 0 then
+                leads[target] = leads[target] or {}
+                table.insert(leads[target], id)
+            end
+        end
         local level, special = Quest.questLevel(id) or 0, Quest.specialFlags(id) or 0
         if not NOT_AVAILABLE[id] and not NOT_DUNGEON[id] and level >= 1 and level <= 60 and special % 2 == 0 then
-            local group = GroupOf(id, Quest.zoneOrSort(id) or 0)
+            local cls = Quest.requiredClasses(id) or 0
+            local sort = Quest.zoneOrSort(id) or 0
+            local group = GroupOf(id, sort)
             local range = group and LEVELS[group]
-            if range and level >= range[1] - 8 and level <= range[2] + 3 then
+            local inDungeon = range and level >= range[1] - 8 and level <= range[2] + 3
+            local isClass = IsClassQuest(cls, level, sort, cls ~= 0 and Quest.requiredSkill(id) or nil)
+            if inDungeon or isClass then
                 local races = Quest.requiredRaces(id) or 0
                 local side, usable = SideOf(races)
                 if usable then
                     local giver, map, x, y, places = Starter(id, side)
                     local pre = Seq(Quest.preQuestGroup(id))
                     for _, p in ipairs(Seq(Quest.preQuestSingle(id))) do pre[#pre + 1] = p end
-                    found[group] = found[group] or {}
-                    table.insert(found[group], {
+                    local entry = {
                         id = id, name = Quest.name(id), level = level, req = Quest.requiredLevel(id) or 0, side = side,
-                        cls = Quest.requiredClasses(id) or 0, races = RaceList(races, side),
+                        cls = cls, races = RaceList(races, side),
                         giver = giver, map = map, x = x, y = y, places = places, pre = pre,
-                    })
+                    }
+                    if inDungeon then
+                        found[group] = found[group] or {}
+                        table.insert(found[group], entry)
+                    end
+                    if isClass then
+                        found[CLASS_KEY] = found[CLASS_KEY] or {}
+                        table.insert(found[CLASS_KEY], entry)
+                    end
                 end
             end
         end
     end
 
     -- The lists the guide reads: one row per version, the other versions noted.
-    local out = { QUESTS = {}, VARIANTS = {}, EARLIER = {}, STEPS = {} }
-    for group in pairs(GROUPS) do
+    local out = { QUESTS = {}, VARIANTS = {}, EARLIER = {}, STEPS = {}, LEADS = {} }
+    local listKeys = { CLASS_KEY }
+    for group in pairs(GROUPS) do listKeys[#listKeys + 1] = group end
+    for _, group in ipairs(listKeys) do
         local quests, rows, seen, named = found[group] or {}, {}, {}, {}
         for _, q in ipairs(quests) do
             named[q.name] = named[q.name] or {}
@@ -332,6 +375,29 @@ local function Build(lib)
     end
     for _, quests in pairs(found) do
         for _, q in ipairs(quests) do AddStep(q.id) end
+    end
+    -- The quest trees also follow lead-ins, through quests that aren't on their list.
+    local walked, toWalk = {}, {}
+    for _, quests in pairs(found) do
+        for _, q in ipairs(quests) do toWalk[#toWalk + 1] = q.id end
+    end
+    while #toWalk > 0 do
+        local id = table.remove(toWalk)
+        if not walked[id] then
+            walked[id] = true
+            AddStep(id)
+            local s = raw[id]
+            for _, list in ipairs({ s and s.all or {}, s and s.any or {}, leads[id] or {} }) do
+                for _, p in ipairs(list) do toWalk[#toWalk + 1] = p end
+            end
+        end
+    end
+    for id in pairs(walked) do
+        local kept = {}
+        for _, p in ipairs(leads[id] or {}) do
+            if raw[p] then kept[#kept + 1] = p end
+        end
+        if kept[1] then out.LEADS[id] = kept end
     end
     local function Kept(list)
         local out2 = {}
