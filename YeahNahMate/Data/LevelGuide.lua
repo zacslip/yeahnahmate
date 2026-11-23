@@ -74,28 +74,26 @@ G.ZONES = {
     { "Winterspring", 55, 60, { 56, 60 }, { 56, 60 } },
 }
 
--- A zone's map id, asked of the game by name, so the new Forever zones need no table of ours.
--- Kept once the game has answered; nil if it has no such zone.
-local MAP_ROOTS = { 1414, 1415, 947 }     -- Kalimdor, Eastern Kingdoms, then all of Azeroth
-local MAP_TYPE_ZONE = 3
-local zoneMaps
+-- Each zone's map id. Ids, because the game's own zone names change with the client's language.
+local ZONE_MAPS = {
+    ["Durotar"] = 1411, ["Elwynn Forest"] = 1429, ["Mulgore"] = 1412, ["Teldrassil"] = 1438, ["Dun Morogh"] = 1426,
+    ["Tirisfal Glades"] = 1420, ["Zephras Isle"] = 2521, ["Westfall"] = 1436, ["Loch Modan"] = 1432,
+    ["Silverpine Forest"] = 1421, ["The Barrens"] = 1413, ["Darkshore"] = 1439, ["Redridge Mountains"] = 1433,
+    ["Stonetalon Mountains"] = 1442, ["Ashenvale"] = 1440, ["Duskwood"] = 1431, ["Wetlands"] = 1437,
+    ["Hillsbrad Foothills"] = 1424, ["Thousand Needles"] = 1441, ["Alterac Mountains"] = 1416, ["Desolace"] = 1443,
+    ["Arathi Highlands"] = 1417, ["Stranglethorn Vale"] = 1434, ["Dustwallow Marsh"] = 1445, ["Swamp of Sorrows"] = 1435,
+    ["Riverglades"] = 2548, ["Badlands"] = 1418, ["Tanaris"] = 1446, ["Shen'dralas"] = 2652, ["Feralas"] = 1444,
+    ["The Hinterlands"] = 1425, ["Azshara"] = 1447, ["Searing Gorge"] = 1427, ["Blasted Lands"] = 1419,
+    ["Western Plaguelands"] = 1422, ["Felwood"] = 1448, ["Un'Goro Crater"] = 1449, ["Burning Steppes"] = 1428,
+    ["Eastern Plaguelands"] = 1423, ["Silithus"] = 1451, ["Mount Hyjal"] = 2482, ["Winterspring"] = 1452,
+}
+
+-- A zone's map id, if the game has that map.
 function G.ZoneMap(name)
-    if not zoneMaps then
-        if not (C_Map and C_Map.GetMapChildrenInfo) then return nil end
-        local found, any = {}, false
-        for _, root in ipairs(MAP_ROOTS) do
-            local ok, children = pcall(C_Map.GetMapChildrenInfo, root, MAP_TYPE_ZONE, true)
-            for _, info in ipairs(ok and type(children) == "table" and children or {}) do
-                if type(info.name) == "string" and not found[info.name] then
-                    found[info.name] = info.mapID
-                    any = true
-                end
-            end
-        end
-        if not any then return nil end
-        zoneMaps = found
-    end
-    return zoneMaps[name]
+    local id = ZONE_MAPS[name]
+    if not id or not (C_Map and C_Map.GetMapInfo) then return nil end
+    local ok, info = pcall(C_Map.GetMapInfo, id)
+    return ok and type(info) == "table" and id or nil
 end
 
 -- A map's name from the game, for the quest lists' Location column. Nil if it doesn't know it.
@@ -160,11 +158,14 @@ local QUEST_GROUP = { smgy = "scarlet", smlib = "scarlet", smarm = "scarlet", sm
                       dme = "diremaul", dmw = "diremaul", dmn = "diremaul", lbrs = "spire", ubrs = "spire",
                       stratsg = "strat" }
 
+-- Dire Maul's wings each have their own door (QuestieDB's area for each).
+local WING_AREA = { dme = 10026, dmw = 10023, dmn = 10022 }
+
 -- A dungeon's entrance as something the map pin can show, or nil if we don't know it.
 function G.Entrance(key)
     local d = ns.Dungeons.BY_KEY[key]
     if not d then return nil end
-    local map, x, y = ns.LiveQuests.Entrance(QUEST_GROUP[key] or key, key == "stratsg" and 2 or 1)
+    local map, x, y = ns.LiveQuests.Entrance(QUEST_GROUP[key] or key, key == "stratsg" and 2 or 1, WING_AREA[key])
     if not map then return nil end
     return { id = "entrance:" .. key, name = string.format(ns.L.GUIDE_ENTRANCE_OF, d.name),
              map = map, x = x, y = y, entrance = true }

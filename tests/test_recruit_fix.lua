@@ -51,6 +51,8 @@ check(p.fix.ask:IsShown() and not p.fix.yes:IsShown() and not R.Fixing(), "No: b
 p.fix.ask:Click()
 p.fix.yes:Click()
 check(R.Fixing() and p.question:IsShown() and not p.answer:IsShown() and p.question.keep:IsShown(), "Yes: the question is back")
+check(not p.question.skip:IsShown() and not R.Claim("") and R.Fixing() and R.MyClaim().by == "Bluey Heeler",
+    "no Skip while correcting: it can't wipe the credit or use the one change")
 check(p.body.top == -150, "the body makes room for the question")
 check(not R.CanPick("Bluey Heeler") and R.CanPick("Bingo Heeler"), "I can't re-pick the person I'm correcting")
 check(not R.Claim("Bluey Heeler"), "Bluey is refused")
@@ -93,6 +95,25 @@ INJECT("YNM", Msg({ t = "RCL", by = "Ned Jones", at = now - 400 }), "GUILD", "Ch
 INJECT("YNM", Msg({ t = "RCL", by = "Bluey Heeler", at = now - 300 }), "GUILD", "Chilli Heeler")
 Tick(1)
 check(R.ClaimOf("Chilli Heeler").by == "Ned Jones", "no correction: the first answer still stands")
+
+-- A correction stays in the month of the first answer, for me and for what others send.
+do
+    local lastMonth = now - 40 * 86400
+    local mine = R.Store().claims["Ned Jones"]
+    check(mine.ft and mine.ft <= mine.at, "my correction remembers when I first answered")
+    INJECT("YNM", Msg({ t = "RCL", by = "Ned Jones", at = lastMonth }), "GUILD", "Bluey Heeler")
+    Tick(1)
+    local before2 = Count(R.Leaderboard("month"), "Ned Jones")
+    INJECT("YNM", Msg({ t = "RCL", by = "Bingo Heeler", at = now - 10, fx = 1, ft = lastMonth }), "GUILD", "Bluey Heeler")
+    Tick(1)
+    check(R.ClaimOf("Bluey Heeler").by == "Bingo Heeler", "Bluey's correction is taken")
+    check(Count(R.Leaderboard("month"), "Bingo Heeler") == 1 and Count(R.Leaderboard("month"), "Ned Jones") == before2,
+        "a correction of last month's answer adds nobody to this month")
+    check(Count(R.Leaderboard("all"), "Bingo Heeler") == 2, "it still counts all time")
+    INJECT("YNM", Msg({ t = "RCL", by = "Ned Jones", at = now - 5, fx = 1, ft = now + 999 }), "GUILD", "Bingo Heeler")
+    Tick(1)
+    check(R.Store().claims["Bingo Heeler"].ft == nil, "a first-answer time after the correction is ignored")
+end
 
 -- A claim a manager took off can't be brought back by correcting it.
 check(R.Hide("Chilli Heeler"), "a manager takes Chilli's claim off")

@@ -15,6 +15,7 @@
 --   RSH { to, at }          I shared the addon with `to` at server time `at` (GUILD)
 --   RCL { by, at, fx }      I was recruited by `by` ("" = skipped). fx = 1: my one correction, which
 --                           beats my first answer. Versions before 0.26.1 ignore it and keep the first.
+--                           ft = when I first answered, so a correction stays in that month's count.
 --   RHD { who, at }         a manager hides `who`'s claim (GUILD, from the manager)
 --   Copies (to a guildie who asks, by whisper) carry o = the author: RSH { o, to, at },
 --   RCL { o, by, at }, RHD { o = the manager, who, at }.
@@ -157,7 +158,7 @@ function R.ClaimOf(name)
     local best
     for owner, c in pairs(s.claims) do
         if Person(owner) == who then
-            local this = { owner = owner, by = c.by, at = c.at, fx = c.fx }
+            local this = { owner = owner, by = c.by, at = c.at, fx = c.fx, ft = c.ft }
             if not best or Beats(this, best) then best = this end
         end
     end
@@ -197,7 +198,7 @@ function R.CanBeRecruiter(name)
 end
 
 local function ClaimMessage(owner, c)
-    local m = { t = "RCL", by = c.by, at = c.at, fx = c.fx }
+    local m = { t = "RCL", by = c.by, at = c.at, fx = c.fx, ft = c.ft }
     if owner ~= ns.me then m.o = owner end
     return m
 end
@@ -255,12 +256,14 @@ function R.Claim(by)
     local s = R.Store()
     if not s then return false end
     local isFix = R.Fixing()
-    if R.MyClaim() and not isFix then return false end
+    local old = R.MyClaim()
+    if old and not isFix then return false end
+    if isFix and by == "" then return false end     -- a correction needs a name
     if by ~= "" and not R.CanPick(by) then return false end
-    local c = { by = by, at = GetServerTime(), fx = isFix and 1 or nil }
+    local c = { by = by, at = GetServerTime(), fx = isFix and 1 or nil, ft = isFix and (old.ft or old.at) or nil }
     fixing = false
     if R.devClaim then
-        R.devClaim = { owner = ns.me, by = c.by, at = c.at, fx = c.fx }
+        R.devClaim = { owner = ns.me, by = c.by, at = c.at, fx = c.fx, ft = c.ft }
     else
         s.claims[ns.me] = c
         ns.Comm.Send(ClaimMessage(ns.me, c), "GUILD")
@@ -317,13 +320,13 @@ function R.Leaderboard(period)
     local per = {}
     for owner, c in pairs(s.claims) do
         local p = Person(owner)
-        local this = { owner = owner, by = c.by, at = c.at, fx = c.fx }
+        local this = { owner = owner, by = c.by, at = c.at, fx = c.fx, ft = c.ft }
         if not per[p] or Beats(this, per[p]) then per[p] = this end
     end
     local by = {}
     for recruit, c in pairs(per) do
         if c.by ~= "" and Member(c.owner) and Member(c.by) and not Same(c.owner, c.by)
-            and not R.IsHidden(recruit) and (not month or MonthOf(c.at) == month) then
+            and not R.IsHidden(recruit) and (not month or MonthOf(c.ft or c.at) == month) then
             local who = Person(c.by)
             local e = by[who]
             if not e then e = { name = who, n = 0, recruits = {} }; by[who] = e end
@@ -381,7 +384,8 @@ local function TakeClaim(owner, msg)
         -- Otherwise the earliest stays (an earlier one replaces a later one if they crossed).
         if (old.fx and true or false) == (fx and true or false) and old.at <= msg.at then return false end
     end
-    s.claims[owner] = { by = by, at = msg.at, fx = fx }
+    local ft = fx and type(msg.ft) == "number" and msg.ft > 0 and msg.ft <= msg.at and msg.ft or nil
+    s.claims[owner] = { by = by, at = msg.at, fx = fx, ft = ft }
     return true
 end
 

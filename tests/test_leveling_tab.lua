@@ -481,16 +481,19 @@ do
     local function ZoneRow(name)
         for _, r in ipairs(g.zones.rows) do if r.item and r.item.name == name then return r end end
     end
-    check(G.ZoneMap("The Barrens") == nil, "no zone list from the game: no map, no error")
-    local realChildren = C_Map.GetMapChildrenInfo
-    C_Map.GetMapChildrenInfo = function(root, kind)
-        check(kind == 3, "asks the game for zones")
-        if root == 1414 then return { { mapID = 1413, name = "The Barrens", mapType = 3 } } end
-        if root == 947 then return { { mapID = 9999, name = "The Barrens", mapType = 3 }, { mapID = 2001, name = "Zephras Isle", mapType = 3 } } end
-        return {}
+    local realInfo = C_Map.GetMapInfo
+    C_Map.GetMapInfo = nil
+    check(G.ZoneMap("The Barrens") == nil, "no map call on this client: no map, no error")
+    -- A German client: the game's names differ, the ids don't. Silverpine is a map it doesn't have.
+    C_Map.GetMapInfo = function(id)
+        if id == 1421 then return nil end
+        return { mapID = id, name = id == 1413 and "Brachland" or ("Karte " .. id), mapType = 3 }
     end
-    check(G.ZoneMap("The Barrens") == 1413 and G.ZoneMap("Zephras Isle") == 2001, "zones are found by name, the continent's first")
+    check(G.ZoneMap("The Barrens") == 1413 and G.ZoneMap("Zephras Isle") == 2521, "zones are found by id, in any language")
     check(G.ZoneMap("Nowhere") == nil, "an unknown zone has no map")
+    for _, z in ipairs(G.ZONES) do
+        check(z[1] == "Silverpine Forest" or G.ZoneMap(z[1]) ~= nil, z[1] .. " has a map id")
+    end
     C_Map.OpenWorldMap = function(id) openedMap = id end
     UI.SetLevelingPretend(15)
     UI.Select("home"); UI.Select("leveling")
@@ -520,7 +523,7 @@ do
     Tick(1)
     check(openedMap == 1413 and g.zoneKey:GetText():find(L.GUIDE_ZONE_CLICK, 1, true), "out of combat it works again")
     Tick(2)
-    C_Map.OpenWorldMap, C_Map.GetMapChildrenInfo = nil, realChildren
+    C_Map.OpenWorldMap, C_Map.GetMapInfo = nil, realInfo
     UI.SetLevelingPretend(nil)
     Tick(1)
 end
@@ -727,8 +730,12 @@ do
     local realLib, realInfo, realOpen = LibQuestieDB, C_Map.GetMapInfo, C_Map.OpenWorldMap
     local opened
     LibQuestieDB = setmetatable({ Support = { Get = function() return { private = {
-        areaIdToUiMapId = { [17] = 1413, [139] = 1423, [718] = 279 },
+        areaIdToUiMapId = { [17] = 1413, [139] = 1423, [357] = 1444, [718] = 279 },
         dungeons = { [718] = { "Wailing Caverns", nil, 17, { { 17, 46, 36.5 } } },
+                     [2557] = { "Dire Maul", nil, 357, { { 357, 59.2, 45.1 } } },
+                     [10022] = { "Dire Maul", nil, 357, { { 357, 62.5, 24.9 } } },
+                     [10023] = { "Dire Maul", nil, 357, { { 357, 60.3, 30.2 } } },
+                     [10026] = { "Dire Maul", nil, 357, { { 357, 64.8, 30.2 } } },
                      [2017] = { "Stratholme", nil, 139, { { 139, 26.5, 10.4 }, { 139, 41.5, 17.7 } } } },
     } } end } }, { __index = realLib })
     ns.LiveQuests.Reset()
@@ -738,6 +745,8 @@ do
     local wc = Guide.Entrance("wc")
     check(wc and wc.map == 1413 and wc.x == 46 and wc.y == 36.5 and wc.entrance, "an entrance comes from QuestieDB")
     check(Guide.Entrance("strat").x == 26.5 and Guide.Entrance("stratsg").x == 41.5, "each Stratholme gate has its own door")
+    check(Guide.Entrance("dme").y == 30.2 and Guide.Entrance("dme").x == 64.8 and Guide.Entrance("dmw").x == 60.3
+        and Guide.Entrance("dmn").y == 24.9, "each Dire Maul wing has its own door")
     check(Guide.Entrance("krol").map == 2548, "a dungeon QuestieDB lacks uses our own position")
     check(Guide.Entrance("zf") == nil, "an unknown entrance is nil")
     check(Guide.DungeonMap("wc") == 279 and Guide.DungeonMap("strat") == nil, "only a real dungeon map counts")
@@ -764,6 +773,23 @@ do
     Tick(1)
 end
 
+-- An either-or quest that isn't on any list still counts: handing it in finishes this one.
+do
+    local Quest = LibQuestieDB.Quest
+    local realEx, realDone = Quest.exclusiveTo, C_QuestLog.IsQuestFlaggedCompleted
+    Quest.exclusiveTo = function(id)
+        if id == 3341 then return { 99435 } end
+        return realEx(id)
+    end
+    ns.LiveQuests.Reset()
+    local step = ns.LevelGuide.QUEST_STEPS[3341]
+    check(step and step[12] and step[12][1] == 99435, "the alternative is kept, even though it isn't a step")
+    C_QuestLog.IsQuestFlaggedCompleted = function(id) return id == 99435 end
+    check(ns.LevelGuide.QuestState({ id = 3341, ids = { 3341 } }) == "done", "handing in the alternative marks this quest done")
+    Quest.exclusiveTo, C_QuestLog.IsQuestFlaggedCompleted = realEx, realDone
+    ns.LiveQuests.Reset()
+end
+
 -- The Bosses column: all time per character, main bosses in the total, optional and secret as a bonus.
 do
     local B = ns.Bosses
@@ -786,6 +812,12 @@ do
     check(done == 0 and total == 3 and bonus == 1, "an optional boss is a bonus, not in the total")
     local _, extra = B.Rows("exc")
     check(extra[1].done and extra[1].name == "Highland Horror", "the hover lists it under the extras")
+    -- The game hiding my id mid-fight doesn't lose the kill: it's kept from login.
+    local realGuid = UnitGUID
+    UnitGUID = function() return nil end
+    FireEvent("ENCOUNTER_END", 3480, "Saltspine", 1, 5, 1)
+    UnitGUID = realGuid
+    check(B.Count("exc") == 1, "a kill still saves if the game hides my id during the fight")
 
     UI.SetLevelingPretend(15)
     UI.Select("leveling")

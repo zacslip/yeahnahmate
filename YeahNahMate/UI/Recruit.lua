@@ -160,6 +160,7 @@ local function RefreshMine()
     q.title:SetText(ns.GOLD .. (isFix and L.RECRUIT_FIX_QUESTION or L.RECRUIT_QUESTION) .. "|r")
     q.once:SetText(isFix and L.RECRUIT_FIX_ONCE or L.RECRUIT_ONCE)
     q.keep:SetShown(isFix)
+    q.skip:SetShown(not isFix)      -- a correction needs a name
     local picks = {}
     for _, s in ipairs(R.SharedWithMe()) do
         if R.CanPick(s.name) then picks[#picks + 1] = s end
@@ -360,6 +361,7 @@ local function BuildQuestion(p)
     end, 22)
     skip:HookScript("OnHide", function(self) self.armed = nil; self:SetText(L.RECRUIT_SKIP) end)
     Tip(skip, { L.RECRUIT_SKIP, L.RECRUIT_SKIP_TIP })
+    q.skip = skip
     q.once = UI.Text(q, L.RECRUIT_ONCE, "GameFontDisableSmall", PAD, -70, WIDTH - 2 * PAD)
     q.keep = TextLink(q, L.RECRUIT_FIX_KEEP, WIDTH - PAD - 90, -71, 90, function()
         p.picker:Hide()

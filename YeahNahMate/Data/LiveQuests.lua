@@ -56,7 +56,8 @@ local NOT_DUNGEON = Set({
 })
 
 -- Listed in the database but not quests a player can pick up.
-local NOT_AVAILABLE = Set({ 1318, 4601, 4602, 4605, 4606, 7462, 7668, 8869 })
+local NOT_AVAILABLE = Set({ 1318, 4601, 4602, 4605, 4606, 5669, 5670, 5671, 5686, 5687, 5691, 5692, 5693, 5704, 5705,
+                            5706, 6072, 7462, 7668, 8869 })
 
 local ZONE_GROUP, BOSS_GROUP = {}, {}
 for group, zones in pairs(GROUPS) do
@@ -409,7 +410,8 @@ local function Build(lib)
     for id, s in pairs(raw) do
         if s then
             out.STEPS[id] = { s.name, s.level, s.side, s.cls, s.races, s.giver or "", s.map or false, s.x or false, s.y or false,
-                              Kept(s.all), Kept(s.any), Kept(s.alt), s.places }
+                              -- Alternatives stay even if they aren't steps: handing one in counts as done.
+                              Kept(s.all), Kept(s.any), s.alt[1] and s.alt or false, s.places }
         end
     end
     return out
@@ -471,11 +473,12 @@ local function AreaMaps(lib)
 end
 
 -- Where a dungeon group's entrance is: map, x, y. which = 2 for a second door (Stratholme's Service Gate).
-function Live.Entrance(group, which)
+-- wingArea = a wing with its own door (Dire Maul).
+function Live.Entrance(group, which, wingArea)
     local own = OWN_ENTRANCES[group]
     if own then return own[1], own[2], own[3] end
     local private, lib = ZoneData()
-    local area = GROUPS[group] and GROUPS[group][1]
+    local area = wingArea or (GROUPS[group] and GROUPS[group][1])
     local entry = private and area and type(private.dungeons) == "table" and private.dungeons[area]
     local spots = type(entry) == "table" and entry[4]
     local spot = type(spots) == "table" and (spots[which or 1] or spots[1])

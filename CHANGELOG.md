@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.3
+
+- Leveling guide: finishing one of two either-or quests now marks the other as done and unlocks the steps after it.
+- Class quests: removed 12 quests that can't actually be obtained.
+- Show entrance: Dire Maul East, West and North now each pin their own door.
+- Clicking a zone now opens its map in every game language.
+- Bosses: a kill still saves if the game hides your character's ID during the fight.
+- Addon recruiting: Skip is gone while you're correcting a credit, so it can't remove the credit or use up your one change.
+- Addon recruiting: a corrected credit now stays in the month of your original answer.
+
 ## 0.26.2
 
 - Addon recruiting: picking who got you onto the addon now asks you to confirm the name first, so a slip while scrolling can't credit the wrong person.

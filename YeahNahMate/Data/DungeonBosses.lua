@@ -179,10 +179,18 @@ for _, d in pairs(B.LIST) do
 end
 
 -- This character's kills: encounter id -> the name the game gave it.
+-- Nil if there's nowhere safe to keep it yet. The id is kept from login, in case the game hides it later.
+local myGuid
+local function MyGuid()
+    if not myGuid then myGuid = ns.Public(UnitGUID and UnitGUID("player"), "string") end
+    return myGuid
+end
+ns.OnEvent("PLAYER_LOGIN", MyGuid)
+
 function B.Kills()
-    if not ns.db then return {} end
-    local guid = ns.Public(UnitGUID and UnitGUID("player"), "string")
-    if not guid then return {} end
+    if not ns.db then return nil end
+    local guid = MyGuid()
+    if not guid then return nil end
     if type(ns.db.bossKills) ~= "table" then ns.db.bossKills = {} end
     local mine = ns.db.bossKills[guid]
     if type(mine) ~= "table" then
@@ -197,7 +205,7 @@ function B.Record(id, name)
     id = ALIAS[id] or id
     if not KNOWN[id] then return false end
     local kills = B.Kills()
-    if kills[id] then return false end
+    if not kills or kills[id] then return false end
     kills[id] = type(name) == "string" and name or true
     if ns.UI and ns.UI.Dirty then ns.UI.Dirty() end
     return true
@@ -206,7 +214,7 @@ end
 -- Forget this character's kills (the dev console).
 function B.Clear()
     if ns.db and type(ns.db.bossKills) == "table" then
-        local guid = ns.Public(UnitGUID and UnitGUID("player"), "string")
+        local guid = MyGuid()
         if guid then ns.db.bossKills[guid] = nil end
     end
     if ns.UI and ns.UI.Dirty then ns.UI.Dirty() end
@@ -233,7 +241,7 @@ end
 function B.Count(key)
     local d = B.LIST[key]
     if not d then return 0, 0, 0 end
-    local kills = B.Kills()
+    local kills = B.Kills() or {}
     local main, done = Part(d.main, kills)
     local _, bonus = Part(d.extra, kills)
     return done, #main, bonus
@@ -243,6 +251,6 @@ end
 function B.Rows(key)
     local d = B.LIST[key]
     if not d then return {}, {} end
-    local kills = B.Kills()
+    local kills = B.Kills() or {}
     return (Part(d.main, kills)), (Part(d.extra, kills))
 end
