@@ -465,10 +465,23 @@ ns.Sync.Register("recruit", function(author)
     local s = R.Store()
     if not s then return list end
     for _, e in pairs(s.shares[author] or {}) do list[#list + 1] = e.at end
-    if s.claims[author] then list[#list + 1] = s.claims[author].at end
+    -- A correction counts here as its first answer, so older versions (which keep that) never look
+    -- behind and re-ask at every log-in. Versions that understand corrections use "recruitfx" below.
+    local c = s.claims[author]
+    if c then list[#list + 1] = c.fx and c.ft or c.at end
     for _, h in pairs(s.hidden) do if h.sb == author then list[#list + 1] = h.at end end
     return list
 end, MineToSend)
+
+ns.Sync.Register("recruitfx", function(author)
+    local s = R.Store()
+    local c = s and s.claims[author]
+    return c and c.fx and { c.at } or {}
+end, function()
+    local s = R.Store()
+    local c = s and s.claims[ns.me]
+    return c and c.fx and { ClaimMessage(ns.me, c) } or {}
+end)
 
 -- A guildie who just logged in gets what I wrote.
 ns.Listen("HI_IN", function(msg, from)

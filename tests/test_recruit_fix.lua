@@ -101,6 +101,11 @@ do
     local lastMonth = now - 40 * 86400
     local mine = R.Store().claims["Ned Jones"]
     check(mine.ft and mine.ft <= mine.at, "my correction remembers when I first answered")
+    local shown = ns.Sync.Versions("recruit", "Ned Jones")
+    check(#shown == 1 and shown[1] == mine.ft, "older versions are told the first answer, so they don't keep re-asking")
+    local fixes = ns.Sync.Versions("recruitfx", "Ned Jones")
+    check(#fixes == 1 and fixes[1] == mine.at, "newer versions can still see the correction is new")
+    check(#ns.Sync.Versions("recruitfx", "Bandit Heeler") == 1 and #ns.Sync.Versions("recruitfx", "Chilli Heeler") == 0, "only corrections count there")
     INJECT("YNM", Msg({ t = "RCL", by = "Ned Jones", at = lastMonth }), "GUILD", "Bluey Heeler")
     Tick(1)
     local before2 = Count(R.Leaderboard("month"), "Ned Jones")

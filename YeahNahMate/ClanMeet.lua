@@ -60,16 +60,19 @@ end
 -- Would this whisper count as asking for an invite? The whole message has to be a request, in any
 -- case and with any punctuation: inv, INV, invite, inv pls, inv me mate, can I get an inv, can you
 -- invite me, need an inv ... Lines that only mention one don't count: "can I inv you", "inv Bob",
--- "can I get an inv later". A match only puts the name on the organiser's Asked list.
+-- "can I get an inv later", "got an inv, cheers". A match only puts the name on the organiser's Asked list.
 local INV_SPELLINGS = { inv = true, invite = true, invit = true, invte = true, inivte = true, ivn = true }
 local POLITE = { hey = true, hi = true, hiya = true, yo = true, oi = true, gday = true, mate = true,
     bro = true, bud = true, dude = true, man = true, boss = true, legend = true, pls = true, plz = true,
     plss = true, plzz = true, please = true, thanks = true, thx = true, ty = true, ta = true, cheers = true }
 local SAME_MEANING = { could = "can", may = "can", would = "can", will = "can", u = "you", ya = "you",
-    a = "an", have = "get", grab = "get", got = "get", want = "need" }
+    a = "an", grab = "get", want = "need" }
+local PLEASE = { pls = true, plz = true, plss = true, plzz = true, please = true }
+-- "got an inv" can be a question or news, so these need a ? or a please to count as asking.
+local ONLY_IF_ASKING = { ["got inv"] = true, ["got an inv"] = true, ["have inv"] = true, ["have an inv"] = true }
 local INV_REQUESTS = {}
 for _, phrase in ipairs({ "inv", "inv me", "can you inv", "can you inv me", "can you get me an inv",
-    "can you give me an inv", "can i get inv", "can i get an inv", "get inv", "get an inv", "get me an inv",
+    "can you give me an inv", "can i get inv", "can i get an inv", "can i have inv", "can i have an inv", "get inv", "get an inv", "get me an inv",
     "give me an inv", "gimme inv", "gimme an inv", "need inv", "need an inv", "i need inv", "i need an inv",
     "id like an inv", "any chance of an inv" }) do
     INV_REQUESTS[phrase] = true
@@ -88,15 +91,18 @@ end
 
 function M.IsInvWord(text)
     if type(text) ~= "string" then return false end
-    local words = {}
+    local words, asking = {}, text:find("?", 1, true) ~= nil
     for word in text:lower():gsub("'", ""):gmatch("%a+") do
+        if PLEASE[word] or (IsInv(word) and not IsInvSpelling(word)) then asking = true end
         if IsInv(word) then
             words[#words + 1] = "inv"
         elseif not POLITE[word] then
             words[#words + 1] = SAME_MEANING[word] or word
         end
     end
-    return INV_REQUESTS[table.concat(words, " ")] == true
+    local phrase = table.concat(words, " ")
+    if ONLY_IF_ASKING[phrase] then return asking end
+    return INV_REQUESTS[phrase] == true
 end
 
 ---------------------------------------------------------------------------------------------------

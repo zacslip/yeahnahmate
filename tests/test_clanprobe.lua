@@ -57,12 +57,12 @@ local W = ns.ClanProbeInvWord
 check(W("inv") and W("INV") and W("Invite") and W("inv plz") and W("invite please") and W("inv pls?"), "invite words")
 for _, ask in ipairs({ "Inv", "INV!", "invv", "INVITE", "invite me", "inv me mate", "invpls", "inviteplz", "pls inv",
     "plz invite", "hey inv", "ivn", "inv?", "Can I get an inv?", "could i get an invite please", "can i have an inv mate",
-    "can you inv me", "can u inv", "would you invite me", "got an inv?", "need an inv", "I need an invite",
+    "can you inv me", "can u inv", "would you invite me", "got an inv?", "got an inv pls", "have an inv?", "can i have an invite", "need an inv", "I need an invite",
     "give me an inv", "gimme an inv", "i'd like an invite", "any chance of an inv?", "hey mate can I please get an inv, thanks" }) do
     check(W(ask), "counts as asking: " .. ask)
 end
 for _, other in ipairs({ "inventory", "invited", "hey", "pls", "mate", "", "can i inv you", "i can inv", "inv bob",
-    "can you inv bob", "dont inv", "no inv", "i got an inv", "i have an inv", "can i get an inv later", "thanks for the inv",
+    "can you inv bob", "dont inv", "no inv", "i got an inv", "i have an inv", "got an inv, cheers", "got an inv", "have an inv", "got an invite thanks", "can i get an inv later", "thanks for the inv",
     "did you get an inv", "need an inv for my alt", "who wants an inv" }) do
     check(not W(other), "doesn't count: " .. other)
 end

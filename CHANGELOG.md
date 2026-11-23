@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.1
+
+- Clan invites: "got an inv, cheers" no longer counts as someone asking for an invite. "got an inv?" and "got an inv pls" still do.
+- Leveling guide: a closed storyline now points at the quest in your log, even when it's on a different branch.
+- Addon recruiting: guildies on older versions no longer re-request a corrected credit every time that player logs in.
+
 ## 0.27.0
 
 - Raids now has its own main tab, and the Leveling tab keeps its name at level 60.

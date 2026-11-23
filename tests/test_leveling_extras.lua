@@ -98,6 +98,20 @@ local classNames = {}
 for _, r in ipairs(G.QuestTree("class")) do classNames[r.name] = true end
 check(not classNames["Superior Armaments of Battle"], "a bag turn-in doesn't join the class list")
 
+-- A closed storyline with a fork points at the quest in my log, not just the first branch.
+do
+    local a, b = { id = 90001, ids = { 90001 }, name = "Branch A", children = {} }, { id = 90002, ids = { 90002 }, name = "Branch B", children = {} }
+    local root = { id = 90000, ids = { 90000 }, name = "Fork", children = { a, b } }
+    root.chain = { root, a, b }
+    done[90000], inLog[90002] = true, true
+    local _, _, focus, furthest = G.ChainProgress(root)
+    check(focus == b and furthest == "log", "a fork's closed row follows the branch in my log")
+    inLog[90002] = nil
+    _, _, focus = G.ChainProgress(root)
+    check(focus == a, "nothing in my log: the first unfinished branch")
+    done[90000] = nil
+end
+
 -- The sleeping bag: each faction starts on its own continent and hands in on the other.
 D.pretendFaction = "Horde"
 local rows, n, total = E.SleepingBag()

@@ -449,8 +449,15 @@ function G.ChainProgress(root)
         return done
     end
     Check(root)
-    local total, focus = #root.chain, root
+    local total, focus, found = #root.chain, root, false
+    -- A quest in my log is what I'm working on, even on another branch of a fork.
     for _, node in ipairs(root.chain) do
+        if G.QuestState(node) == "log" then
+            focus, found = node, true
+            break
+        end
+    end
+    for _, node in ipairs(found and {} or root.chain) do
         if not isDone[node] and #node.children == 0 then
             focus = node
             break
