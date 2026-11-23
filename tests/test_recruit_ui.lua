@@ -54,9 +54,43 @@ for _, o in ipairs(CREATED) do if o._text == L.RECRUIT_SOMEONE_ELSE then other =
 other:Click()
 check(panel.picker:IsShown(), "the picker opens")
 local first = panel.picker.rows[1]
-check(first:IsShown() and first.who == "Bluey Heeler", "it lists Bluey (has the addon)")
+check(first:IsShown() and first.who == "Bluey Heeler", "it lists Bluey first (has the addon)")
+-- Every guildie is there, offline too, and typing narrows the list.
+local pk = panel.picker
+local function Listed()
+    local out = {}
+    for _, r in ipairs(pk.rows) do if r:IsShown() then out[#out + 1] = r.who end end
+    return out
+end
+local function Type(text)
+    pk.search:SetText(text)
+    pk.search._scripts.OnTextChanged(pk.search)
+end
+local all = table.concat(Listed(), ",")
+check(all:find("Bandit Heeler", 1, true) and all:find("Bingo Heeler", 1, true) and not all:find("Ned Jones", 1, true), "offline guildies listed, not me", all)
+Type("BAN")
+local found = Listed()
+check(#found == 1 and found[1] == "Bandit Heeler" and pk.rows[1].state:GetText() == L.RECRUIT_PICK_OFFLINE, "typing drills down, any case, and marks offline")
+Type("zzz")
+check(#Listed() == 0 and pk.empty:IsShown(), "no match: says so")
+Type("")
+check(#Listed() > 1 and not pk.empty:IsShown() and pk.rows[1].who == "Bluey Heeler", "clearing it brings everyone back")
+first:Click()
+-- It asks first: nothing is credited until Yes, and a double-click can't confirm it.
+local confirm = panel.question.confirm
+check(confirm:IsShown() and not panel.picker:IsShown() and confirm.text:GetText():find("Bluey Heeler", 1, true), "it asks: credit Bluey?")
+check(R.MyClaim() == nil, "nothing credited yet")
+confirm.yes:Click()
+check(R.MyClaim() == nil and confirm:IsShown(), "a double-click on the name doesn't confirm it")
+Tick(1)
+confirm.back:Click()
+check(not confirm:IsShown() and panel.picker:IsShown() and R.MyClaim() == nil, "Go back: the list again, nothing credited")
 first:Click()
 Tick(1)
+check(confirm:IsShown(), "picked again: it asks again")
+confirm.yes:Click()
+Tick(1)
+check(not confirm:IsShown(), "Yes: the question closes")
 check(not panel.picker:IsShown() and R.MyClaim() and R.MyClaim().by == "Bluey Heeler", "picked: Bluey got me onto it")
 check(not tab.bang:IsShown() and panel.answer:IsShown() and not panel.question:IsShown(), "answered: no !, my answer shows")
 

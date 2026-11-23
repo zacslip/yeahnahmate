@@ -190,9 +190,10 @@ function R.SharedWithMe()
     return out
 end
 
--- Guildies I could name as my recruiter: in the guild, have the addon, not me or my alts.
+-- Guildies I could name as my recruiter: anyone in the guild, online or not, but me and my alts. A new
+-- player's addon hasn't met most guildies yet, so it can't know who else has the addon.
 function R.CanBeRecruiter(name)
-    return name ~= nil and Member(name) and not Same(name, ns.me) and R.HasAddon(name)
+    return name ~= nil and Member(name) and not Same(name, ns.me)
 end
 
 local function ClaimMessage(owner, c)
@@ -229,6 +230,24 @@ function R.CanPick(name)
     if not R.CanBeRecruiter(name) then return false end
     if not R.Fixing() then return true end
     return not Same(name, R.MyClaim().by)
+end
+
+-- The "Someone else" list, narrowed by what's typed: { name, online, addon }. Guildies known to have
+-- the addon first (the likely recruiters), online before offline, then by name.
+function R.PickList(query)
+    local q = (query or ""):lower():match("^%s*(.-)%s*$")
+    local out = {}
+    for _, m in ipairs(ns.Guild.list) do
+        if R.CanPick(m.name) and (q == "" or m.name:lower():find(q, 1, true)) then
+            out[#out + 1] = { name = m.name, online = m.online and true or false, addon = R.HasAddon(m.name) }
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.addon ~= b.addon then return a.addon end
+        if a.online ~= b.online then return a.online end
+        return a.name < b.name
+    end)
+    return out
 end
 
 -- Answer the question: by = a guildie's name, or "" to skip. Once, plus one correction.

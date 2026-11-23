@@ -65,7 +65,8 @@ check(#sw == 1 and sw[1].name == "Bluey Heeler", "who shared with me: Bluey")
 
 -- My answer: once, final.
 check(R.NeedsAnswer(), "not answered yet: the tab shows the !")
-check(not R.Claim("Ned Jones") and not R.Claim("Bingo Heeler"), "not myself, not a guildie without the addon")
+check(not R.Claim("Ned Jones") and not R.Claim("Nobody Here"), "not myself, not someone outside the guild")
+check(R.CanBeRecruiter("Bandit Heeler") and R.CanBeRecruiter("Bingo Heeler"), "any guildie can be named, offline or not yet seen with the addon")
 before = #SENT
 check(R.Claim("Bluey Heeler"), "Bluey got me onto it")
 local rcl = Sent("RCL", before + 1)

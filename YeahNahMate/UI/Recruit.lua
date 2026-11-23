@@ -19,7 +19,7 @@ local TOP = -26                 -- level with the top of the banner
 local PANEL_H = 514             -- the window's 552, less TOP and the bottom gap (12)
 local PAD = 14
 local HANDSHAKE = "Interface\\Icons\\Achievement_Reputation_01"     -- picked in game, 21 Nov
-local SHARE_ROWS, BOARD_MAX, PICK_ROWS = 6, 10, 14
+local SHARE_ROWS, BOARD_MAX, PICK_ROWS = 6, 10, 19
 local ROW_H = 17
 local BODY_ANSWERED, BODY_CAN_FIX, BODY_ASKING = -82, -100, -150   -- where Share starts: under my note,
                                                                    -- its "wrong person" link, or the question
@@ -29,6 +29,8 @@ local open = false              -- starts shut each login
 local page = "addon"            -- the only page (see the top)
 local period = "all"
 local shareOffset, pickOffset = 0, 0
+local pick                      -- the name I just chose, waiting for Yes: { name, fromList, at }
+local CONFIRM_WAIT = 0.4        -- Yes ignores clicks this soon, so a double-click on a name can't confirm it
 
 local function Backdrop(f, edge, alpha)
     if not f.SetBackdrop then return end
@@ -143,11 +145,18 @@ local function RefreshMine()
     p.body:SetPoint("RIGHT")
     p.body:SetHeight(PANEL_H + top)
     if not asking then
+        pick = nil
         if c.by == "" then p.answer:SetText(L.RECRUIT_SKIPPED)
         else p.answer:SetText(string.format(L.RECRUIT_YOU_SAID, Coloured(c.by))) end
         return
     end
     local q = p.question
+    if pick and not R.CanPick(pick.name) then pick = nil end
+    q.confirm:SetShown(pick ~= nil)
+    if pick then
+        q.confirm.text:SetText(string.format(L.RECRUIT_CONFIRM_TEXT, Coloured(pick.name)))
+        q.confirm.note:SetText(isFix and L.RECRUIT_CONFIRM_LAST or L.RECRUIT_CONFIRM_ONCE)
+    end
     q.title:SetText(ns.GOLD .. (isFix and L.RECRUIT_FIX_QUESTION or L.RECRUIT_QUESTION) .. "|r")
     q.once:SetText(isFix and L.RECRUIT_FIX_ONCE or L.RECRUIT_ONCE)
     q.keep:SetShown(isFix)
@@ -221,20 +230,23 @@ end
 local function RefreshPick()
     local pk = panel.addon.picker
     if not pk:IsShown() then return end
-    local names = {}
-    for name in pairs(ns.Comm.users) do
-        if ns.Recruit.CanPick(name) then names[#names + 1] = name end
-    end
-    table.sort(names)
-    local maxOff = math.max(0, #names - PICK_ROWS)
+    local query = pk.search:GetText() or ""
+    pk.hint:SetShown(query == "" and not pk.search:HasFocus())
+    local list = ns.Recruit.PickList(query)
+    local maxOff = math.max(0, #list - PICK_ROWS)
     if pickOffset > maxOff then pickOffset = maxOff end
     for i, r in ipairs(pk.rows) do
-        local n = names[i + pickOffset]
-        r.who = n
-        r:SetShown(n ~= nil)
-        if n then r.text:SetText(Coloured(n)) end
+        local e = list[i + pickOffset]
+        r.who = e and e.name
+        r:SetShown(e ~= nil)
+        if e then
+            r.text:SetText(Coloured(e.name))
+            r.state:SetText(e.online and "" or L.RECRUIT_PICK_OFFLINE)
+        end
     end
-    pk.empty:SetShown(#names == 0)
+    pk.empty:SetShown(#list == 0)
+    pk.more:SetText(#list > PICK_ROWS and string.format(L.RECRUIT_MORE, pickOffset + 1,
+        math.min(#list, pickOffset + PICK_ROWS), #list) or "")
 end
 
 function UI.RecruitRefresh()
@@ -254,10 +266,16 @@ end
 -- Build
 
 local function Answer(by)
-    if ns.Recruit.Claim(by) then
-        panel.addon.picker:Hide()
-        UI.RecruitRefresh()
-    end
+    pick = nil
+    if ns.Recruit.Claim(by) then panel.addon.picker:Hide() end
+    UI.RecruitRefresh()
+end
+
+-- A name was chosen: ask first, because it's easy to click the wrong row while scrolling.
+local function AskPick(name, fromList)
+    pick = { name = name, fromList = fromList, at = GetTime() }
+    panel.addon.picker:Hide()
+    UI.RecruitRefresh()
 end
 
 local function PageHead(p, icon, title, sub)
@@ -324,14 +342,16 @@ local function BuildQuestion(p)
     q.suggest = {}
     local bw = math.floor((WIDTH - 2 * PAD - 8) / 3)
     for i = 1, 3 do
-        local b = UI.Button(q, "", bw, PAD + (i - 1) * (bw + 4), -16, function(self) if self.name then Answer(self.name) end end, 22)
+        local b = UI.Button(q, "", bw, PAD + (i - 1) * (bw + 4), -16, function(self) if self.name then AskPick(self.name, false) end end, 22)
         Tip(b, function(self) return self.name and { self.name, L.RECRUIT_SUGGEST_TIP } end)
         q.suggest[i] = b
     end
     local w2 = math.floor((WIDTH - 2 * PAD - 4) / 2)
     local other = UI.Button(q, L.RECRUIT_SOMEONE_ELSE, w2, PAD, -42, function()
         pickOffset = 0
+        p.picker.search:SetText("")
         p.picker:Show()
+        p.picker.search:SetFocus()      -- ready to type
         RefreshPick()
     end, 22)
     Tip(other, { L.RECRUIT_SOMEONE_ELSE, L.RECRUIT_SOMEONE_ELSE_TIP })
@@ -347,6 +367,32 @@ local function BuildQuestion(p)
         UI.RecruitRefresh()
     end, "RIGHT")
     q.keep:Hide()
+
+    -- "Credit <name> for getting you onto the addon?" over the question, until Yes or Go back.
+    local c = CreateFrame("Frame", nil, q, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    c:SetPoint("TOPLEFT", PAD - 6, 2)
+    c:SetSize(WIDTH - 2 * PAD + 12, 94)
+    c:SetFrameLevel(q:GetFrameLevel() + 6)
+    Backdrop(c, 12)
+    c:EnableMouse(true)
+    c.text = Wrapped(c, "", "GameFontHighlightSmall", 10, -9, WIDTH - 2 * PAD - 8, 28)
+    c.note = UI.Text(c, "", "GameFontDisableSmall", 10, -40, WIDTH - 2 * PAD - 8)
+    local bw2 = math.floor((WIDTH - 2 * PAD - 12) / 2)
+    c.yes = UI.Button(c, L.RECRUIT_CONFIRM_YES, bw2, 8, -62, function()
+        if pick and GetTime() - pick.at >= CONFIRM_WAIT then Answer(pick.name) end
+    end, 22)
+    c.back = UI.Button(c, L.RECRUIT_CONFIRM_BACK, bw2, 12 + bw2, -62, function()
+        local again = pick and pick.fromList
+        pick = nil
+        if again then p.picker:Show() end
+        UI.RecruitRefresh()
+    end, 22)
+    c:Hide()
+    q.confirm = c
+    q:SetScript("OnHide", function()
+        pick = nil
+        c:Hide()
+    end)
     return q
 end
 
@@ -359,16 +405,35 @@ local function BuildPicker(p)
     pk:EnableMouse(true)
     UI.Text(pk, ns.GOLD .. L.RECRUIT_PICK_TITLE .. "|r", "GameFontNormalSmall", 10, -10, WIDTH - 110)
     UI.Button(pk, L.CANCEL, 70, WIDTH - 12 - 82, -6, function() pk:Hide() end, 20)
+    -- Narrows the list with every letter, like the Roster's search.
+    local box = CreateFrame("EditBox", nil, pk, "InputBoxTemplate")
+    box:SetSize(WIDTH - 44, 20)
+    box:SetPoint("TOPLEFT", 16, -30)
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(30)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnTextChanged", function()
+        pickOffset = 0
+        if pk:IsShown() then RefreshPick() end
+    end)
+    box:SetScript("OnEditFocusGained", function() pk.hint:Hide() end)
+    box:SetScript("OnEditFocusLost", function(self) pk.hint:SetShown((self:GetText() or "") == "") end)
+    pk.search = box
+    pk.hint = UI.Text(pk, L.RECRUIT_PICK_SEARCH, "GameFontDisableSmall", 20, -34, WIDTH - 60)
     pk.rows = {}
     for i = 1, PICK_ROWS do
-        local r = UI.Row(pk, 8, -34 - (i - 1) * 20, WIDTH - 28, 19)
-        r.text = UI.Text(r, "", "GameFontHighlightSmall", 6, -3, WIDTH - 44)
-        r:SetScript("OnClick", function(self) if self.who then Answer(self.who) end end)
+        local r = UI.Row(pk, 8, -54 - (i - 1) * 20, WIDTH - 28, 19)
+        r.text = UI.Text(r, "", "GameFontHighlightSmall", 6, -3, WIDTH - 100)
+        r.state = UI.Text(r, "", "GameFontDisableSmall", WIDTH - 90, -3, 56, "RIGHT")
+        r:SetScript("OnClick", function(self) if self.who then AskPick(self.who, true) end end)
         pk.rows[i] = r
     end
-    pk.empty = UI.Text(pk, L.RECRUIT_PICK_EMPTY, "GameFontDisableSmall", 10, -36, WIDTH - 40)
+    pk.empty = UI.Text(pk, L.RECRUIT_PICK_EMPTY, "GameFontDisableSmall", 10, -58, WIDTH - 40)
+    pk.more = UI.Text(pk, "", "GameFontDisableSmall", 10, -54 - PICK_ROWS * 20, WIDTH - 40, "RIGHT")
     pk:EnableMouseWheel(true)
     pk:SetScript("OnMouseWheel", function(_, d) pickOffset = math.max(0, pickOffset - d * 3); RefreshPick() end)
+    pk:SetScript("OnHide", function() box:ClearFocus() end)
     pk:Hide()
     return pk
 end

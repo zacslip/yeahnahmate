@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.26.2
+
+- Addon recruiting: picking who got you onto the addon now asks you to confirm the name first, so a slip while scrolling can't credit the wrong person.
+- The Someone else list now has every guildie, including offline players, with a search box that narrows the list as you type.
+
 ## 0.26.1
 
 - Addon recruiting: credited the wrong person? There's now a link under your answer to fix it. You can change it once, and your old answer stays until you pick someone new.
