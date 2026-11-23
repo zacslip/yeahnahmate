@@ -14,9 +14,10 @@ local W, H = 760, 552               -- the guild header adds 52 to the mock-up's
 local function Managing() return ns.Board ~= nil and ns.Board.CanManage() end
 local TABS = {
     { "home", L.TAB_HOME, 46 }, { "roster", L.TAB_ROSTER, 52 }, { "clans", L.TAB_CLANS, 50 },
-    { "calendar", L.TAB_CALENDAR, 64 }, { "dungeons", L.TAB_DUNGEONS, 68 }, { "professions", L.TAB_PROFESSIONS, 80 },
+    { "calendar", L.TAB_CALENDAR, 64 }, { "dungeons", L.TAB_DUNGEONS, 68 }, { "professions", L.TAB_PROFESSIONS, 76 },
     { "ask", L.TAB_ASK, 38 }, { "legends", L.TAB_LEGENDS, 62 }, { "streamers", L.TAB_STREAMERS, 70 },
     { "info", L.TAB_INFO, 38 }, { "gm", L.TAB_GM, 36, Managing }, { "leveling", L.TAB_LEVELING, 64 },
+    { "raids", L.TAB_RAIDS, 48 },
 }
 
 local pages = {}                -- key -> { build, refresh, frame }
@@ -197,11 +198,10 @@ local function LayoutTabs()
         local b = tabButtons[t[1]]
         local on = not t[4] or t[4]()
         b:SetShown(on)
-        if t[1] == "leveling" and UI.LevelingTabName then b:SetText(UI.LevelingTabName()) end
         if on then
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", x, -82)
-            x = x + t[3] + 4
+            x = x + t[3] + 2
         end
     end
 end

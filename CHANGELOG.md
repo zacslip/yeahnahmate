@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27.0
+
+- Raids now has its own main tab, and the Leveling tab keeps its name at level 60.
+- New Bag quests page: every quest that rewards a normal bag for your faction, as full storylines with each bag's slots. Needs QuestieDB.
+- New Sleeping bag page: a step-by-step tracker for the Cozy Sleeping Bag chain, with your next step highlighted, tips for the tricky parts and a map pin. Map pins need QuestieDB.
+- New Keys page: what each dungeon key and attunement opens, how to get it, and which ones you already have.
+- New Mounts page: a riding checklist for your race and class, with your trainer, vendor and costs.
+
 ## 0.26.3
 
 - Leveling guide: finishing one of two either-or quests now marks the other as done and unlocks the steps after it.

@@ -1,4 +1,4 @@
--- The Settings gear and the combined Leveling / Raids tab.
+-- The Settings gear, the Leveling tab and the Raids tab beside it.
 math.randomseed(24)
 YeahNahMateDB = nil
 dofile("tests/fake_questiedb.lua")
@@ -20,7 +20,7 @@ local function TabNamed(text)
     end
 end
 local function Page()
-    for _, o in ipairs(CREATED) do if o.viewButtons and o.soon then return o end end
+    for _, o in ipairs(CREATED) do if o.viewButtons then return o end end
 end
 
 -- Settings: no tab now, the gear opens it and a second click goes back.
@@ -46,7 +46,7 @@ UI.Open("leveling")
 Tick(1)
 local tab = TabNamed(L.TAB_LEVELING)
 local p = Page()
-local zonesBtn, dungeonsBtn, raidBtn = p.viewButtons.zones, p.viewButtons.dungeons, p.viewButtons.raids
+local zonesBtn, dungeonsBtn = p.viewButtons.zones, p.viewButtons.dungeons
 -- Exactly this view's page is open and exactly its button is marked.
 local function Showing(key)
     for k, panel in pairs(p.panels) do
@@ -56,7 +56,7 @@ local function Showing(key)
 end
 check(tab ~= nil and tab.sel:IsShown(), "before 60 the tab is Leveling, and lit")
 check(Showing("zones"), "before 60 it opens on Zones, its button marked")
-check(zonesBtn:GetText() == "Zones" and dungeonsBtn:GetText() == "Dungeons" and raidBtn:GetText() == L.RAID_ROSTER, "each view has a button")
+check(zonesBtn:GetText() == "Zones" and dungeonsBtn:GetText() == "Dungeons" and p.viewButtons.raids == nil, "each view has a button, and Raids isn't one")
 dungeonsBtn:Click()
 Tick(1)
 check(Showing("dungeons"), "the Dungeons button shows only the dungeons")
@@ -69,35 +69,29 @@ Tick(1)
 check(Showing("zones"), "the Zones button goes back")
 Tick(5)
 local before = #SENT
-raidBtn:Click()
+dungeonsBtn:Click()
 check(#SENT == before, "switching sends nothing")
+zonesBtn:Click()
 Tick(1)
-check(Showing("raids") and p.text:GetText() == L.RAID_SOON_TEXT, "the Raid roster button shows the raid roster")
-check(TabNamed(L.TAB_LEVELING) ~= nil, "looking at the raids doesn't rename the tab")
-raidBtn:Click()
-Tick(1)
-check(Showing("raids"), "clicking the open view again leaves it open")
 UI.Select("home")
 UI.Select("leveling")
 Tick(1)
-check(Showing("zones"), "coming back opens the view for my level")
+check(Showing("zones"), "coming back opens on Zones")
 
--- Reaching 60 while it's open: the tab and the view change straight away.
+-- Raids is its own tab, whatever my level, and the row of tabs still fits a manager's window.
+local raidsTab = TabNamed(L.TAB_RAIDS)
+check(raidsTab ~= nil and TabNamed(L.TAB_LEVELING) ~= nil, "Leveling and Raids are separate tabs")
+raidsTab:Click()
+Tick(1)
+check(raidsTab.sel:IsShown() and UI.raidsPage:IsShown() and UI.raidsPage.text:GetText() == L.RAID_SOON_TEXT, "the Raids tab shows the raid roster")
+UI.Select("leveling")
+Tick(1)
 FireEvent("PLAYER_LEVEL_UP", 60)
 Tick(1)
-check(TabNamed(L.TAB_RAIDS) ~= nil and TabNamed(L.TAB_LEVELING) == nil, "at 60 the tab is Raids")
-check(Showing("raids"), "at 60 it opens on the raid roster")
-zonesBtn:Click()
-Tick(1)
-check(Showing("zones") and TabNamed(L.TAB_RAIDS) ~= nil, "at 60 the guide is still there")
-
--- The dev console's pretend level.
-UI.SetLevelingPretend(30)
-Tick(1)
-check(TabNamed(L.TAB_LEVELING) ~= nil and Showing("zones"), "pretend 30: Leveling, on Zones")
+check(TabNamed(L.TAB_LEVELING) ~= nil and TabNamed(L.TAB_RAIDS) ~= nil and Showing("zones"), "at 60 nothing renames or moves")
 UI.SetLevelingPretend(60)
 Tick(1)
-check(TabNamed(L.TAB_RAIDS) ~= nil and Showing("raids"), "pretend 60: Raids")
+check(TabNamed(L.TAB_LEVELING) ~= nil and Showing("zones"), "pretend 60: still Leveling")
 UI.SetLevelingPretend(nil)
 Tick(1)
 
@@ -248,7 +242,7 @@ for key, list in pairs(G.QUESTS) do
         check(fine, "well-formed quest in " .. key .. ": " .. tostring(q[2]))
     end
 end
-check(groups == 29, "28 dungeon quest groups and the class quests (" .. groups .. ")")
+check(groups == 30, "28 dungeon quest groups and the class and bag quests (" .. groups .. ")")
 local function QuestNamed(key, name)
     for _, q in ipairs(G.Quests(key)) do if q.name == name then return q end end
 end

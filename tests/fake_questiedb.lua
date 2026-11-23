@@ -16,6 +16,9 @@ function FakeQuestieDB(opts)
         [107] = { "Bluff Elder", { [BLUFF] = { { 75.0, 31.0 } } }, "H" },
         [108] = { "Ozzie Togglevolt", { [MOROGH] = { { 45.9, 49.4 } } }, "A" },
         [258964] = { "A New Boss", nil, "" },
+        [3690] = { "Kar Stormsinger", { [215] = { { 46.79, 61.97 } } }, "H" },
+        [3685] = { "Harb Clawhoof", { [215] = { { 46.65, 62.08 } } }, "H" },
+        [4772] = { "Ultham Ironhorn", nil, "A" },
     }
 
     local function Q(name, level, req, zone, races, cls, starter, single, objectives)
@@ -66,6 +69,34 @@ function FakeQuestieDB(opts)
         QUESTS[9960 + i] = Q("Shaman Lesson " .. i, 20 + i, 20, 215, HORDE, 64, { 107 })
     end
 
+    -- Bag rewards: one ordinary quest, and the Argent Dawn's four repeatable turn-ins for one bag.
+    QUESTS[79192] = Q("Stepping Stones", 24, 14, 406, 0, 0, { 107 })
+    QUESTS[3628] = Q("You Are Rakh'likh, Demon", 60, 45, 4, 0, 0, { 107 })
+    QUESTS[79007] = Q("... and that note you found", 24, 14, 17, HORDE, 0, { 107 })
+    QUESTS[79008] = Q("... and that note you found", 24, 14, 40, ALLIANCE, 0, { 103 })
+    QUESTS[79192].preQuestSingle = { 79007, 79008 }
+    QUESTS[624] = Q("Cortello's Riddle", 47, 35, 1176, 0, 0, { 107 })     -- one name for all three steps
+    QUESTS[625] = Q("Cortello's Riddle", 48, 35, 1176, 0, 0, { 107 }, { 624 })
+    QUESTS[626] = Q("Cortello's Riddle", 51, 35, 1176, 0, 0, { 107 }, { 625 })
+    for _, id in ipairs({ 9221, 9223, 9226, 9227 }) do
+        QUESTS[id] = Q("Superior Armaments of Battle - Rank " .. id, 60, 55, 139, 0, 0, { 107 })
+        QUESTS[id].specialFlags = 1
+    end
+    local ITEMS = {
+        [221498] = { name = "Old Toolbox", questRewards = { 79192 } },
+        [10959] = { name = "Demon Hide Sack", questRewards = { 3628 } },
+        [11324] = { name = "Explorer's Knapsack", questRewards = { 626 } },
+        [22679] = { name = "Supply Bag", questRewards = { 9221, 9223, 9226, 9227 } },
+    }
+    -- The sleeping bag chain's objects.
+    local OBJECTS = {
+        [415106] = { name = "Burned-Out Remains", spawns = { [17] = { { 46.36, 73.9 } } } },
+        [415107] = { name = "Burned-Out Remains", spawns = { [40] = { { 37.41, 50.7 } } } },
+        [417072] = { name = "Nailed Plank", spawns = { [17] = { { 46.39, 73.82 } } } },
+        [424010] = { name = "Nailed Plank", spawns = { [40] = { { 37.36, 50.77 } } } },
+        [424005] = { name = "Pocket Litter", spawns = { [406] = { { 40.75, 52.57 } } } },
+    }
+
     local function Entity(rows, fields)
         local e = {}
         for _, f in ipairs(fields) do
@@ -84,7 +115,7 @@ function FakeQuestieDB(opts)
 
     local npcRows = {}
     for id, n in pairs(NPCS) do npcRows[id] = { name = n[1], spawns = n[2], friendlyToFaction = n[3] } end
-    local maps = "return {\n[1497] = 1458,\n[1519] = 1453,\n[1537] = 1455,\n[1638] = 1456,\n[1] = 1426,\n}"
+    local maps = "return {\n[1497] = 1458,\n[1519] = 1453,\n[1537] = 1455,\n[1638] = 1456,\n[1] = 1426,\n[17] = 1413,\n[40] = 1436,\n[406] = 1442,\n[215] = 1412,\n}"
     return {
         RequireContract = function(n)
             if opts.old then return false, "QuestieDB contract mismatch" end
@@ -94,8 +125,8 @@ function FakeQuestieDB(opts)
                                  "specialFlags", "startedBy", "preQuestGroup", "preQuestSingle", "exclusiveTo", "objectives",
                                  "nextQuestInChain", "breadcrumbForQuestId", "requiredSkill" }),
         Npc = Entity(npcRows, { "name", "spawns", "friendlyToFaction" }),
-        Object = Entity({}, { "name", "spawns" }),
-        Item = Entity({}, { "name", "npcDrops" }),
+        Object = Entity(OBJECTS, { "name", "spawns" }),
+        Item = Entity(ITEMS, { "name", "npcDrops", "questRewards" }),
         Enum = { factionRaceMasks = { Alliance = ALLIANCE, Horde = HORDE }, raceMaskById = { [95] = 2 ^ 32, [96] = 2 ^ 33 } },
         Support = { Get = function() return { private = { areaIdToUiMapId = maps } } end },
     }

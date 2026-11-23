@@ -59,6 +59,17 @@ local NOT_DUNGEON = Set({
 local NOT_AVAILABLE = Set({ 1318, 4601, 4602, 4605, 4606, 5669, 5670, 5671, 5686, 5687, 5691, 5692, 5693, 5704, 5705,
                             5706, 6072, 7462, 7668, 8869 })
 
+-- Normal bags that quests reward: item id -> slots (the game's item table). QuestieDB says which quests.
+-- Red Bag's size isn't in the game table yet, so it's the guides' 16.
+local BAG_KEY = "bags"
+local BAG_ITEMS = {
+    [918] = 10, [1537] = 8, [1729] = 10, [2082] = 8, [3343] = 8, [3352] = 10, [9587] = 14, [10959] = 16, [11324] = 14,
+    [11845] = 6, [22679] = 18, [221498] = 12, [226697] = 16, [256935] = 6, [270017] = 10, [276891] = 12, [277200] = 6,
+    [277332] = 8, [277977] = 6, [279936] = 6, [279939] = 6, [280088] = 6,
+}
+-- The Argent Dawn's Supply Bag: one quest per reputation rank, shown as one row.
+local SUPPLY_QUEST, SUPPLY_NAME, SUPPLY_OTHERS = 9221, "Superior Armaments of Battle", { 9223, 9226, 9227 }
+
 local ZONE_GROUP, BOSS_GROUP = {}, {}
 for group, zones in pairs(GROUPS) do
     for _, zone in ipairs(zones) do ZONE_GROUP[zone] = group end
@@ -275,6 +286,27 @@ local function Build(lib)
 
     -- Each dungeon's quests, and the class quests. One quest can be in both lists.
     local found, leads = {}, {}
+    local bagOf, skipBag = {}, {}
+    for _, id in ipairs(SUPPLY_OTHERS) do skipBag[id] = true end
+    if Item.questRewards then
+        for item, slots in pairs(BAG_ITEMS) do
+            for _, id in ipairs(Seq(Item.questRewards(item))) do
+                if not skipBag[id] then bagOf[id] = { name = Item.name(item), slots = slots } end
+            end
+        end
+    end
+    -- One quest as a list entry, or nil if my side of the game can't ever do it.
+    local function NewEntry(id, level, cls)
+        local races = Quest.requiredRaces(id) or 0
+        local side, usable = SideOf(races)
+        if not usable then return nil end
+        local giver, map, x, y, places = Starter(id, side)
+        local pre = Seq(Quest.preQuestGroup(id))
+        for _, p in ipairs(Seq(Quest.preQuestSingle(id))) do pre[#pre + 1] = p end
+        return { id = id, name = id == SUPPLY_QUEST and SUPPLY_NAME or Quest.name(id), level = level,
+                 req = Quest.requiredLevel(id) or 0, side = side, cls = cls, races = RaceList(races, side),
+                 giver = giver, map = map, x = x, y = y, places = places, pre = pre }
+    end
     for _, id in ipairs(Quest.GetAllIds()) do
         -- "This quest leads to that one", which prerequisites don't always say (optional lead-ins).
         for _, target in ipairs({ Quest.nextQuestInChain(id) or 0, Quest.breadcrumbForQuestId(id) or 0 }) do
@@ -284,25 +316,18 @@ local function Build(lib)
             end
         end
         local level, special = Quest.questLevel(id) or 0, Quest.specialFlags(id) or 0
-        if not NOT_AVAILABLE[id] and not NOT_DUNGEON[id] and level >= 1 and level <= 60 and special % 2 == 0 then
+        local bag = bagOf[id]
+        local repeatable = special % 2 == 1
+        if not NOT_AVAILABLE[id] and not NOT_DUNGEON[id] and level >= 1 and level <= 60 and (bag or not repeatable) then
             local cls = Quest.requiredClasses(id) or 0
             local sort = Quest.zoneOrSort(id) or 0
-            local group = GroupOf(id, sort)
+            local group = not repeatable and GroupOf(id, sort) or nil
             local range = group and LEVELS[group]
             local inDungeon = range and level >= range[1] - 8 and level <= range[2] + 3
-            local isClass = IsClassQuest(cls, level, sort, cls ~= 0 and Quest.requiredSkill(id) or nil)
-            if inDungeon or isClass then
-                local races = Quest.requiredRaces(id) or 0
-                local side, usable = SideOf(races)
-                if usable then
-                    local giver, map, x, y, places = Starter(id, side)
-                    local pre = Seq(Quest.preQuestGroup(id))
-                    for _, p in ipairs(Seq(Quest.preQuestSingle(id))) do pre[#pre + 1] = p end
-                    local entry = {
-                        id = id, name = Quest.name(id), level = level, req = Quest.requiredLevel(id) or 0, side = side,
-                        cls = cls, races = RaceList(races, side),
-                        giver = giver, map = map, x = x, y = y, places = places, pre = pre,
-                    }
+            local isClass = not repeatable and IsClassQuest(cls, level, sort, cls ~= 0 and Quest.requiredSkill(id) or nil)
+            if inDungeon or isClass or bag then
+                local entry = NewEntry(id, level, cls)
+                if entry then
                     if inDungeon then
                         found[group] = found[group] or {}
                         table.insert(found[group], entry)
@@ -311,14 +336,48 @@ local function Build(lib)
                         found[CLASS_KEY] = found[CLASS_KEY] or {}
                         table.insert(found[CLASS_KEY], entry)
                     end
+                    if bag then
+                        found[BAG_KEY] = found[BAG_KEY] or {}
+                        table.insert(found[BAG_KEY], entry)
+                    end
                 end
             end
         end
     end
 
+    -- A bag quest's whole storyline: every quest that leads to it joins the list.
+    local inBags, bagQuests = {}, {}
+    for _, q in ipairs(found[BAG_KEY] or {}) do
+        inBags[q.id] = true
+        bagQuests[#bagQuests + 1] = q.id
+    end
+    local walkedBag = {}
+    local function AddLeadIns(id)
+        if walkedBag[id] then return end
+        walkedBag[id] = true
+        local links = Seq(Quest.preQuestGroup(id))
+        for _, p in ipairs(Seq(Quest.preQuestSingle(id))) do links[#links + 1] = p end
+        for _, p in ipairs(leads[id] or {}) do links[#links + 1] = p end
+        for _, p in ipairs(links) do
+            if type(p) == "number" and p > 0 and Quest.Exists(p) and not NOT_AVAILABLE[p] then
+                local level = Quest.questLevel(p) or 0
+                if not inBags[p] and level >= 1 and level <= 60 and (Quest.specialFlags(p) or 0) % 2 == 0 then
+                    local entry = NewEntry(p, level, Quest.requiredClasses(p) or 0)
+                    if entry then
+                        inBags[p] = true
+                        table.insert(found[BAG_KEY], entry)
+                    end
+                end
+                AddLeadIns(p)
+            end
+        end
+    end
+    for _, id in ipairs(bagQuests) do AddLeadIns(id) end
+
     -- The lists the guide reads: one row per version, the other versions noted.
-    local out = { QUESTS = {}, VARIANTS = {}, EARLIER = {}, STEPS = {}, LEADS = {} }
-    local listKeys = { CLASS_KEY }
+    local out = { QUESTS = {}, VARIANTS = {}, EARLIER = {}, STEPS = {}, LEADS = {}, BAGS = bagOf, BAG_VARIANTS = {} }
+    if bagOf[SUPPLY_QUEST] then out.BAG_VARIANTS[SUPPLY_QUEST] = SUPPLY_OTHERS end
+    local listKeys = { CLASS_KEY, BAG_KEY }
     for group in pairs(GROUPS) do listKeys[#listKeys + 1] = group end
     for _, group in ipairs(listKeys) do
         local quests, rows, seen, named = found[group] or {}, {}, {}, {}
@@ -326,9 +385,26 @@ local function Build(lib)
             named[q.name] = named[q.name] or {}
             named[q.name][q.id] = true
         end
+        -- Bag storylines keep every step, even when a chain uses one name throughout. A step's stage
+        -- is how many same-named quests come before it; only quests at the same stage are versions.
+        local isBags, byQuest, stages = group == BAG_KEY, {}, {}
+        for _, q in ipairs(quests) do byQuest[q.id] = q end
+        local function Stage(q)
+            if stages[q.id] then return stages[q.id] end
+            stages[q.id] = 0                -- guards against a loop in the data
+            local top = 0
+            local function Look(p)
+                local other = byQuest[p]
+                if other and other ~= q and other.name == q.name then top = math.max(top, Stage(other) + 1) end
+            end
+            for _, p in ipairs(q.pre) do Look(p) end
+            for _, p in ipairs(leads[q.id] or {}) do Look(p) end
+            stages[q.id] = top
+            return top
+        end
         for _, q in ipairs(quests) do
             for _, p in ipairs(q.pre) do
-                if p ~= q.id and named[q.name][p] then out.EARLIER[p] = true end
+                if not isBags and p ~= q.id and named[q.name][p] then out.EARLIER[p] = true end
             end
         end
         table.sort(quests, function(a, b)
@@ -337,15 +413,18 @@ local function Build(lib)
             return a.id < b.id
         end)
         for _, q in ipairs(quests) do
+            local stage = isBags and Stage(q) or nil
             local key = q.name .. "|" .. q.side .. "|" .. (q.races and table.concat(q.races, ",") or "") .. "|" .. q.cls
+                .. "|" .. tostring(stage)
             if seen[key] then
-                local list = out.VARIANTS[seen[key]] or {}
-                out.VARIANTS[seen[key]] = list
+                local kept = isBags and out.BAG_VARIANTS or out.VARIANTS
+                local list = kept[seen[key]] or {}
+                kept[seen[key]] = list
                 list[#list + 1] = q.id
             else
                 seen[key] = q.id
                 rows[#rows + 1] = { q.id, q.name, q.level, q.req, q.side, q.cls, q.races, q.giver or "",
-                                    q.map or false, q.x or false, q.y or false, q.places }
+                                    q.map or false, q.x or false, q.y or false, q.places or false, stage }
             end
         end
         out.QUESTS[group] = rows
@@ -486,6 +565,44 @@ function Live.Entrance(group, which, wingArea)
     local map = AreaMaps(lib)[spot[1]]
     if not map or map == 0 then return nil end
     return map, spot[2], spot[3]
+end
+
+-- The first outdoor spot of a creature or object: map, x, y. Nil inside instances or if it isn't known.
+local function FirstSpot(db, id)
+    local _, lib = Live.Status()
+    if not lib or not db then return nil end
+    local ok, spawns = pcall(db.spawns, id)
+    if not ok or type(spawns) ~= "table" then return nil end
+    local zones = {}
+    for zone in pairs(spawns) do
+        if type(zone) == "number" then zones[#zones + 1] = zone end
+    end
+    table.sort(zones)
+    local maps = AreaMaps(lib)
+    for _, zone in ipairs(zones) do
+        local p = Seq(Seq(spawns[zone])[1])
+        if maps[zone] and maps[zone] ~= 0 and type(p[1]) == "number" and p[1] > 0 and type(p[2]) == "number" and p[2] > 0 then
+            return maps[zone], Round(p[1]), Round(p[2])
+        end
+    end
+    return nil
+end
+
+function Live.NpcSpot(id)
+    local _, lib = Live.Status()
+    return FirstSpot(lib and lib.Npc, id)
+end
+
+function Live.ObjectSpot(id)
+    local _, lib = Live.Status()
+    return FirstSpot(lib and lib.Object, id)
+end
+
+function Live.NpcName(id)
+    local _, lib = Live.Status()
+    if not lib or not lib.Npc then return nil end
+    local ok, name = pcall(lib.Npc.name, id)
+    return ok and type(name) == "string" and name or nil
 end
 
 -- The game's own inside map of a dungeon group, if it has one.

@@ -9,7 +9,8 @@ ns.LevelGuide = G
 -- Quest lists come live from QuestieDB (Data/LiveQuests.lua), read when asked for.
 -- Without it the guide still works and just has no quest lists.
 local QUEST_DATA = { QUESTS = "QUESTS", QUEST_VARIANTS = "VARIANTS", QUEST_EARLIER = "EARLIER", QUEST_STEPS = "STEPS",
-                     QUEST_LEADS = "LEADS" }
+                     QUEST_LEADS = "LEADS", QUEST_BAGS = "BAGS",
+                     QUEST_BAG_VARIANTS = "BAG_VARIANTS" }
 setmetatable(G, { __index = function(_, key)
     local field = QUEST_DATA[key]
     if not field then return nil end
@@ -205,19 +206,22 @@ function G.Quests(key)
     local list, seen = {}, {}
     for _, q in ipairs(G.QUESTS and G.QUESTS[QUEST_GROUP[key] or key] or {}) do
         if ForMe(me, q[5], q[6], q[7]) then
-            local row = seen[q[2]]
+            -- Bag storylines (q[13] = the step) keep same-named steps apart.
+            local rowKey = q[13] and (q[2] .. "|" .. q[13]) or q[2]
+            local row = seen[rowKey]
             if not row then
                 -- A quest both factions can take may have a quest giver in each one's city.
                 local own = q[12] and me.side and q[12][me.side]
                 local giver = own and own[1] or q[8]
                 row = { id = q[1], name = q[2], level = q[3], req = q[4], giver = giver ~= "" and giver or nil,
                         map = own and own[2] or q[9] or nil, x = own and own[3] or q[10] or nil,
-                        y = own and own[4] or q[11] or nil, ids = {} }
-                seen[q[2]] = row
+                        y = own and own[4] or q[11] or nil, ids = {}, exact = q[13] ~= nil }
+                seen[rowKey] = row
                 list[#list + 1] = row
             end
             row.ids[#row.ids + 1] = q[1]
-            for _, id in ipairs(G.QUEST_VARIANTS and G.QUEST_VARIANTS[q[1]] or {}) do
+            local variants = q[13] and G.QUEST_BAG_VARIANTS or G.QUEST_VARIANTS   -- a bag step's own versions
+            for _, id in ipairs(variants and variants[q[1]] or {}) do
                 row.ids[#row.ids + 1] = id
             end
         end
@@ -229,6 +233,24 @@ local function TurnedIn(id)
     if not (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) then return false end
     local ok, done = pcall(C_QuestLog.IsQuestFlaggedCompleted, id)
     return ok and done == true
+end
+
+G.TurnedIn = TurnedIn
+
+-- The bag a quest row rewards: { name, slots }. ownOnly = this step alone, not its whole storyline.
+function G.BagFor(q, ownOnly)
+    local bags = G.QUEST_BAGS
+    if not bags then return nil end
+    for _, id in ipairs(q.ids or {}) do
+        if bags[id] then return bags[id] end
+    end
+    if ownOnly then return nil end
+    for _, node in ipairs(q.chain or {}) do
+        for _, id in ipairs(node.ids) do
+            if bags[id] then return bags[id] end
+        end
+    end
+    return nil
 end
 
 -- Handed in, or handed in one of the quests that replace it (you can only ever do one of those).
@@ -248,7 +270,7 @@ function G.QuestState(q)
         if ns.Questions.InMyLog(id) then return "log" end
     end
     for _, id in ipairs(q.ids) do
-        if not (G.QUEST_EARLIER and G.QUEST_EARLIER[id]) and StepDone(id) then return "done" end
+        if (q.exact or not (G.QUEST_EARLIER and G.QUEST_EARLIER[id])) and StepDone(id) then return "done" end
     end
     return nil
 end
@@ -300,7 +322,7 @@ function G.QuestPlan(q)
     local me = Me()
     local final, nextId
     for _, id in ipairs(q.ids) do
-        if not (G.QUEST_EARLIER and G.QUEST_EARLIER[id]) and StepForMe(me, id) then
+        if (q.exact or not (G.QUEST_EARLIER and G.QUEST_EARLIER[id])) and StepForMe(me, id) then
             local step = NextStep(me, id, {})
             if step == id then
                 final, nextId = id, step

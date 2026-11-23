@@ -42,10 +42,16 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 - **Show entrance**: open the map with a dungeon's entrance pinned, plus the dungeon's inside map where the game has one.
 - **Dungeon quests**: click a dungeon to see its quests for your faction and class.
 - **Class quests**: your class's quests for your faction and race, on their own page.
+- **Bag quests**: every quest that rewards a normal bag for your faction, as full storylines, with each bag's slots.
+- **Cozy Sleeping Bag**: a step-by-step tracker for the whole chain, with your next step highlighted, tips for the tricky parts and a map pin.
+- **Keys and attunements**: what each dungeon key opens, how to get it, and which ones you already have.
+- **Mounts and riding**: a checklist for your race and class, with your trainer, vendor and costs.
 - **Quest storylines**: each chain is one row with your progress. Open it to see every step, coloured Done, In log or Locked, with where each one starts.
 - **Sort** any quest list by level, name, status, quest giver or location.
 - **Show on map**: click a quest to pin where to go and open the map there.
-- At level 60 the tab becomes **Raids**, where the raid roster is coming. The guide stays one click away.
+
+**Raids**
+- Its own tab, where the raid roster is coming.
 
 **Calendar**
 - Guild events (social nights and dungeon runs; raids coming with the raid roster) with Going, Maybe or Can't, plus your role.
