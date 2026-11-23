@@ -21,7 +21,8 @@ local PAD = 14
 local HANDSHAKE = "Interface\\Icons\\Achievement_Reputation_01"     -- picked in game, 21 Nov
 local SHARE_ROWS, BOARD_MAX, PICK_ROWS = 6, 10, 14
 local ROW_H = 17
-local BODY_ANSWERED, BODY_ASKING = -82, -150   -- where Share starts: under my note, or under the question
+local BODY_ANSWERED, BODY_CAN_FIX, BODY_ASKING = -82, -100, -150   -- where Share starts: under my note,
+                                                                   -- its "wrong person" link, or the question
 
 local holder, panel, tabs
 local open = false              -- starts shut each login
@@ -119,31 +120,48 @@ local function RefreshTabs()
     tabs.addon.bang:SetShown(ns.Recruit.NeedsAnswer())
 end
 
+-- Where Share starts: asking (or correcting), answered with the link, or answered.
+local function BodyTop()
+    local R = ns.Recruit
+    if not R.MyClaim() or R.Fixing() then return BODY_ASKING end
+    return R.CanFix() and BODY_CAN_FIX or BODY_ANSWERED
+end
+
 local function RefreshMine()
     local R = ns.Recruit
     local p = panel.addon
     local c = R.MyClaim()
-    p.question:SetShown(c == nil)
-    p.answer:SetShown(c ~= nil)
-    p.body.top = c and BODY_ANSWERED or BODY_ASKING
+    local isFix = R.Fixing()
+    local asking = c == nil or isFix
+    p.question:SetShown(asking)
+    p.answer:SetShown(not asking)
+    p.fix:SetShown(not asking and R.CanFix())
+    local top = BodyTop()
+    p.body.top = top
     p.body:ClearAllPoints()
-    p.body:SetPoint("TOPLEFT", 0, p.body.top)
+    p.body:SetPoint("TOPLEFT", 0, top)
     p.body:SetPoint("RIGHT")
-    p.body:SetHeight(PANEL_H + (c and BODY_ANSWERED or BODY_ASKING))
-    if c then
+    p.body:SetHeight(PANEL_H + top)
+    if not asking then
         if c.by == "" then p.answer:SetText(L.RECRUIT_SKIPPED)
         else p.answer:SetText(string.format(L.RECRUIT_YOU_SAID, Coloured(c.by))) end
         return
     end
     local q = p.question
-    local sw = R.SharedWithMe()
+    q.title:SetText(ns.GOLD .. (isFix and L.RECRUIT_FIX_QUESTION or L.RECRUIT_QUESTION) .. "|r")
+    q.once:SetText(isFix and L.RECRUIT_FIX_ONCE or L.RECRUIT_ONCE)
+    q.keep:SetShown(isFix)
+    local picks = {}
+    for _, s in ipairs(R.SharedWithMe()) do
+        if R.CanPick(s.name) then picks[#picks + 1] = s end
+    end
     for i, b in ipairs(q.suggest) do
-        local s = sw[i]
+        local s = picks[i]
         b.name = s and s.name
-        b:SetShown(s ~= nil and R.CanBeRecruiter(s.name))
+        b:SetShown(s ~= nil)
         if s then b:SetText(Short(s.name)) end
     end
-    q.none:SetShown(#sw == 0)
+    q.none:SetShown(#picks == 0)
 end
 
 local function RefreshShare()
@@ -169,7 +187,7 @@ end
 -- How many leaderboard rows fit under the body's top (fewer while the question shows).
 local function BoardRowsThatFit()
     local p = panel.addon
-    local top = (ns.Recruit.MyClaim() and BODY_ANSWERED or BODY_ASKING) + p.boardTop
+    local top = BodyTop() + p.boardTop
     return math.max(3, math.min(BOARD_MAX, math.floor((PANEL_H + top - 26) / ROW_H)))
 end
 
@@ -205,7 +223,7 @@ local function RefreshPick()
     if not pk:IsShown() then return end
     local names = {}
     for name in pairs(ns.Comm.users) do
-        if ns.Recruit.CanBeRecruiter(name) then names[#names + 1] = name end
+        if ns.Recruit.CanPick(name) then names[#names + 1] = name end
     end
     table.sort(names)
     local maxOff = math.max(0, #names - PICK_ROWS)
@@ -252,11 +270,56 @@ local function PageHead(p, icon, title, sub)
     return t
 end
 
+-- Text you can click, like a link: underlined while the mouse is on it.
+local function TextLink(parent, text, x, y, w, onClick, justify)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetPoint("TOPLEFT", x, y)
+    b:SetSize(w, 15)
+    b.text = UI.Text(b, text, "GameFontDisableSmall", 0, -1, w, justify)
+    b.line = b:CreateTexture(nil, "OVERLAY")
+    b.line:SetColorTexture(0.4, 0.73, 1, 0.9)
+    b.line:SetPoint("BOTTOMLEFT", 0, 0)
+    b.line:SetPoint("BOTTOMRIGHT", 0, 0)
+    b.line:SetHeight(1)
+    b.line:Hide()
+    b:SetScript("OnEnter", function(self) self.line:Show() end)
+    b:SetScript("OnLeave", function(self) self.line:Hide() end)
+    b:SetScript("OnHide", function(self) self.line:Hide() end)
+    b:SetScript("OnClick", onClick)
+    return b
+end
+
+-- "Accidentally credited the wrong person? Click here", then "Are you sure? Yes / No".
+local function BuildFix(p)
+    local f = CreateFrame("Frame", nil, p)
+    f:SetPoint("TOPLEFT", 0, -80)
+    f:SetSize(WIDTH, 16)
+    function f.Confirm(on)
+        f.ask:SetShown(not on)
+        f.sure:SetShown(on)
+        f.yes:SetShown(on)
+        f.slash:SetShown(on)
+        f.no:SetShown(on)
+    end
+    f.ask = TextLink(f, L.RECRUIT_FIX_ASK, PAD - 2, 0, WIDTH - 2 * PAD + 6, function() f.Confirm(true) end)
+    f.sure = UI.Text(f, L.RECRUIT_FIX_SURE, "GameFontNormalSmall", PAD - 2, -1, 86)
+    f.yes = TextLink(f, L.RECRUIT_FIX_YES, PAD + 88, 0, 24, function()
+        f.Confirm(false)
+        ns.Recruit.StartFix()
+        UI.RecruitRefresh()
+    end)
+    f.slash = UI.Text(f, "/", "GameFontDisableSmall", PAD + 114, -1, 8)
+    f.no = TextLink(f, L.RECRUIT_FIX_NO, PAD + 124, 0, 20, function() f.Confirm(false) end)
+    f:SetScript("OnHide", function() f.Confirm(false) end)
+    f.Confirm(false)
+    return f
+end
+
 local function BuildQuestion(p)
     local q = CreateFrame("Frame", nil, p)
     q:SetPoint("TOPLEFT", 0, -50)
     q:SetSize(WIDTH, 96)
-    UI.Text(q, ns.GOLD .. L.RECRUIT_QUESTION .. "|r", "GameFontNormalSmall", PAD, 0, WIDTH - 2 * PAD)
+    q.title = UI.Text(q, ns.GOLD .. L.RECRUIT_QUESTION .. "|r", "GameFontNormalSmall", PAD, 0, WIDTH - 2 * PAD)
     q.none = UI.Text(q, L.RECRUIT_NOBODY_SHARED, "GameFontDisableSmall", PAD, -18, WIDTH - 2 * PAD)
     q.suggest = {}
     local bw = math.floor((WIDTH - 2 * PAD - 8) / 3)
@@ -277,7 +340,13 @@ local function BuildQuestion(p)
     end, 22)
     skip:HookScript("OnHide", function(self) self.armed = nil; self:SetText(L.RECRUIT_SKIP) end)
     Tip(skip, { L.RECRUIT_SKIP, L.RECRUIT_SKIP_TIP })
-    UI.Text(q, L.RECRUIT_ONCE, "GameFontDisableSmall", PAD, -70, WIDTH - 2 * PAD)
+    q.once = UI.Text(q, L.RECRUIT_ONCE, "GameFontDisableSmall", PAD, -70, WIDTH - 2 * PAD)
+    q.keep = TextLink(q, L.RECRUIT_FIX_KEEP, WIDTH - PAD - 90, -71, 90, function()
+        p.picker:Hide()
+        ns.Recruit.StopFix()
+        UI.RecruitRefresh()
+    end, "RIGHT")
+    q.keep:Hide()
     return q
 end
 
@@ -408,6 +477,7 @@ local function BuildAddonPage()
     PageHead(p, HANDSHAKE, L.RECRUIT_TITLE, L.RECRUIT_SUB)
     -- Answered: a short note in the space the question takes (two lines at most).
     p.answer = Wrapped(p, "", "GameFontHighlightSmall", PAD, -50, WIDTH - 2 * PAD, 28)
+    p.fix = BuildFix(p)
     p.question = BuildQuestion(p)
     BuildBody(p)
     p.picker = BuildPicker(p)

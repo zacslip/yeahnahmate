@@ -3,8 +3,8 @@
 --
 -- Share: our own whisper box (UI/Whisper.lua) opens to a guildie without the addon, prefilled with my
 -- recruitment message (Settings). Nothing goes until I press Enter there; only then is the share noted.
--- Claim: "Who got you onto Yeah Nah Mate?", answered once per person (alts count as one), final. Skip
--- is an answer too, so the question doesn't come back.
+-- Claim: "Who got you onto Yeah Nah Mate?", answered once per person (alts count as one). Skip is an
+-- answer too, so the question doesn't come back. Credited the wrong person? One correction each (fx).
 -- Hide: the guild master or a manager takes a wrong claim off the leaderboard.
 --
 -- Fair counting: people, not characters (Alts.Person): a recruiter's alts add up, a recruit's alts count
@@ -13,7 +13,8 @@
 --
 -- Messages
 --   RSH { to, at }          I shared the addon with `to` at server time `at` (GUILD)
---   RCL { by, at }          I was recruited by `by` ("" = skipped). Final. (GUILD)
+--   RCL { by, at, fx }      I was recruited by `by` ("" = skipped). fx = 1: my one correction, which
+--                           beats my first answer. Versions before 0.26.1 ignore it and keep the first.
 --   RHD { who, at }         a manager hides `who`'s claim (GUILD, from the manager)
 --   Copies (to a guildie who asks, by whisper) carry o = the author: RSH { o, to, at },
 --   RCL { o, by, at }, RHD { o = the manager, who, at }.
@@ -139,22 +140,32 @@ end)
 ---------------------------------------------------------------------------------------------------
 -- Claims
 
--- The claim made by this person (any of their characters), or nil: { owner, by, at }. The earliest
--- one counts (one answer per person); a hidden one still counts as answered.
+-- Which of one person's claims counts: their correction, or else their earliest answer.
+local function Beats(a, b)
+    local fa, fb = a.fx and 1 or 0, b.fx and 1 or 0
+    if fa ~= fb then return fa > fb end
+    if a.at ~= b.at then return a.at < b.at end
+    return a.owner < b.owner
+end
+
+-- The claim made by this person (any of their characters), or nil: { owner, by, at, fx }. A hidden
+-- one still counts as answered.
 function R.ClaimOf(name)
     local s = R.Store()
     if not s then return nil end
     local who = Person(name)
     local best
     for owner, c in pairs(s.claims) do
-        if Person(owner) == who and (not best or c.at < best.at or (c.at == best.at and owner < best.owner)) then
-            best = { owner = owner, by = c.by, at = c.at }
+        if Person(owner) == who then
+            local this = { owner = owner, by = c.by, at = c.at, fx = c.fx }
+            if not best or Beats(this, best) then best = this end
         end
     end
     return best
 end
 
-function R.MyClaim() return R.ClaimOf(ns.me) end
+-- R.devClaim: the dev console's pretend wrong credit. Never saved or sent.
+function R.MyClaim() return R.devClaim or R.ClaimOf(ns.me) end
 
 -- Should my tab show the "!" (I haven't answered)?
 function R.NeedsAnswer() return ns.me ~= nil and R.Store() ~= nil and R.MyClaim() == nil end
@@ -185,19 +196,56 @@ function R.CanBeRecruiter(name)
 end
 
 local function ClaimMessage(owner, c)
-    local m = { t = "RCL", by = c.by, at = c.at }
+    local m = { t = "RCL", by = c.by, at = c.at, fx = c.fx }
     if owner ~= ns.me then m.o = owner end
     return m
 end
 
--- Answer the question: by = a guildie's name, or "" to skip. Once only.
+-- Credited the wrong person: one correction per person. Not for a skip, or a claim a manager took off.
+local fixing = false
+
+function R.CanFix()
+    local c = R.MyClaim()
+    return c ~= nil and c.by ~= "" and not c.fx and not R.IsHidden(Person(ns.me))
+end
+
+function R.Fixing() return fixing and R.CanFix() end
+
+-- Nothing changes until a new name is picked, so walking away keeps the old answer.
+function R.StartFix()
+    if not R.CanFix() then return false end
+    fixing = true
+    Changed()
+    return true
+end
+
+function R.StopFix()
+    fixing = false
+    Changed()
+end
+
+-- Can I pick this guildie right now? While correcting, not the person I'm correcting.
+function R.CanPick(name)
+    if not R.CanBeRecruiter(name) then return false end
+    if not R.Fixing() then return true end
+    return not Same(name, R.MyClaim().by)
+end
+
+-- Answer the question: by = a guildie's name, or "" to skip. Once, plus one correction.
 function R.Claim(by)
     local s = R.Store()
-    if not s or R.MyClaim() then return false end
-    if by ~= "" and not R.CanBeRecruiter(by) then return false end
-    local c = { by = by, at = GetServerTime() }
-    s.claims[ns.me] = c
-    ns.Comm.Send(ClaimMessage(ns.me, c), "GUILD")
+    if not s then return false end
+    local isFix = R.Fixing()
+    if R.MyClaim() and not isFix then return false end
+    if by ~= "" and not R.CanPick(by) then return false end
+    local c = { by = by, at = GetServerTime(), fx = isFix and 1 or nil }
+    fixing = false
+    if R.devClaim then
+        R.devClaim = { owner = ns.me, by = c.by, at = c.at, fx = c.fx }
+    else
+        s.claims[ns.me] = c
+        ns.Comm.Send(ClaimMessage(ns.me, c), "GUILD")
+    end
     Changed()
     return true
 end
@@ -250,10 +298,8 @@ function R.Leaderboard(period)
     local per = {}
     for owner, c in pairs(s.claims) do
         local p = Person(owner)
-        local cur = per[p]
-        if not cur or c.at < cur.at or (c.at == cur.at and owner < cur.owner) then
-            per[p] = { owner = owner, by = c.by, at = c.at }
-        end
+        local this = { owner = owner, by = c.by, at = c.at, fx = c.fx }
+        if not per[p] or Beats(this, per[p]) then per[p] = this end
     end
     local by = {}
     for recruit, c in pairs(per) do
@@ -308,10 +354,15 @@ local function TakeClaim(owner, msg)
         ns.Log("dropped: a recruiter claim from " .. owner .. " that can't count")
         return false
     end
+    local fx = msg.fx == 1 and 1 or nil
     local old = s.claims[owner]
-    -- Final: the first answer stays (an earlier one replaces a later one if they crossed).
-    if old and old.at <= msg.at then return false end
-    s.claims[owner] = { by = by, at = msg.at }
+    if old then
+        -- A correction beats a first answer, whichever arrives first (an old copy can't undo it).
+        if old.fx and not fx then return false end
+        -- Otherwise the earliest stays (an earlier one replaces a later one if they crossed).
+        if (old.fx and true or false) == (fx and true or false) and old.at <= msg.at then return false end
+    end
+    s.claims[owner] = { by = by, at = msg.at, fx = fx }
     return true
 end
 
@@ -471,7 +522,7 @@ end
 ns.devCommands.recruit = function(arg)
     local s = R.Store()
     if not s then return end
-    if not (ns.Sim and ns.Sim.IsOn()) and arg ~= "forget" then ns.Print("/ynm dev sim on first") return end
+    if not (ns.Sim and ns.Sim.IsOn()) and arg ~= "forget" and arg ~= "real" then ns.Print("/ynm dev sim on first") return end
     local fakes = FakesWithAddon()
     local now = GetServerTime()
     if arg == "share" then
@@ -496,8 +547,15 @@ ns.devCommands.recruit = function(arg)
     elseif arg == "forget" then
         for owner in pairs(s.claims) do if Same(owner, ns.me) then s.claims[owner] = nil end end
         ns.Print("Your answer is forgotten on this screen (the guild still has it if it went out).")
+    elseif arg == "mistake" then
+        -- A pretend wrong credit, in memory only: your real answer isn't touched or sent.
+        if not fakes[1] then ns.Print("No fake guildies with the addon yet: wait a few seconds.") return end
+        R.devClaim = { owner = ns.me, by = fakes[1], at = now }
+    elseif arg == "real" then
+        R.devClaim = nil
+        R.StopFix()
     else
-        ns.Print("/ynm dev recruit share | claims | forget")
+        ns.Print("/ynm dev recruit share | claims | forget | mistake | real")
         return
     end
     Changed()

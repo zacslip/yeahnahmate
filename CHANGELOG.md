@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.26.1
+
+- Addon recruiting: credited the wrong person? There's now a link under your answer to fix it. You can change it once, and your old answer stays until you pick someone new.
+
 ## 0.26.0
 
 - Leveling guide: new Bosses column on the Dungeons page, like 3/4. It turns gold when you've started a dungeon and green when every main boss is dead. Kills are saved for each character for good, starting from this update.
