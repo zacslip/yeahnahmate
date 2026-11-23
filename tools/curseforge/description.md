@@ -37,6 +37,9 @@ Everything is shared only with guildmates who also run the addon. Open it with *
 **Leveling guide** (new)
 - **Zones for your level and faction**, with each zone's range and the levels it's best at. Click one to open it on the map.
 - **Dungeons for your level**, with the boss level, the level you'll hit it comfortably from, where it is, and any key or attunement you need.
+- **Bosses killed**: each dungeon shows your progress, like 3/4, gold when started and green when cleared. Optional and secret bosses count as a bonus, and hovering lists every boss. Saved for each character.
+- **Show all** zones and dungeons for your faction, whatever your level.
+- **Show entrance**: open the map with a dungeon's entrance pinned, plus the dungeon's inside map where the game has one.
 - **Dungeon quests**: click a dungeon to see its quests for your faction and class.
 - **Class quests**: your class's quests for your faction and race, on their own page.
 - **Quest storylines**: each chain is one row with your progress. Open it to see every step, coloured Done, In log or Locked, with where each one starts.

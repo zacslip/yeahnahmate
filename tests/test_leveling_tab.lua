@@ -141,13 +141,23 @@ for _, x in ipairs(d40) do
     check(40 >= x.min and 40 <= x.max, x.name .. " is in range at 40")
 end
 check(not Named(G.Dungeons(25), "The Stockade"), "Horde: no Stockade in the guide")
-check(Named(G.Dungeons(15), "Hall of Thanes").tag == "enemy" and Named(G.Dungeons(15), "Ruins of Lordaeron").tag == nil, "Horde: Hall of Thanes is enemy land")
+check(not Named(G.Dungeons(15), "Hall of Thanes") and Named(G.Dungeons(15), "Ruins of Lordaeron").tag == nil, "Horde: no Hall of Thanes in the guide")
 check(Named(G.Dungeons(30), "City of Dalaran").note:find("Tarren Mill", 1, true), "Horde gets the Horde attunement")
 D.pretendFaction = "Alliance"
 check(Named(G.Dungeons(25), "The Stockade") and not Named(G.Dungeons(15), "Ragefire Chasm"), "Alliance: Stockade, no Ragefire")
 check(Named(G.Dungeons(15), "Ruins of Lordaeron").tag == "enemy", "Alliance: Ruins are enemy land")
+check(Named(G.Dungeons(15), "Hall of Thanes").tag == nil, "Alliance: Hall of Thanes is home ground")
 check(Named(G.Dungeons(30), "City of Dalaran").note:find("Southshore", 1, true), "Alliance gets the Alliance attunement")
+check(#G.Dungeons(15, true) == 34 and Named(G.Dungeons(15, true), "The Stockade"), "Alliance Show all: its 34 dungeons")
 D.pretendFaction = nil
+-- Show all: everything my faction can use, in level order, with what's out of range marked.
+local allD, allZ = G.Dungeons(40, true), G.Zones(40, true)
+check(#allD == 33 and not Named(allD, "Hall of Thanes") and not Named(allD, "The Stockade"), "Horde Show all: still hides Alliance-only dungeons")
+check(Named(allD, "Ragefire Chasm").outside and not Named(allD, "Razorfen Downs").outside, "Show all marks dungeons outside my level")
+check(#allZ > #G.Zones(40) and Named(allZ, "Durotar").outside, "Show all lists every Horde zone")
+for _, list in ipairs({ allD, allZ }) do
+    for i = 2, #list do check(list[i].min >= list[i - 1].min, "Show all is in level order") end
+end
 
 -- The page: rows, tooltip, pagers, and an empty level.
 UI.SetLevelingPretend(40)
@@ -709,6 +719,95 @@ do
     Tick(1)
     C_Map.OpenWorldMap = nil
     C_QuestLog.GetLogIndexForQuestID, C_QuestLog.IsQuestFlaggedCompleted = realIndex, realDone
+end
+
+-- Entrances and inside maps, read live from QuestieDB's zone data; a few new dungeons are our own.
+do
+    local Guide, q2 = ns.LevelGuide, p.guide.questPanel
+    local realLib, realInfo, realOpen = LibQuestieDB, C_Map.GetMapInfo, C_Map.OpenWorldMap
+    local opened
+    LibQuestieDB = setmetatable({ Support = { Get = function() return { private = {
+        areaIdToUiMapId = { [17] = 1413, [139] = 1423, [718] = 279 },
+        dungeons = { [718] = { "Wailing Caverns", nil, 17, { { 17, 46, 36.5 } } },
+                     [2017] = { "Stratholme", nil, 139, { { 139, 26.5, 10.4 }, { 139, 41.5, 17.7 } } } },
+    } } end } }, { __index = realLib })
+    ns.LiveQuests.Reset()
+    C_Map.GetMapInfo = function(id) return { mapID = id, name = "Map " .. id, mapType = id == 279 and 4 or 3 } end
+    C_Map.OpenWorldMap = function(id) opened = id end
+
+    local wc = Guide.Entrance("wc")
+    check(wc and wc.map == 1413 and wc.x == 46 and wc.y == 36.5 and wc.entrance, "an entrance comes from QuestieDB")
+    check(Guide.Entrance("strat").x == 26.5 and Guide.Entrance("stratsg").x == 41.5, "each Stratholme gate has its own door")
+    check(Guide.Entrance("krol").map == 2548, "a dungeon QuestieDB lacks uses our own position")
+    check(Guide.Entrance("zf") == nil, "an unknown entrance is nil")
+    check(Guide.DungeonMap("wc") == 279 and Guide.DungeonMap("strat") == nil, "only a real dungeon map counts")
+
+    UI.Select("leveling")
+    UI.LevelingOpenDungeon("wc")
+    Tick(1)
+    check(q2.entrance:IsShown() and q2.dungeonMap:IsShown(), "both map buttons show on a dungeon")
+    q2.entrance:Click()
+    Tick(1)
+    check(opened == 1413 and UI.LevelingPinnedQuest().id == "entrance:wc", "Show entrance pins it and opens the zone")
+    q2.dungeonMap:Click()
+    check(opened == 279, "Dungeon map opens the inside map")
+    q2.clear:Click()
+    Tick(1)
+    check(UI.LevelingPinnedQuest() == nil, "the entrance pin clears")
+    UI.LevelingOpenDungeon("zf")
+    Tick(1)
+    check(not q2.entrance:IsShown() and not q2.dungeonMap:IsShown(), "no data: no buttons")
+
+    LibQuestieDB, C_Map.GetMapInfo, C_Map.OpenWorldMap = realLib, realInfo, realOpen
+    ns.LiveQuests.Reset()
+    UI.LevelingShow("zones")
+    Tick(1)
+end
+
+-- The Bosses column: all time per character, main bosses in the total, optional and secret as a bonus.
+do
+    local B = ns.Bosses
+    for _, d in ipairs(D.LIST) do
+        check(B.LIST[d[1]] and #B.LIST[d[1]].main > 0, d[2] .. " has a boss list")
+    end
+    B.Clear()
+    check(select(2, B.Count("rfc")) == 4 and B.Count("rfc") == 0, "Ragefire starts at 0 of 4")
+    FireEvent("ENCOUNTER_END", 2732, "Oggleflint", 1, 5, 0)
+    check(B.Count("rfc") == 0, "a wipe doesn't count")
+    FireEvent("ENCOUNTER_END", 2732, "Oggleflint", 1, 5, 1)
+    FireEvent("ENCOUNTER_END", 2732, "Oggleflint", 1, 5, 1)
+    check(B.Count("rfc") == 1, "a kill counts once, and repeats don't add")
+    FireEvent("ENCOUNTER_END", 999999, "Someone else", 1, 5, 1)
+    check(B.Count("rfc") == 1, "an unknown boss is ignored")
+    FireEvent("ENCOUNTER_END", 2767, "Aku'mai", 1, 5, 1)
+    check(B.Rows("bfd")[7].done, "another difficulty's id ticks the same boss")
+    FireEvent("ENCOUNTER_END", 3644, "Highland Horror", 1, 5, 1)
+    local done, total, bonus = B.Count("exc")
+    check(done == 0 and total == 3 and bonus == 1, "an optional boss is a bonus, not in the total")
+    local _, extra = B.Rows("exc")
+    check(extra[1].done and extra[1].name == "Highland Horror", "the hover lists it under the extras")
+
+    UI.SetLevelingPretend(15)
+    UI.Select("leveling")
+    UI.LevelingShow("dungeons")
+    p.guide.showAll = true
+    Tick(1)
+    local function RowFor(key)
+        for _, r in ipairs(p.guide.dungeons.rows) do
+            if r.item and r.item.key == key then return r end
+        end
+    end
+    local rfc = RowFor("rfc")
+    check(rfc and rfc.bosses:GetText():find("1/4", 1, true) and rfc.bossState == "progress", "some killed: in progress")
+    for _, id in ipairs({ 2733, 2734, 2735 }) do FireEvent("ENCOUNTER_END", id, "Boss", 1, 5, 1) end
+    Tick(1)
+    rfc = RowFor("rfc")
+    check(rfc.bosses:GetText():find("4/4", 1, true) and rfc.bossState == "complete", "all killed: complete")
+    B.Clear()
+    p.guide.showAll = nil
+    UI.SetLevelingPretend(nil)
+    UI.LevelingShow("zones")
+    Tick(1)
 end
 
 check(#UISpecialFrames == 0 and PanelManagerCalls == 0, "no taint tripwires touched")

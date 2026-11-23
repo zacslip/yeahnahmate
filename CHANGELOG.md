@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0
+
+- Leveling guide: new Bosses column on the Dungeons page, like 3/4. It turns gold when you've started a dungeon and green when every main boss is dead. Kills are saved for each character for good, starting from this update.
+- Optional and secret bosses count as a bonus, like 3/3 +1. Rare spawns aren't counted. Hover a dungeon to see every boss, ticked off as you kill them.
+- New Show all button on Zones and Dungeons, to see everything for your faction, not just your level.
+- New Show entrance button on a dungeon's page: opens the map with the entrance pinned. Most entrances need QuestieDB.
+- New Dungeon map button, on dungeons where the game has an inside map. Needs QuestieDB.
+- The map pin is bigger, pulses and sits on top of other map icons, so it's easier to find.
+- Hall of Thanes is no longer listed for Horde.
+
 ## 0.25.0
 
 - Leveling tab: Zones, Dungeons, Class quests and Raid roster now each have their own full-width page.

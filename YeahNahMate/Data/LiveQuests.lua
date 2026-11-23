@@ -446,5 +446,59 @@ function Live.Data()
     return data
 end
 
+-- Entrances QuestieDB doesn't list yet: the game's map id, x, y (public guide positions, so approximate).
+local OWN_ENTRANCES = {
+    drown = { 1434, 21.4, 27.9 }, krol = { 2548, 37.5, 37.5 }, alcaz = { 1445, 75, 15 },
+    blackmaw = { 1447, 38.7, 33.4 }, shaper = { 1449, 48.1, 6.1 },
+}
+local MAP_TYPE_DUNGEON = 4
+
+local function ZoneData()
+    local status, lib = Live.Status()
+    if status ~= "ok" or not (lib.Support and lib.Support.Get) then return nil end
+    local ok, zone = pcall(lib.Support.Get, "ZoneDB")
+    if not ok or type(zone) ~= "table" or type(zone.private) ~= "table" then return nil end
+    return zone.private, lib
+end
+
+local liveMaps
+local function AreaMaps(lib)
+    if not liveMaps then
+        local ok, maps = pcall(ZoneMaps, lib)
+        liveMaps = ok and maps or {}
+    end
+    return liveMaps
+end
+
+-- Where a dungeon group's entrance is: map, x, y. which = 2 for a second door (Stratholme's Service Gate).
+function Live.Entrance(group, which)
+    local own = OWN_ENTRANCES[group]
+    if own then return own[1], own[2], own[3] end
+    local private, lib = ZoneData()
+    local area = GROUPS[group] and GROUPS[group][1]
+    local entry = private and area and type(private.dungeons) == "table" and private.dungeons[area]
+    local spots = type(entry) == "table" and entry[4]
+    local spot = type(spots) == "table" and (spots[which or 1] or spots[1])
+    if type(spot) ~= "table" or type(spot[2]) ~= "number" or type(spot[3]) ~= "number" then return nil end
+    local map = AreaMaps(lib)[spot[1]]
+    if not map or map == 0 then return nil end
+    return map, spot[2], spot[3]
+end
+
+-- The game's own inside map of a dungeon group, if it has one.
+function Live.DungeonMap(group)
+    local private, lib = ZoneData()
+    if not private or not GROUPS[group] or not (C_Map and C_Map.GetMapInfo) then return nil end
+    local maps = AreaMaps(lib)
+    for _, area in ipairs(GROUPS[group]) do
+        local map = maps[area]
+        if map and map ~= 0 then
+            local ok, info = pcall(C_Map.GetMapInfo, map)
+            if ok and type(info) == "table" and info.mapType == MAP_TYPE_DUNGEON then return map end
+        end
+    end
+    return nil
+end
+
 -- Forget what was read (the dev console, and tests).
-function Live.Reset() data, failed, Live.buildMs = nil, nil, nil end
+function Live.Reset() data, failed, Live.buildMs, liveMaps = nil, nil, nil, nil end

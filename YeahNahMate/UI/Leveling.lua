@@ -159,13 +159,39 @@ local function MakeZoneRow(r)
 end
 
 local function FillZoneRow(r, z)
-    local colour = z.best and ns.GREEN or ""
+    local colour = (z.outside and ns.GREY) or (z.best and ns.GREEN) or ""
     r.name:SetText(colour .. z.name .. "|r")
     r.range:SetText(z.min .. "-" .. z.max)
     r.best:SetText(colour .. z.bestMin .. "-" .. z.bestMax .. "|r")
 end
 
 local TAGS = { key = L.GUIDE_TAG_KEY, attune = L.GUIDE_TAG_ATTUNE, item = L.GUIDE_TAG_ITEM, enemy = L.GUIDE_TAG_ENEMY }
+
+local BOSS_TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t "
+
+local function AddBossList(title, rows)
+    if #rows == 0 then return end
+    local done = 0
+    for _, b in ipairs(rows) do
+        if b.done then done = done + 1 end
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(string.format(title, done, #rows), 1, 0.82, 0)
+    for _, b in ipairs(rows) do
+        if b.done then
+            GameTooltip:AddLine(BOSS_TICK .. b.name, 0.25, 1, 0.25)
+        else
+            GameTooltip:AddLine("     " .. b.name, 0.62, 0.62, 0.62)
+        end
+    end
+end
+
+local function AddBosses(key)
+    local main, extra = ns.Bosses.Rows(key)
+    AddBossList(L.GUIDE_TIP_BOSSES, main)
+    AddBossList(L.GUIDE_TIP_BONUS, extra)
+    if #main > 0 then GameTooltip:AddLine(" ") end
+end
 
 local function DungeonTip(self)
     self.hl:Show()
@@ -179,6 +205,7 @@ local function DungeonTip(self)
     if d.where then GameTooltip:AddLine(string.format(L.GUIDE_TIP_WHERE, d.where)) end
     if d.note then GameTooltip:AddLine(d.note, 1, 0.82, 0, true) end
     if d.enemy then GameTooltip:AddLine(string.format(L.GUIDE_TIP_ENEMY, d.enemy), 1, 0.5, 0.25, true) end
+    AddBosses(d.key)
     GameTooltip:AddLine(L.GUIDE_TIP_CLICK, 0.25, 1, 0.25)
     GameTooltip:Show()
 end
@@ -199,10 +226,15 @@ local function MakeDungeonRow(r)
         if self.item then UI.LevelingOpenDungeon(self.item.key) end
     end)
     r.name = Text(r, "", "GameFontHighlightSmall", 6, -4, 340)
-    r.tag = Text(r, "", "GameFontNormalSmall", 350, -4, 250, "RIGHT")
+    r.tag = Text(r, "", "GameFontNormalSmall", 300, -4, 192, "RIGHT")
+    r.bossTint = r:CreateTexture(nil, "BACKGROUND", nil, 1)
+    r.bossTint:SetPoint("TOPLEFT", 498, 0)
+    r.bossTint:SetSize(108, 35)
+    r.bossTint:Hide()
+    r.bosses = Text(r, "", "GameFontHighlightSmall", 498, -12, 108, "CENTER")
     r.range = Text(r, "", "GameFontHighlightSmall", 610, -4, 120, "RIGHT")
-    r.info = Text(r, "", "GameFontDisableSmall", 6, -19, 360)
-    r.where = Text(r, "", "GameFontDisableSmall", 370, -19, 360, "RIGHT")
+    r.info = Text(r, "", "GameFontDisableSmall", 6, -19, 290)
+    r.where = Text(r, "", "GameFontDisableSmall", 300, -19, 192, "RIGHT")
     r:SetScript("OnEnter", DungeonTip)
     r:SetScript("OnLeave", function(self)
         self.hl:Hide()
@@ -211,11 +243,24 @@ local function MakeDungeonRow(r)
 end
 
 local function FillDungeonRow(r, d)
-    r.name:SetText((d.ready and ns.GREEN or YELLOW) .. d.name .. "|r")
+    r.name:SetText(((d.outside and ns.GREY) or (d.ready and ns.GREEN) or YELLOW) .. d.name .. "|r")
     r.tag:SetText(d.tag and TAGS[d.tag] or "")
     r.range:SetText(d.min .. "-" .. d.max)
     r.info:SetText(string.format(d.top and L.GUIDE_TOP_BOSS_LINE or L.GUIDE_BOSS_LINE, d.boss, d.best))
     r.where:SetText(d.where or "")
+    -- Bosses killed: gold while some are done, green when every main boss is.
+    local done, total, bonus = ns.Bosses.Count(d.key)
+    local complete, started = total > 0 and done == total, done > 0 or bonus > 0
+    local colour = (complete and ns.GREEN) or (started and YELLOW) or ns.GREY
+    r.bosses:SetText(colour .. string.format(L.GUIDE_BOSS_COUNT, done, total)
+        .. (bonus > 0 and string.format(L.GUIDE_BOSS_BONUS, bonus) or "") .. "|r")
+    r.bossState = (complete and "complete") or (started and "progress") or nil
+    r.bossTint:SetShown(started)
+    if complete then
+        r.bossTint:SetColorTexture(0.2, 0.85, 0.3, 0.30)
+    elseif started then
+        r.bossTint:SetColorTexture(1, 0.82, 0, 0.22)
+    end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -241,21 +286,57 @@ local function ClearPin()
     UI.Dirty()
 end
 
+-- Above every other pin on the map (the game's pin levels stop at 9000), but still inside the map.
+local PIN_LEVEL = 8900
+local PIN_SIZE = 56
+local PIN_QUEST = "Interface\\GossipFrame\\AvailableQuestIcon"
+local PIN_ENTRANCE = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8"
+
+-- A gold glow that pulses, so it's easy to spot on a big map. Only runs while the map shows it.
+local function PulsePin(self, elapsed)
+    self.pulse = (self.pulse + elapsed * 3.2) % (2 * math.pi)
+    local wave = (math.sin(self.pulse) + 1) / 2
+    local size = 34 + 22 * wave
+    self.glow:SetSize(size, size)
+    self.glow:SetAlpha(0.65 - 0.4 * wave)
+end
+
+local function MakePin()
+    local p = CreateFrame("Button", nil, UIParent)
+    p:SetSize(PIN_SIZE, PIN_SIZE)
+    p:SetFrameLevel(PIN_LEVEL)
+    if p.SetFixedFrameLevel then p:SetFixedFrameLevel(true) end
+    if p.SetHitRectInsets then p:SetHitRectInsets(12, 12, 12, 12) end
+    p.glow = p:CreateTexture(nil, "BACKGROUND")
+    p.glow:SetPoint("CENTER")
+    p.glow:SetSize(40, 40)
+    p.glow:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+    p.glow:SetVertexColor(1, 0.82, 0)
+    p.back = p:CreateTexture(nil, "BORDER")
+    p.back:SetPoint("CENTER")
+    p.back:SetSize(34, 34)
+    p.back:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+    p.back:SetVertexColor(0, 0, 0, 0.8)
+    p.icon = p:CreateTexture(nil, "OVERLAY")
+    p.icon:SetPoint("CENTER")
+    p.icon:SetSize(30, 30)
+    p.pulse = 0
+    p:SetScript("OnUpdate", PulsePin)
+    p:SetScript("OnEnter", PinTip)
+    p:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    p:SetScript("OnClick", ClearPin)
+    p:Hide()
+    return p
+end
+
 local function PlacePin(q)
     if not pin then
-        pin = CreateFrame("Button", nil, UIParent)
-        pin:SetSize(24, 24)
-        local icon = pin:CreateTexture(nil, "OVERLAY")
-        icon:SetAllPoints()
-        icon:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon")
-        pin:SetScript("OnEnter", PinTip)
-        pin:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-        pin:SetScript("OnClick", ClearPin)
-        pin:Hide()
+        pin = MakePin()
     elseif pin.quest then
         Pins:RemoveWorldMapIcon(PIN_REF, pin)
     end
     pin.quest = q
+    pin.icon:SetTexture(q.entrance and PIN_ENTRANCE or PIN_QUEST)
     Pins:AddWorldMapIconMap(PIN_REF, pin, q.map, q.x / 100, q.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT)
 end
 
@@ -445,6 +526,16 @@ local function BuildQuests(g, parent)
     end, 22)
     q.title = Text(q, "", "GameFontNormalLarge", 82, -33, 500)
     q.clear = Button(q, L.GUIDE_CLEAR_PIN, 120, 616, -30, ClearPin, 22)
+    q.entrance = Button(q, L.GUIDE_SHOW_ENTRANCE, 110, 396, -30, function()
+        local e = g.questKey and ns.LevelGuide.Entrance(g.questKey)
+        if e then ShowOnMap(e) end
+    end, 22)
+    q.dungeonMap = Button(q, L.GUIDE_DUNGEON_MAP, 100, 510, -30, function()
+        local map = g.questKey and ns.LevelGuide.DungeonMap(g.questKey)
+        if not map then return end
+        g.questHint = not OpenMap(map) and L.GUIDE_ZONE_MAP_FAILED or nil
+        UI.Dirty()
+    end, 22)
     BuildQuestHeads(g, q)
     g.quests = RowList(q, 0, 736, -74, 22, 14, MakeQuestRow, FillQuestRow)
     q.empty = Text(q, L.GUIDE_NO_QUESTS, "GameFontDisableSmall", 6, -80, 700)
@@ -545,6 +636,9 @@ local function RefreshQuests(g, key)
     q.back:SetShown(not isClass)
     q.title:ClearAllPoints()
     q.title:SetPoint("TOPLEFT", isClass and 0 or 82, -33)
+    q.title:SetWidth(isClass and 600 or 310)    -- leaves room for the entrance and map buttons
+    q.entrance:SetShown(not isClass and ns.LevelGuide.Entrance(key) ~= nil)
+    q.dungeonMap:SetShown(not isClass and ns.LevelGuide.DungeonMap(key) ~= nil)
     q.empty:SetText(isClass and L.GUIDE_NO_CLASS_QUESTS or L.GUIDE_NO_QUESTS)
     g.quests.Set(list)
     local heading, text, steps = ns.LevelGuide.QuestDataNote()
@@ -567,9 +661,19 @@ end
 ---------------------------------------------------------------------------------------------------
 -- The views
 
+-- Show all / My level, on Zones and Dungeons. One choice for both, kept until /reload.
+local function ShowAllButton(parent, g)
+    return Button(parent, L.GUIDE_SHOW_ALL, 120, LIST_W - 120, -30, function()
+        g.showAll = not g.showAll or nil
+        g.zones.offset, g.dungeons.offset = 0, 0
+        UI.Dirty()
+    end, 22)
+end
+
 local function BuildZones(panel, p)
     local g = p.guide
     g.zoneTitle = UI.Header(panel, "", 0, -32, LIST_W)
+    g.zoneAll = ShowAllButton(panel, g)
     Text(panel, L.GUIDE_ZONE, "GameFontDisableSmall", 6, -53, 400)
     Text(panel, L.GUIDE_RANGE, "GameFontDisableSmall", 420, -53, 120, "CENTER")
     Text(panel, L.GUIDE_BEST_AT, "GameFontDisableSmall", 560, -53, 170, "CENTER")
@@ -580,11 +684,13 @@ end
 
 local function RefreshZones(p)
     local g, level = p.guide, Level()
-    g.zoneTitle:SetText(string.format(L.GUIDE_ZONES_FOR, level))
-    local zones = ns.LevelGuide.Zones(level)
+    g.zoneTitle:SetText(string.format(g.showAll and L.GUIDE_ALL_ZONES or L.GUIDE_ZONES_FOR, level))
+    g.zoneAll:SetText(g.showAll and L.GUIDE_MY_LEVEL or L.GUIDE_SHOW_ALL)
+    local zones = ns.LevelGuide.Zones(level, g.showAll)
     g.zones.Set(zones)
     g.noZones:SetShown(#zones == 0)
-    g.zoneKey:SetText(g.zoneHint or (ns.GREEN .. L.GUIDE_ZONE_KEY .. "|r  " .. L.GUIDE_ZONE_CLICK))
+    g.zoneKey:SetText(g.zoneHint or (ns.GREEN .. L.GUIDE_ZONE_KEY .. "|r  "
+        .. (g.showAll and (ns.GREY .. L.GUIDE_OUTSIDE_KEY .. "|r  ") or "") .. L.GUIDE_ZONE_CLICK))
 end
 
 local function BuildDungeons(panel, p)
@@ -593,10 +699,10 @@ local function BuildDungeons(panel, p)
     lists:SetAllPoints()
     g.lists = lists
     g.dungeonTitle = UI.Header(lists, "", 0, -32, LIST_W)
+    g.dungeonAll = ShowAllButton(lists, g)
     g.dungeons = RowList(lists, 0, LIST_W, -52, 36, 9, MakeDungeonRow, FillDungeonRow)
     g.noDungeons = Text(lists, "", "GameFontDisableSmall", 6, -58, LIST_W - 12)
-    Text(lists, ns.GREEN .. L.GUIDE_READY .. "|r  " .. YELLOW .. L.GUIDE_TOUGH .. "|r", "GameFontDisableSmall",
-        0, LIST_BOTTOM - 3, 300)
+    g.dungeonKey = Text(lists, "", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, 560)
     BuildQuests(g, p)           -- on the page itself: Dungeons and Class quests share it
 end
 
@@ -605,8 +711,11 @@ local function RefreshDungeons(p)
     g.lists:SetShown(not g.questKey)
     if g.questKey then return end
     local level = Level()
-    g.dungeonTitle:SetText(string.format(L.GUIDE_DUNGEONS_FOR, level))
-    local dungeons = ns.LevelGuide.Dungeons(level)
+    g.dungeonTitle:SetText(string.format(g.showAll and L.GUIDE_ALL_DUNGEONS or L.GUIDE_DUNGEONS_FOR, level))
+    g.dungeonAll:SetText(g.showAll and L.GUIDE_MY_LEVEL or L.GUIDE_SHOW_ALL)
+    g.dungeonKey:SetText(ns.GREEN .. L.GUIDE_READY .. "|r  " .. YELLOW .. L.GUIDE_TOUGH .. "|r"
+        .. (g.showAll and ("  " .. ns.GREY .. L.GUIDE_OUTSIDE_KEY .. "|r") or ""))
+    local dungeons = ns.LevelGuide.Dungeons(level, g.showAll)
     g.dungeons.Set(dungeons)
     g.noDungeons:SetShown(#dungeons == 0)
     if #dungeons == 0 then

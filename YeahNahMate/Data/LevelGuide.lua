@@ -160,6 +160,20 @@ local QUEST_GROUP = { smgy = "scarlet", smlib = "scarlet", smarm = "scarlet", sm
                       dme = "diremaul", dmw = "diremaul", dmn = "diremaul", lbrs = "spire", ubrs = "spire",
                       stratsg = "strat" }
 
+-- A dungeon's entrance as something the map pin can show, or nil if we don't know it.
+function G.Entrance(key)
+    local d = ns.Dungeons.BY_KEY[key]
+    if not d then return nil end
+    local map, x, y = ns.LiveQuests.Entrance(QUEST_GROUP[key] or key, key == "stratsg" and 2 or 1)
+    if not map then return nil end
+    return { id = "entrance:" .. key, name = string.format(ns.L.GUIDE_ENTRANCE_OF, d.name),
+             map = map, x = x, y = y, entrance = true }
+end
+
+function G.DungeonMap(key)
+    return ns.LiveQuests.DungeonMap(QUEST_GROUP[key] or key)
+end
+
 local function HasRace(races, id)
     for _, r in ipairs(races) do if r == id then return true end end
     return false
@@ -424,18 +438,31 @@ function G.ChainProgress(root)
     return count, total, focus, furthest
 end
 
+-- Show all: lowest level first, then highest, then by name.
+local function ByLevelRange(a, b)
+    if a.min ~= b.min then return a.min < b.min end
+    if a.max ~= b.max then return a.max < b.max end
+    return a.name < b.name
+end
+
 -- Zones my faction should see at this level: the ones at their best for me first, then nearest.
-function G.Zones(level)
+-- all = every zone for my faction, in level order; outside = not in range for my level.
+function G.Zones(level, all)
     local mine = ns.Dungeons.Faction()
     local list = {}
     for _, z in ipairs(G.ZONES) do
         local band
         if mine == "Alliance" then band = z[4] elseif mine == "Horde" then band = z[5] else band = z[4] or z[5] end
-        if band and level >= z[2] and level <= z[3] then
+        local inRange = level >= z[2] and level <= z[3]
+        if band and (all or inRange) then
             list[#list + 1] = { name = z[1], min = z[2], max = z[3], bestMin = band[1], bestMax = band[2],
-                                best = level >= band[1] and level <= band[2],
+                                best = level >= band[1] and level <= band[2], outside = not inRange,
                                 away = math.abs(level - (band[1] + band[2]) / 2) }
         end
+    end
+    if all then
+        table.sort(list, ByLevelRange)
+        return list
     end
     table.sort(list, function(a, b)
         if a.best ~= b.best then return a.best end
@@ -446,19 +473,24 @@ function G.Zones(level)
 end
 
 -- Dungeons in range for my level and faction: ready ones first, closest to my level on top, then
--- the ones whose boss is still a tough fight.
-function G.Dungeons(level)
+-- the ones whose boss is still a tough fight. all = every dungeon my faction can use, in level order.
+function G.Dungeons(level, all)
     local mine = ns.Dungeons.Faction()
     local list = {}
     for _, row in ipairs(ns.Dungeons.MyList()) do
-        if level >= row[3] and level <= row[4] then
+        local inRange = level >= row[3] and level <= row[4]
+        if all or inRange then
             local d, info = ns.Dungeons.BY_KEY[row[1]], G.DUNGEONS[row[1]] or {}
             local tag, note = info.tag, info[mine] or info.note
             if info.enemy and mine and info.enemy ~= mine then tag = "enemy" end
             list[#list + 1] = { key = d.key, name = d.name, min = d.min, max = d.max, boss = d.boss, best = d.best,
                                 ready = level >= d.best, where = info.where, top = info.top, tag = tag, note = note,
-                                enemy = tag == "enemy" and info.enemy or nil }
+                                enemy = tag == "enemy" and info.enemy or nil, outside = not inRange }
         end
+    end
+    if all then
+        table.sort(list, ByLevelRange)
+        return list
     end
     table.sort(list, function(a, b)
         if a.ready ~= b.ready then return a.ready end

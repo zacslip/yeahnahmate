@@ -32,7 +32,7 @@ ns.Dungeons = D
 -- messages, and BY_KEY keeps every dungeon so a hidden one still reads properly.
 D.LIST = {
     { "rfc", "Ragefire Chasm", 13, 18, 16, "Horde" },
-    { "hot", "Hall of Thanes", 13, 20, 16 },            -- Forever: beneath Ironforge
+    { "hot", "Hall of Thanes", 13, 20, 16, "Alliance" }, -- Forever: beneath Ironforge; hidden from Horde
     { "rol", "Ruins of Lordaeron", 15, 22, 20 },        -- Forever: above the Undercity
     { "wc", "Wailing Caverns", 15, 24, 22 }, { "dm", "The Deadmines", 17, 26, 21 },
     { "sfk", "Shadowfang Keep", 20, 30, 26 }, { "bfd", "Blackfathom Deeps", 24, 32, 28 },

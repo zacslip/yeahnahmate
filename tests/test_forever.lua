@@ -35,13 +35,13 @@ end
 -- A level 15 sees the Forever low-level dungeons near the top.
 local top = {}
 for i = 1, 4 do top[D.ForLevel(15)[i].key] = true end
-check(top.hot and top.rol, "at level 15, Hall of Thanes and Ruins of Lordaeron are suggested")
+check(top.rol and not top.hot, "Horde at level 15: Ruins of Lordaeron suggested, Hall of Thanes hidden")
 -- The picker's list: level order, and the first that fits a level 22 (Shadowfang Keep, 22-30?) is
 -- the first whose range holds 22.
 local list, first = D.ByLevel(22)
 local ordered = true
 for i = 2, #list do if list[i].min < list[i - 1].min then ordered = false end end
-check(ordered and #list == 34, "ByLevel keeps level order, without what Horde can't use")
+check(ordered and #list == 33, "ByLevel keeps level order, without what Horde can't use")
 check(first and list[first].dist == 0 and list[first].min <= 22 and list[first].max >= 22, "ByLevel finds the first one for my level")
 for i = 1, (first or 1) - 1 do if list[i].dist == 0 then first = nil end end
 check(first ~= nil, "nothing earlier fits")
@@ -63,11 +63,12 @@ local function Lists(key)
     for _, d in ipairs(D.MyList()) do if d[1] == key then return true end end
     return false
 end
-check(not Lists("stocks") and Lists("rfc") and #D.MyList() == 34, "Horde: no Stockade, Ragefire listed")
+check(not Lists("stocks") and not Lists("hot") and Lists("rfc") and #D.MyList() == 33, "Horde: no Stockade or Hall of Thanes, Ragefire listed")
+check(D.Name("hot") == "Hall of Thanes", "an Alliance guildie's Hall of Thanes key still reads for Horde")
 check(D.BY_KEY.stocks ~= nil and D.Name("stocks") == "The Stockade", "a hidden dungeon's key still reads")
 D.pretendFaction = "Alliance"
 check(Lists("stocks") and not Lists("rfc") and #D.MyList() == 34, "Alliance: Stockade listed, no Ragefire")
-check(Lists("hot") and Lists("rol"), "Hall of Thanes and Ruins of Lordaeron are for both")
+check(Lists("hot") and Lists("rol"), "Alliance: Hall of Thanes and Ruins of Lordaeron listed")
 D.pretendFaction = nil
 -- A group for a new dungeon can be posted and is accepted from a guildie.
 check(D.Post("dal", "t", { t = 1, h = 1, d = 3 }, ""), "a City of Dalaran group can be posted")
