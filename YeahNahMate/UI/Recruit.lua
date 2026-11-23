@@ -507,11 +507,11 @@ local function BuildBody(p)
     local y = -48 - SHARE_ROWS * 21 - 16
     p.boardTop = y
     UI.Header(b, L.RECRUIT_BOARD_HEAD, PAD, y, WIDTH - 2 * PAD)
-    local pick = UI.Choice(b, { L.RECRUIT_ALL_TIME, L.RECRUIT_THIS_MONTH }, PAD, y - 22, 90, function(i)
+    local choosePeriod = UI.Choice(b, { L.RECRUIT_ALL_TIME, L.RECRUIT_THIS_MONTH }, PAD, y - 22, 90, function(i)
         period = i == 2 and "month" or "all"
         RefreshBoard()
     end)
-    pick(1)
+    choosePeriod(1)
     p.hideMenu = BuildHideMenu(p)
     p.boardRows = {}
     for i = 1, BOARD_MAX do
