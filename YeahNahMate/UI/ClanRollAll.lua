@@ -218,7 +218,7 @@ function CA.BuildPanel(parent, x, y)
         else CU.Tip(self, { L.CLANROLL_ALL_START, L.CLANROLL_ALL_START_TIP }) end
     end)
     p.start:SetScript("OnLeave", CU.NoTip)
-    p.status = Text(p, "", "GameFontHighlight", 150, sy - 7, 125)
+    p.status = Text(p, "", "GameFontHighlight", 150, sy - 7, CU.W - 170)    -- the row is free past Start roll
 
     -- Winners and who's still going
     local ly = -126

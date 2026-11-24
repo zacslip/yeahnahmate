@@ -536,7 +536,7 @@ local function BuildPop()
         function(on) CU.Prefs().whisper = on; UI.Dirty(); CU.RefreshPop() end)
     wc:SetHitRectInsets(0, -((wfs:GetStringWidth() or 60) + 6), 0, 0)
     WithTip(wc, { L.CLANROLL_WHISPER_WIN, L.CLANROLL_WHISPER_WIN_TIP })
-    f.whisper = wc
+    f.whisper, f.whisperText = wc, wfs
     f.reroll = WithTip(Button(f, L.CLANROLL_REROLL, 120, 170, -74, function() CU.Reroll() end, 24),
         { L.CLANROLL_REROLL, L.CLANROLL_REROLL_TIP })
     f:Hide()
@@ -622,6 +622,7 @@ function CU.RefreshPop()
     local mine = done and r.by == ns.me
     f.announce:SetShown(mine and can and true or false)
     f.whisper:SetShown(mine and can and true or false)
+    f.whisperText:SetShown(mine and can and true or false)
     f.whisper:SetChecked(pr.whisper and true or false)
     f.whisper:SetEnabled(mine and r.winner ~= nil and r.winner ~= ns.me or false)
     -- A tie of mine: Reroll ties takes Start's place; Start moves to the bottom right.
