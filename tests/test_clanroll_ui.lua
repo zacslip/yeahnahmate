@@ -121,6 +121,13 @@ for _, m in ipairs(ns.Guild.list) do if m.name == "Ned Jones" then m.rankIndex =
 UI.Dirty(); Tick(1)
 check(not p.start:IsEnabled() and not p.msg:IsEnabled() and p.status:GetText():find(L.CLANROLL_WHO_CAN, 1, true),
     "a member: Start off, 'The clan's leader runs the rolls'")
+check(not p.announce:IsShown() and not p.whisper:IsShown() and not p.whisperText:IsShown(), "a member: no Announce or Whisper winner")
+local tipLines = {}
+local realAdd = GameTooltip.AddLine
+GameTooltip.AddLine = function(self, line, ...) tipLines[#tipLines + 1] = line; return realAdd(self, line, ...) end
+p.start._scripts.OnEnter(p.start)
+GameTooltip.AddLine = realAdd
+check(table.concat(tipLines, " "):find(L.CLANROLL_ONLY_LEADERS, 1, true), "a member: Start's tooltip says who can start a roll")
 
 -- Dev: fake rollers for testing alone (fake guildies on, a roll open).
 FAKE.myRank = 0

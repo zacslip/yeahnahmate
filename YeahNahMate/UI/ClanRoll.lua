@@ -50,6 +50,17 @@ local function WithTip(f, lines)
     return f
 end
 
+-- Start roll's tooltip: what it does, or (greyed out) who can start one.
+local function StartTip(f, getRace, tip)
+    if f.SetMotionScriptsWhileDisabled then f:SetMotionScriptsWhileDisabled(true) end
+    f:SetScript("OnEnter", function(self)
+        if ns.ClanRoll.CanStart(getRace()) then Tip(self, { L.CLANROLL_START_BTN, tip })
+        else Tip(self, { L.CLANROLL_START_BTN, L.CLANROLL_ONLY_LEADERS }) end
+    end)
+    f:SetScript("OnLeave", NoTip)
+    return f
+end
+
 local function Edit(parent, x, y, w, max)
     local e = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     e:SetSize(w, 20)
@@ -150,8 +161,8 @@ function CU.Build(parent, x, y)
     p.skip, p.skipText = Tick(L.CLANROLL_SKIP, "skip", L.CLANROLL_SKIP_TIP, 280, sy + 2)
 
     p.startY = sy - 2
-    p.start = WithTip(Button(p, L.CLANROLL_START_BTN, 110, 12, sy - 2, function() CU.Start(p) end, 24),
-        { L.CLANROLL_START_BTN, L.CLANROLL_START_TIP })
+    p.start = StartTip(Button(p, L.CLANROLL_START_BTN, 110, 12, sy - 2, function() CU.Start(p) end, 24),
+        function() return p.race end, L.CLANROLL_START_TIP)
     p.stop = WithTip(Button(p, L.CLANROLL_STOP_BTN, 110, 12, sy - 2, function() R.Stop() end, 24),
         { L.CLANROLL_STOP_BTN, L.CLANROLL_STOP_TIP })
     p.status = Text(p, "", "GameFontHighlight", 130, sy - 7, 150)
@@ -362,6 +373,8 @@ function CU.Refresh(p, race)
     elseif done then result = ns.GREY .. L.CLANROLL_NOBODY_SHORT .. "|r" end
     p.result:SetText(result)
     local mine = done and r.by == ns.me
+    -- Announce and Whisper winner: only for those who may run this clan's rolls.
+    for _, f in ipairs({ p.announce, p.whisper, p.whisperText }) do f:SetShown(can and true or false) end
     p.announce:SetEnabled(mine and true or false)
     p.whisper:SetEnabled(mine and r.winner ~= nil and r.winner ~= ns.me or false)
     -- A tie of mine: Reroll ties first, where Start is; Start one over; the status makes room.
@@ -489,8 +502,8 @@ local function BuildPop()
     f.down = Button(f.setup, "<", 22, 56, -48, function() CU.Prefs().timer = R.StepTimer(CU.Prefs().timer, -1); CU.RefreshPop() end, 20)
     f.timer = Text(f.setup, "", "GameFontHighlight", 80, -52, 40, "CENTER")
     f.up = Button(f.setup, ">", 22, 122, -48, function() CU.Prefs().timer = R.StepTimer(CU.Prefs().timer, 1); CU.RefreshPop() end, 20)
-    f.start = WithTip(Button(f.setup, L.CLANROLL_START_BTN, 120, 170, -46, function() CU.StartFrom(f) end, 24),
-        { L.CLANROLL_START_BTN, L.CLANROLL_POP_START_TIP })
+    f.start = StartTip(Button(f.setup, L.CLANROLL_START_BTN, 120, 170, -46, function() CU.StartFrom(f) end, 24),
+        function() return f.race end, L.CLANROLL_POP_START_TIP)
 
     -- During / after: what it's for and how long is left
     f.head = Text(f, "", "GameFontHighlight", 10, -32, PW - 20)
@@ -606,8 +619,8 @@ function CU.RefreshPop()
     elseif done and not r.follower then result = ns.GREY .. L.CLANROLL_NOBODY_SHORT .. "|r" end
     f.result:SetText(result)
     local mine = done and r.by == ns.me
-    f.announce:SetShown(mine and true or false)
-    f.whisper:SetShown(mine and true or false)
+    f.announce:SetShown(mine and can and true or false)
+    f.whisper:SetShown(mine and can and true or false)
     f.whisper:SetChecked(pr.whisper and true or false)
     f.whisper:SetEnabled(mine and r.winner ~= nil and r.winner ~= ns.me or false)
     -- A tie of mine: Reroll ties takes Start's place; Start moves to the bottom right.
