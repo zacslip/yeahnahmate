@@ -21,14 +21,22 @@
 --       CRE { r, id, w, n, tie }                     it ended: winner and roll, or the tied players
 --     Each screen checks the sender may run that clan's rolls (its own roster) and is in its group;
 --     followers count rolls themselves for the screen, but the winner is always the starter's.
+--   * Group members only follow their own clan's roll (another clan's only when it lets non-clan members
+--     roll and theirs isn't running), so several clans can roll in one raid.
 --   * All clans: the guild master or a manager asks each clan's leader (or second in command) to run
 --     the same roll in their own group, by addon whisper:
---       CRA { id, r, m, i, tm, cd }   please run this roll (starter -> leader); the leader's addon checks
---                                      the sender is the guild master or a manager on its own roster
---       CRK { id, r, g }              got it (g: I'm in a group) - the leader's addon, at once
---       CRP { id, r }                 the leader clicked Start
---       CRW { id, r, w, n, tie }      it ended: winner and roll, or the tied players (sent by itself)
+--       CRA { id, r, m, i, tm, cd, s }  please run this roll (starter -> leader), with every setting (s:
+--                                       skip past winners; never non-clan members); the leader's addon
+--                                       checks the sender is the guild master or a manager on its own
+--                                       roster, and its setup is locked to this until it starts (30 min)
+--       CRK { id, r, g }                got it (g: I'm in a group) - the leader's addon, at once. Not in a
+--                                       group: the next one who could run it is asked instead
+--       CRP { id, r, rd }               the leader clicked Start (rd: the round; a tie reroll is round 2+)
+--       CRW { id, r, w, n, tie }        it ended: winner and roll, or the tied players (sent by itself)
+--       CRX { id, r, h }                cancelled (starter -> leader); h: handed on to someone else
 --     A report counts only from the person that clan's roll was sent to. The leader still clicks Start.
+--     A clan whose timed roll is 30 s past its end with no word shows "No result" (the leader reloaded or
+--     dropped); the guild master starts it again.
 --   * "Roll over" is posted once, with no click, when a roll the player started with a click closes
 --     (timer or Stop). It's the deliberate second exception to the no-automation rule (CONTRIBUTING.md).
 local ADDON, ns = ...
@@ -529,6 +537,12 @@ ns.Comm.On("CRS", function(msg, from, channel, isSelf)
     end
     if not ns.Gather.GroupKeys()[from] then return end          -- not in my group: not my roll
     if R.cur and R.cur.open and R.cur.by == ns.me then return end   -- I'm running one myself
+    -- Another clan's roll (several clans in one raid): only if it lets me roll, and not over my own clan's.
+    local mine = ns.Clans.MyRace()
+    if race ~= mine then
+        if msg.o ~= true then return end
+        if R.cur and R.cur.open and R.cur.race == mine then return end
+    end
     if R.cur and R.cur.open then R.cur.open = false end
     local timer = 0
     for _, t in ipairs(R.TIMERS) do if t == msg.tm then timer = t end end
@@ -570,10 +584,10 @@ end)
 R.ALL_WAIT = 20                   -- seconds for a leader's addon to say it got the ask
 R.MIN_VER = "0.28.0"              -- the first version that can run an all-clans roll
 R.all = nil                       -- the one I started: { id, at, msg, item, timer, countdown, clans = { race -> row } }
-R.asked = nil                     -- an ask I got as a leader: { id, from, race, msg, item, timer, countdown, at }
+R.asked = nil                     -- an ask I got as a leader: { id, from, race, msg, item, timer, countdown, skip, at }
 
 -- Statuses on the starter's screen, in plain words (Strings.lua): waiting, rolling, won, tie, none,
--- offline, noaddon, update, group, noanswer.
+-- offline, noaddon, update, group, noanswer, noresult, cancelled, noleader.
 
 function R.CanStartAll() return ns.Board.IsManager(ns.me) or ns.Board.devEditor == true end
 local function RealAll() return ns.Board.IsManager(ns.me) end
@@ -590,32 +604,41 @@ function R.Report(ask, msg)
     end
 end
 
--- Who runs this clan's roll: an online leader with the addon (a new enough one if there's a choice),
--- else the second in command. Returns the name and whether their version is old, or nil and why
+-- Who could run this clan's roll, best first: online leaders with a new enough addon (or me), then
+-- the second in command; then those on an old version. Returns { { name, old }, ... }, or nil and why
 -- ("noleader" / "offline" / "noaddon").
-function R.PickLeader(race)
+function R.Candidates(race)
     local cands = {}
     for _, n in ipairs(ns.Clans.Leaders(race)) do cands[#cands + 1] = n end
     local d = ns.ClanChallenge.Deputy(race)
     if d and d.who then cands[#cands + 1] = d.who end
     if #cands == 0 then return nil, "noleader" end
-    local anyOnline, old = false, nil
+    local good, old, anyOnline = {}, {}, false
     for _, n in ipairs(cands) do
         local m = ns.Guild.Get(n)
-        local online = n == ns.me or (m and m.online)
-        if online then
+        if n == ns.me then
             anyOnline = true
-            if n == ns.me then return n, false end
+            good[#good + 1] = { name = n }
+        elseif m and m.online then
+            anyOnline = true
             local u = ns.Comm.users[n]
             if u then
                 local ver = u.ver
-                if u.sim or (ver and ver ~= "?" and ns.CompareVersions(ver, R.MIN_VER) >= 0) then return n, false end
-                old = old or n
+                if u.sim or (ver and ver ~= "?" and ns.CompareVersions(ver, R.MIN_VER) >= 0) then good[#good + 1] = { name = n }
+                else old[#old + 1] = { name = n, old = true } end
             end
         end
     end
-    if old then return old, true end
-    return nil, anyOnline and "noaddon" or "offline"
+    for _, c in ipairs(old) do good[#good + 1] = c end
+    if #good == 0 then return nil, anyOnline and "noaddon" or "offline" end
+    return good
+end
+
+-- The best one to ask: the name and whether their version is old, or nil and why.
+function R.PickLeader(race)
+    local cands, why = R.Candidates(race)
+    if not cands then return nil, why end
+    return cands[1].name, cands[1].old == true
 end
 
 -- All-clans history, newest last: { id, at, by, msg, item, clans = { race -> { st, w, n, to } } }.
@@ -676,6 +699,7 @@ function R.AskedFor(race)
 end
 
 -- An all-clans message to a clan's leader: to my own screen, a fake leader (dev), or a whisper.
+local AskRow
 local function ToLeader(to, msg)
     if to == ns.me then
         if msg.t == "CRA" then ns.Safe(R.OnAsk, msg, ns.me) else ns.Safe(R.OnCancel, msg, ns.me) end
@@ -692,9 +716,24 @@ end
 -- "Not in a group" doesn't hold it up: if that leader groups up and starts anyway, their reports still
 -- count until a new all-clans roll replaces this one.
 local PENDING = { waiting = true, rolling = true, tie = true }
+R.LOST_AFTER = 30                 -- seconds past a clan's timer with no result: "No result"
+
+-- A timed clan roll that's well past its end with no word: lost (the leader reloaded or dropped).
+local function Sweep(all)
+    local changed = false
+    for _, row in pairs(all.clans) do
+        if row.status == "rolling" and row.endsAt and GetTime() > row.endsAt + R.LOST_AFTER then
+            row.status = "noresult"
+            changed = true
+        end
+    end
+    return changed
+end
+
 function R.AllBusy(all)
     all = all or R.all
     if not all or all.cancelled then return false end
+    if Sweep(all) then AllChanged() end
     if GetServerTime() - (all.at or 0) > R.ASK_FOR + (all.timer or 0) + 60 then return false end
     for _, row in pairs(all.clans) do if PENDING[row.status] then return true end end
     return false
@@ -746,9 +785,23 @@ function R.OnCancel(msg, from)
         hit = true
     end
     if hit then
-        ns.Fire("CLANROLL_CANCELLED", from, race)
+        ns.Fire("CLANROLL_CANCELLED", from, race, msg.h == true)
         Changed()
     end
+end
+
+-- Ask this clan's current candidate; no answer in ALL_WAIT seconds: "No answer" (or "Needs an update").
+AskRow = function(all, row)
+    local c = row.cands[row.ci]
+    row.to, row.old, row.status, row.acked, row.sentAt = c.name, c.old or nil, "waiting", nil, GetTime()
+    ToLeader(c.name, { t = "CRA", id = all.id, r = row.race, m = all.msg, i = all.item, tm = all.timer,
+        cd = all.countdown or nil, s = all.skip or nil })
+    local to = c.name
+    C_Timer.After(R.ALL_WAIT, function()
+        if R.all ~= all or row.to ~= to or row.acked or row.status ~= "waiting" then return end
+        row.status = row.old and "update" or "noanswer"
+        AllChanged()
+    end)
 end
 
 -- Ask the leaders of the ticked clans. opts = { msg, item, timer, countdown, others, skip, only }; only = { race -> true }
@@ -763,31 +816,24 @@ function R.StartAll(opts)
     local now = GetServerTime()
     local timer = 0
     for _, t in ipairs(R.TIMERS) do if t == opts.timer then timer = t end end
+    -- Never non-clan members: in one raid, someone's /roll would count in every clan's roll.
     local all = { id = "A" .. now .. "-" .. math.random(1000, 9999), at = now, msg = R.Plain(opts.msg or L.CLANROLL_DEFAULT, MSG_MAX),
         item = R.Item(opts.item), timer = timer, countdown = (opts.countdown and timer > 0) or false,
-        others = opts.others and true or false, skip = opts.skip and true or false, clans = {}, order = {} }
+        skip = opts.skip and true or false, clans = {}, order = {} }
     R.all = all
     for _, c in ipairs(clans) do
         local race = c.race
         local row = { race = race }
         all.clans[race] = row
         all.order[#all.order + 1] = race
-        local to, why = R.PickLeader(race)
-        if not to then
+        local cands, why = R.Candidates(race)
+        if not cands then
             row.status = why
         else
-            row.to, row.old, row.status, row.sentAt = to, why == true or nil, "waiting", GetTime()
-            ToLeader(to, { t = "CRA", id = all.id, r = race, m = all.msg, i = all.item, tm = timer, cd = all.countdown or nil,
-                o = all.others or nil, s = all.skip or nil })
+            row.cands, row.ci = cands, 1
+            AskRow(all, row)
         end
     end
-    C_Timer.After(R.ALL_WAIT, function()
-        if R.all ~= all then return end
-        for _, row in pairs(all.clans) do
-            if row.status == "waiting" and not row.acked then row.status = row.old and "update" or "noanswer" end
-        end
-        AllChanged()
-    end)
     AllChanged()
     return all
 end
@@ -805,7 +851,7 @@ function R.OnAsk(msg, from)
     for _, t in ipairs(R.TIMERS) do if t == msg.tm then timer = t end end
     R.asked = { id = msg.id, from = from, race = race, msg = R.Plain(type(msg.m) == "string" and msg.m or "", MSG_MAX),
         item = R.Item(type(msg.i) == "string" and msg.i or nil), timer = timer, countdown = msg.cd == true and timer > 0,
-        others = msg.o == true, skip = msg.s == true, at = GetServerTime() }
+        others = false, skip = msg.s == true, at = GetServerTime() }
     R.Report(R.asked, { t = "CRK", id = msg.id, r = race, g = (IsInGroup and IsInGroup()) and true or nil })
     ns.Fire("CLANROLL_ASKED", R.asked)
     Changed()
@@ -821,6 +867,12 @@ function R.OnReport(msg, from)
         row.acked = true
         if row.status == "waiting" or row.status == "noanswer" or row.status == "update" then
             row.status = msg.g and "waiting" or "group"
+        end
+        -- Not in a group: hand it to the next one who could run it, if there is one.
+        if not msg.g and row.cands and row.ci < #row.cands then
+            ToLeader(from, { t = "CRX", id = all.id, r = race, h = true })
+            row.ci = row.ci + 1
+            AskRow(all, row)
         end
     elseif msg.t == "CRP" then
         row.acked = true

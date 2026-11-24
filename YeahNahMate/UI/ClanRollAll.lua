@@ -3,8 +3,8 @@
 --     who would be asked (or was) with a dot (green: online with the addon; orange: an old version;
 --     red: offline or no addon; grey: no leader set), and how its roll is going. All / None at the
 --     bottom. Hover a clan for the details.
---   Right panel (like the Clan roll panel, UI/ClanRoll.lua): Message, Item, Timer, Countdown, Let
---     non-clan members roll, Skip past winners, all sent to each leader (their setup is locked to it),
+--   Right panel (like the Clan roll panel, UI/ClanRoll.lua): Message, Item, Timer, Countdown, Skip past
+--     winners, all sent to each leader (their setup is locked to it; never non-clan members),
 --     and Start roll (asks each ticked clan's leader). Under it: Winners and Still waiting on. At the bottom:
 --     Announce (party or raid chat, or guild chat with Guild chat ticked) and Clear. History: the last
 --     20 all-clans rolls.
@@ -29,7 +29,7 @@ local DOT = {
 }
 local CROWN = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t"
 local ROW_DOT = { offline = "red", noaddon = "red", noanswer = "red", update = "orange", group = "orange", noleader = "grey",
-    cancelled = "grey" }
+    cancelled = "grey", noresult = "red" }
 
 -- The guild master's setup for all-clans rolls (apart from their own clan roll's).
 function CA.Prefs()
@@ -39,6 +39,7 @@ function CA.Prefs()
     if p.timer == nil then p.timer = 30 end
     if p.countdown == nil then p.countdown = true end
     if p.msg == nil then p.msg = L.CLANROLL_DEFAULT end
+    if p.guild == nil then p.guild = true end         -- I'm rarely in every clan's group: guild chat
     if type(p.allOff) ~= "table" then p.allOff = {} end
     return p
 end
@@ -204,9 +205,9 @@ function CA.BuildPanel(parent, x, y)
         return c, fs
     end
     p.countdown = Tick(L.CLANROLL_COUNTDOWN, "countdown", L.CLANROLL_COUNTDOWN_TIP, 160, sy + 2)
-    p.others = Tick(L.CLANROLL_OTHERS, "others", L.CLANROLL_OTHERS_TIP, 280, sy + 2)
-    sy = sy - 24
+    -- No "Let non-clan members roll": in one raid, someone's /roll would count in every clan's roll.
     p.skip = Tick(L.CLANROLL_SKIP, "skip", L.CLANROLL_SKIP_TIP, 280, sy + 2)
+    sy = sy - 24
     -- Start roll (asks the ticked clans); while it's going, Cancel (the time left beside it).
     p.start = Button(p, L.CLANROLL_ALL_START, 130, 12, sy - 2, function()
         if R.AllBusy() then R.CancelAll() else CA.Ask(p) end
@@ -277,7 +278,7 @@ function CA.Ask(p)
     pr.msg = p.msg:GetText()
     local only = CA.TickedSet()
     ns.ClanRoll.StartAll({ msg = pr.msg, item = p.item:GetText(), timer = pr.timer, countdown = pr.countdown,
-        others = pr.others, skip = pr.skip, only = only })
+        skip = pr.skip, only = only })
     p.history = false
     UI.Dirty()
 end
@@ -310,7 +311,6 @@ function CA.RefreshPanel(p)
     p.up:SetEnabled(pr.timer < R.TIMERS[#R.TIMERS])
     p.countdown:SetEnabled(pr.timer > 0)
     p.countdown:SetChecked(pr.countdown and true or false)
-    p.others:SetChecked(pr.others and true or false)
     p.skip:SetChecked(pr.skip and true or false)
     p.guild:SetChecked(pr.guild and true or false)
     local _, n = CA.TickedSet()

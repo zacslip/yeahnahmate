@@ -230,7 +230,8 @@ function CU.Start(p)
 end
 
 local STATUS_COL = { waiting = "|cffffffff", rolling = "|cff40ff40", won = "|cffe6c35c", tie = "|cffe6c35c", none = "|cff9d9d9d",
-    offline = "|cffff6060", noleader = "|cff9d9d9d", cancelled = "|cff9d9d9d", noaddon = "|cffff6060", update = "|cffff9020", group = "|cffff9020", noanswer = "|cffff6060" }
+    offline = "|cffff6060", noleader = "|cff9d9d9d", cancelled = "|cff9d9d9d", noresult = "|cffff6060",
+    noaddon = "|cffff6060", update = "|cffff9020", group = "|cffff9020", noanswer = "|cffff6060" }
 
 -- One clan's row in plain words.
 function CU.AllStatus(row)
@@ -315,7 +316,7 @@ function CU.Refresh(p, race)
     if r and r.race ~= race then r = nil end
     local open = r and r.open
     CU.lastRace = race
-    local asked = R.asked and R.asked.race == race and R.asked
+    local asked = R.AskedFor(race)
     p.title:SetText(ns.GOLD .. string.format(L.CLANROLL_TITLE, ns.Clans.RaceName(race)) .. "|r"
         .. (asked and (ns.GREY .. " " .. string.format(L.CLANROLL_ASKED_BY, asked.from:match("^%S+") or asked.from) .. "|r") or ""))
 
@@ -565,7 +566,7 @@ function CU.RefreshPop()
     local pr, set = CU.Setup(race)
     local open = r and r.open
     local can = race and R.CanStart(race)
-    local asked = R.asked and R.asked.race == race and R.asked
+    local asked = R.AskedFor(race)
     f.title:SetText(ns.GOLD .. string.format(L.CLANROLL_TITLE, ns.Clans.RaceName(race)) .. "|r"
         .. (asked and (ns.GREY .. " " .. string.format(L.CLANROLL_ASKED_BY, asked.from:match("^%S+") or asked.from) .. "|r") or ""))
 
@@ -694,10 +695,15 @@ ns.Listen("CLANROLL_ALL", function()
 end)
 
 -- A leader: the one who asked called it off.
-ns.Listen("CLANROLL_CANCELLED", function(from, race)
+ns.Listen("CLANROLL_CANCELLED", function(from, race, handed)
+    local clan = string.format(L.CLAN_NAME, ns.Clans.RaceName(race))
     ns.Toast.nextTab = "clans"
-    ns.Toast.Show(string.format(L.TOAST_ROLL_CANCELLED, from:match("^%S+") or from),
-        string.format(L.TOAST_ROLL_CANCELLED_TEXT, string.format(L.CLAN_NAME, ns.Clans.RaceName(race))), nil)
+    if handed then
+        ns.Toast.Show(L.TOAST_ROLL_HANDED, string.format(L.TOAST_ROLL_HANDED_TEXT, clan), nil)
+    else
+        ns.Toast.Show(string.format(L.TOAST_ROLL_CANCELLED, from:match("^%S+") or from),
+            string.format(L.TOAST_ROLL_CANCELLED_TEXT, clan), nil)
+    end
     CU.RefreshPop()
     UI.Dirty()
 end)

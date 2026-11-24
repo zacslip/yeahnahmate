@@ -204,3 +204,20 @@ Roll("Bingo Heeler", 70)
 pop.stop:Click(); Tick(1)
 check(pop.result:GetText():find("Bingo", 1, true) and pop.announce:IsShown() and pop.whisper:IsShown(), "after: winner, Announce, Whisper")
 CU.ClosePop()
+
+-- Several clans in one raid (an all-clans roll at a guild event): I follow only my own clan's roll.
+R.cur = nil
+FAKE.group, FAKE.party = 3, { "Bluey Heeler", "Bingo Heeler" }
+local function Crs(id, race, o)
+    INJECT("YNM", Msg({ t = "CRS", r = race, id = id, m = "Roll for", tm = 10, rd = 1, o = o }), "GUILD", "Bluey Heeler"); Tick(1)
+end
+Crs("200-1", "Troll")
+check(R.cur == nil, "another clan's roll (no non-clan members): not followed")
+Crs("200-2", "Orc")
+check(R.cur and R.cur.id == "200-2" and R.cur.open, "my own clan's roll: followed")
+Crs("200-3", "Troll", true)
+check(R.cur.id == "200-2" and R.cur.open, "another clan's roll, even open to everyone, doesn't take over my clan's")
+Tick(11)
+Crs("200-4", "Troll", true)
+check(R.cur.id == "200-4", "another clan's roll open to everyone, with mine not running: followed")
+CU.ClosePop()

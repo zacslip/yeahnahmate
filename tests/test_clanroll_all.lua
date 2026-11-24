@@ -72,8 +72,15 @@ check(all.clans.Orc.status == "rolling", "Bluey started: Rolling")
 INJECT("YNM", Msg({ t = "CRW", id = all.id, r = "Orc", w = "Bingo Heeler", n = 88 }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(all.clans.Orc.status == "won" and all.clans.Orc.winner == "Bingo Heeler" and all.clans.Orc.roll == 88, "the Orcs' winner: Bingo, 88")
 -- An answer saying "not in a group".
+-- Chilli answers (late) that he isn't in a group: the Trolls' roll is handed to the next who could run
+-- it, Bingo (an old version, last in line); Chilli's ask is withdrawn as "handed on".
+before = #SENT
 INJECT("YNM", Msg({ t = "CRK", id = all.id, r = "Troll" }), "WHISPER", "Chilli Heeler"); Tick(1)
-check(all.clans.Troll.status == "group", "Chilli's addon answered late: Not in a group")
+local cx0, ca0 = Sent("CRX", before + 1), Sent("CRA", before + 1)
+check(#cx0 == 1 and cx0[1]._target == "Chilli Heeler" and cx0[1].h == true and #ca0 == 1 and ca0[1]._target == "Bingo Heeler"
+    and all.clans.Troll.to == "Bingo Heeler" and all.clans.Troll.status == "waiting", "Chilli isn't in a group: handed on to Bingo")
+Tick(20)
+check(all.clans.Troll.status == "update", "Bingo's old addon never answers: Needs an update")
 
 -- The starter's screen: All clans roll beside the view switch opens its own view, laid out like My
 -- Clan: the clans on the left (tick box, who's asked, how it's going), the roll on the right (Winners,
@@ -91,7 +98,8 @@ local block = {}
 for _, b in ipairs(col.blocks) do if b:IsShown() then block[b.race] = b end end
 check(block.Orc and block.Troll and block.Orc.tick:GetChecked() and block.Troll.tick:GetChecked(), "a block per clan, all ticked")
 check(block.Orc.who:GetText():find("Bluey", 1, true) and block.Orc.status:GetText():find("88", 1, true), "the Orcs: Bluey asked, Bingo won with 88")
-check(block.Troll.status:GetText():find(L.CLANROLL_ALL_GROUP, 1, true), "the Trolls: Not in a group")
+check(block.Troll.status:GetText():find(L.CLANROLL_ALL_UPDATE, 1, true) and block.Troll.who:GetText():find("Bingo", 1, true),
+    "the Trolls: Bingo asked, Needs an update")
 local noLeader = false
 for _, b in pairs(block) do if b.status:GetText():find(L.CLANROLL_ALL_NOLEADER, 1, true) then noLeader = true end end
 check(noLeader, "a clan with no leader set says so")
@@ -100,15 +108,17 @@ for _, r in ipairs(ap.res) do if r:IsShown() then shown[#shown + 1] = r.left:Get
 check(#shown >= 1 and shown[1]:find("Bingo", 1, true) and shown[1]:find("88", 1, true), "Winners: Bingo, 88 first")
 local waiting = {}
 for _, r in ipairs(ap.miss) do if r:IsShown() then waiting[#waiting + 1] = r.right:GetText() end end
-check(table.concat(waiting, " "):find(L.CLANROLL_ALL_GROUP, 1, true), "Still waiting on: the Trolls, not in a group")
--- Announce: party or raid chat, or guild chat with Guild chat ticked; one line with each winner.
+check(table.concat(waiting, " "):find(L.CLANROLL_ALL_UPDATE, 1, true), "Still waiting on: the Trolls, needs an update")
+-- Announce: guild chat (ticked to start with: I'm rarely in every clan's group), or untick it for
+-- party or raid chat; one line with each winner.
 FAKE.group, FAKE.party = 2, { "Bingo Heeler" }
 local w0 = #WHISPERS
+check(ap.guild:GetChecked(), "Guild chat is ticked to start with")
 ap.announce:Click(); Tick(1)
-check(#WHISPERS == w0 + 1 and WHISPERS[#WHISPERS].kind == "PARTY" and WHISPERS[#WHISPERS].text:find("Bingo Heeler (88)", 1, true), "Announce: the winners to party chat")
-ap.guild:SetChecked(true); ap.guild:Click(); Tick(1)
+check(#WHISPERS == w0 + 1 and WHISPERS[#WHISPERS].kind == "GUILD" and WHISPERS[#WHISPERS].text:find("Bingo Heeler (88)", 1, true), "Announce: the winners to guild chat")
+ap.guild:SetChecked(false); ap.guild:Click(); Tick(1)
 ap.announce:Click(); Tick(1)
-check(#WHISPERS == w0 + 2 and WHISPERS[#WHISPERS].kind == "GUILD", "Guild chat ticked: to guild chat")
+check(#WHISPERS == w0 + 2 and WHISPERS[#WHISPERS].kind == "PARTY", "Guild chat unticked: to party chat")
 -- A long one splits into lines that fit, never cutting a clan.
 local long = { order = {}, clans = {}, msg = "Roll for", item = string.rep("x", 60) }
 for i = 1, 30 do
@@ -123,19 +133,19 @@ ns.Clans.RaceName = realName
 local fits = true
 for _, line in ipairs(lines) do if #line > 255 or line:find(", $") then fits = false end end
 check(#lines >= 2 and fits and lines[2]:find(L.CLANROLL_ALL_LINE_MORE, 1, true) == 1, "a long announce: " .. #lines .. " lines that fit")
--- The first roll is over: the Orcs won, and the Trolls aren't in a group, which doesn't hold it up.
+-- The first roll is over: the Orcs won, and the Trolls can't take part, which doesn't hold it up.
 check(not R.AllBusy() and ap.start:GetText() == L.CLANROLL_ALL_START and ap.start:IsEnabled(),
-    "over (one clan not in a group): Ask is back, not Cancel")
+    "over (one clan can't take part): Start roll is back, not Cancel")
+check(ap.others == nil, "no Let non-clan members roll on the all-clans roll")
 -- Untick the Trolls; every control goes to the leaders.
 block.Troll.tick:SetChecked(false); block.Troll.tick:Click(); Tick(1)
 check(not CA.Ticked("Troll") and CA.Ticked("Orc"), "the Trolls unticked")
-ap.skip:SetChecked(true); ap.skip:Click()
-ap.others:SetChecked(true); ap.others:Click(); Tick(1)
+ap.skip:SetChecked(true); ap.skip:Click(); Tick(1)
 before = #SENT
 ap.start:Click(); Tick(1)
 local asks = Sent("CRA", before + 1)
 check(R.all ~= all and #asks == 1 and asks[1].r == "Orc" and R.all.clans.Troll == nil, "Ask ticked clans: only the Orcs asked")
-check(asks[1].o == true and asks[1].s == true and asks[1].tm == CA.Prefs().timer, "with every control: non-clan members, skip past winners, timer")
+check(asks[1].o == nil and asks[1].s == true and asks[1].tm == CA.Prefs().timer, "with every control (skip past winners, timer), never non-clan members")
 check(ap.status:GetText() == string.format(L.CLANROLL_ALL_ASKED, #R.all.order) and ap.clear:IsShown(), "how many were asked; Clear")
 check(block.Orc.status:GetText():find(L.CLANROLL_ALL_WAITING, 1, true), "the Orcs: Waiting")
 -- While it's going, Ask turns into Cancel; once a clan rolls, the time left shows beside it.
@@ -181,9 +191,19 @@ check(ap.result:GetText():find("Chilli", 1, true) and ap.result:GetText():find("
 check(ap.res[1].left:GetText():find("LeaderIcon", 1, true), "the top row is crowned")
 local tl = R.AllLines(tieAll)
 check(tl[#tl]:find(string.format(L.CLANROLL_ALL_LINE_TOP, "Chilli Heeler", 41), 1, true), "Announce ends with the overall winner")
+-- A leader who reloads or drops mid-roll: 30 s past the timer with no word, the clan shows "No result"
+-- and stops holding things up (the guild master starts it again when they're back).
+ap.start:Click(); Tick(1)
+local lost = R.all
+INJECT("YNM", Msg({ t = "CRK", id = lost.id, r = "Orc", g = true }), "WHISPER", "Bluey Heeler")
+INJECT("YNM", Msg({ t = "CRP", id = lost.id, r = "Orc" }), "WHISPER", "Bluey Heeler"); Tick(1)
+check(lost.clans.Orc.status == "rolling" and R.AllBusy(), "the Orcs are rolling")
+Tick(lost.timer + R.LOST_AFTER + 2)
+check(lost.clans.Orc.status == "noresult" and not R.AllBusy() and block.Orc.status:GetText():find(L.CLANROLL_ALL_NORESULT, 1, true)
+    and ap.start:GetText() == L.CLANROLL_ALL_START, "no word 30 s after the timer: No result, and Start roll is back")
 -- History keeps each all-clans roll; Clear takes the results off the screen.
 local h = R.AllHistory()
-check(#h == 3 and h[#h].id == R.all.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner (" .. #h .. ")")
+check(#h == 4 and h[#h].id == R.all.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner (" .. #h .. ")")
 ap.clear:Click(); Tick(1)
 check(R.all == nil and not ap.clear:IsShown() and not block.Orc.status:GetText():find(L.CLANROLL_ALL_WAITING, 1, true), "Clear")
 ap.histBtn:Click(); Tick(1)
@@ -223,12 +243,12 @@ check(not pop.msg:IsEnabled() and not pop.item:IsEnabled() and not pop.down:IsEn
 check(mine0.msg == "My own" and mine0.timer == 60, "my own setup is left alone")
 local panel = ns.ClanRollUI.panel
 ns.settings.clanView = "mine"; UI.Open("clans"); Tick(1)
-check(panel.msg:GetText() == "Gold for" and not panel.msg:IsEnabled() and panel.others:GetChecked() and panel.skip:GetChecked()
-    and not panel.others:IsEnabled(), "the panel too: filled in, locked")
+check(panel.msg:GetText() == "Gold for" and not panel.msg:IsEnabled() and not panel.others:GetChecked() and panel.skip:GetChecked()
+    and not panel.others:IsEnabled(), "the panel too: filled in, locked (never non-clan members, even if asked)")
 check(#Sent("CRP", before + 1) == 0 and (R.cur == nil or not R.cur.open), "nothing starts until I click Start")
 pop.start:Click(); Tick(1)
 check(R.cur.open and R.cur.ask and R.cur.ask.id == "A1-1" and R.asked == nil, "Start: my roll runs for Bluey's ask")
-check(R.cur.msg == "Gold for" and R.cur.timer == 20 and R.cur.others and R.cur.skip, "with every control Bluey set")
+check(R.cur.msg == "Gold for" and R.cur.timer == 20 and not R.cur.others and R.cur.skip, "with every control Bluey set (never non-clan members)")
 check(mine0.msg == "My own", "and my own message stays mine")
 local crp = Sent("CRP", before + 1)
 check(#crp == 1 and crp[1]._target == "Bluey Heeler" and crp[1].id == "A1-1", "Bluey told it started")
@@ -280,6 +300,18 @@ before = #SENT
 INJECT("YNM", Msg({ t = "CRX", id = "A1-3", r = "Orc" }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(not R.cur.open and R.cur.winner == nil and #R.History() == h0 and #Sent("CRW", before + 1) == 0 and #WHISPERS == w0,
     "Bluey's cancel stops my roll: no winner, no history, no lines, no report")
+-- Handed on (I said I'm not in a group): the ask is gone, and the pop-up says why.
+INJECT("YNM", Msg({ t = "CRA", id = "A1-H", r = "Orc", m = "Roll for", tm = 20 }), "WHISPER", "Bluey Heeler"); Tick(1)
+INJECT("YNM", Msg({ t = "CRX", id = "A1-H", r = "Orc", h = true }), "WHISPER", "Bluey Heeler"); Tick(1)
+check(R.asked == nil and toasts[#toasts][1] == L.TOAST_ROLL_HANDED, "handed on: the ask is gone, the pop-up says it went to someone in a group")
+-- An ask lapses after 30 minutes: "(asked by Bluey)" goes, and my own setup is back.
+INJECT("YNM", Msg({ t = "CRA", id = "A1-E", r = "Orc", m = "Gold for", tm = 20 }), "WHISPER", "Bluey Heeler"); Tick(1)
+UI.Dirty(); Tick(1)
+check(panel.title:GetText():find("asked by Bluey", 1, true) and not panel.msg:IsEnabled(), "asked: the title says so, the setup is locked")
+Tick(R.ASK_FOR + 5, 5)
+UI.Dirty(); Tick(1)
+check(R.AskedFor("Orc") == nil and not panel.title:GetText():find("asked by", 1, true), "30 minutes on: the ask has lapsed, the title is back to normal")
+R.asked = nil
 ns.ClanRollUI.ClosePop()
 
 -- The guild master is a clan's second in command (no leader rank set): their own ask stays on their
@@ -303,6 +335,7 @@ check(#Sent("CRP", before + 1) == 0 and #Sent("CRW", before + 1) == 0, "no repor
 ns.ClanRollUI.ClosePop()
 
 -- Alone (fake guildies): the fake clan leaders answer, start and report a winner; one isn't in a group.
+ns.ClanChallenge.deputies.Orc = nil       -- (from above) so nobody else can take the Orcs' roll
 SlashCmdList.YEAHNAHMATE("dev sim on"); Tick(20)
 local sim = R.StartAll({ msg = "Roll for", item = "Lucky coin", timer = 10 })
 Tick(1)
