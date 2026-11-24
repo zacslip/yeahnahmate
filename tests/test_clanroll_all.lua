@@ -123,11 +123,9 @@ ns.Clans.RaceName = realName
 local fits = true
 for _, line in ipairs(lines) do if #line > 255 or line:find(", $") then fits = false end end
 check(#lines >= 2 and fits and lines[2]:find(L.CLANROLL_ALL_LINE_MORE, 1, true) == 1, "a long announce: " .. #lines .. " lines that fit")
--- The first roll is still going (the Trolls might group up yet): Cancel it before asking again.
-check(R.AllBusy() and ap.start:GetText():find(L.CLANROLL_ALL_CANCEL, 1, true), "still going: Cancel")
-ap.start:Click(); Tick(1)
-check(not R.AllBusy() and R.all.clans.Orc.status == "won" and R.all.clans.Troll.status == "cancelled",
-    "Cancel: finished clans keep their winner, the rest are cancelled")
+-- The first roll is over: the Orcs won, and the Trolls aren't in a group, which doesn't hold it up.
+check(not R.AllBusy() and ap.start:GetText() == L.CLANROLL_ALL_START and ap.start:IsEnabled(),
+    "over (one clan not in a group): Ask is back, not Cancel")
 -- Untick the Trolls; every control goes to the leaders.
 block.Troll.tick:SetChecked(false); block.Troll.tick:Click(); Tick(1)
 check(not CA.Ticked("Troll") and CA.Ticked("Orc"), "the Trolls unticked")
@@ -156,9 +154,24 @@ check(#cx == 1 and cx[1]._target == "Bluey Heeler" and R.all.clans.Orc.status ==
     "Cancel: Bluey is told, the Orcs show Cancelled")
 INJECT("YNM", Msg({ t = "CRW", id = R.all.id, r = "Orc", w = "Bingo Heeler", n = 90 }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(R.all.clans.Orc.status == "cancelled" and ap.start:GetText() == L.CLANROLL_ALL_START, "a late winner is ignored; Ask is back")
+-- A tie inside a clan: "Tie, rerolling" keeps it going; the reroll starts (Rolling again, with its
+-- time) and its winner ends it.
+before = #SENT
+ap.start:Click(); Tick(1)
+local tieAll = R.all
+INJECT("YNM", Msg({ t = "CRK", id = tieAll.id, r = "Orc", g = true }), "WHISPER", "Bluey Heeler")
+INJECT("YNM", Msg({ t = "CRP", id = tieAll.id, r = "Orc" }), "WHISPER", "Bluey Heeler")
+INJECT("YNM", Msg({ t = "CRW", id = tieAll.id, r = "Orc", tie = { "Bingo Heeler", "Chilli Heeler" }, n = 97 }), "WHISPER", "Bluey Heeler"); Tick(1)
+check(tieAll.clans.Orc.status == "tie" and R.AllBusy() and block.Orc.status:GetText():find(L.CLANROLL_ALL_TIE, 1, true),
+    "a tie: Tie, rerolling, and it's still going")
+INJECT("YNM", Msg({ t = "CRP", id = tieAll.id, r = "Orc", rd = 2 }), "WHISPER", "Bluey Heeler"); Tick(1)
+check(tieAll.clans.Orc.status == "rolling" and tieAll.clans.Orc.endsAt ~= nil, "the reroll starts: Rolling, with its time")
+INJECT("YNM", Msg({ t = "CRW", id = tieAll.id, r = "Orc", w = "Chilli Heeler", n = 41 }), "WHISPER", "Bluey Heeler"); Tick(1)
+check(tieAll.clans.Orc.status == "won" and tieAll.clans.Orc.winner == "Chilli Heeler" and not R.AllBusy()
+    and ap.start:GetText() == L.CLANROLL_ALL_START, "the reroll's winner ends it: Ask is back")
 -- History keeps each all-clans roll; Clear takes the results off the screen.
 local h = R.AllHistory()
-check(#h == 2 and h[#h].id == R.all.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner")
+check(#h == 3 and h[#h].id == R.all.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner (" .. #h .. ")")
 ap.clear:Click(); Tick(1)
 check(R.all == nil and not ap.clear:IsShown() and not block.Orc.status:GetText():find(L.CLANROLL_ALL_WAITING, 1, true), "Clear")
 ap.histBtn:Click(); Tick(1)
@@ -211,6 +224,24 @@ FireEvent("CHAT_MSG_SYSTEM", "Bingo Heeler rolls 61 (1-100)")
 Tick(21)
 local crw = Sent("CRW", before + 1)
 check(#crw == 1 and crw[1].w == "Bingo Heeler" and crw[1].n == 61 and crw[1].id == "A1-1", "the winner goes back to Bluey by itself")
+
+-- A tie in the roll I'm running for Bluey: the reroll tells Bluey it started (round 2), and its winner goes back.
+INJECT("YNM", Msg({ t = "CRA", id = "A1-T", r = "Orc", m = "Roll for", tm = 20 }), "WHISPER", "Bluey Heeler"); Tick(1)
+R.Start({ race = "Orc" }); Tick(1)
+FireEvent("CHAT_MSG_SYSTEM", "Bingo Heeler rolls 90 (1-100)")
+FireEvent("CHAT_MSG_SYSTEM", "Bluey Heeler rolls 90 (1-100)")
+before = #SENT
+Tick(21)
+local tw = Sent("CRW", before + 1)
+check(#tw == 1 and tw[1].tie and #tw[1].tie == 2 and tw[1].id == "A1-T", "a tie goes back to Bluey")
+R.Reroll(); Tick(1)
+local rp = Sent("CRP", before + 1)
+check(#rp == 1 and rp[1].rd == 2 and rp[1].id == "A1-T", "Reroll ties: Bluey is told round 2 started")
+FireEvent("CHAT_MSG_SYSTEM", "Bluey Heeler rolls 12 (1-100)")
+FireEvent("CHAT_MSG_SYSTEM", "Bingo Heeler rolls 70 (1-100)")
+Tick(21)
+tw = Sent("CRW", before + 1)
+check(#tw == 2 and tw[2].w == "Bingo Heeler" and tw[2].n == 70, "and the reroll's winner goes back")
 
 -- Start can't run twice from a quick second click.
 R.Start({ race = "Orc", msg = "Roll for" }); Tick(1)
@@ -266,13 +297,17 @@ Tick(1)
 local fakes = 0
 for _, row in pairs(sim.clans) do if row.to and ns.Sim.IsFake(row.to) then fakes = fakes + 1 end end
 check(fakes >= 3, "fake leaders asked (" .. fakes .. ")")
-Tick(20)
+Tick(15)
+local tied = 0
+for _, row in pairs(sim.clans) do if row.status == "tie" then tied = tied + 1 end end
+check(tied == 1 and R.AllBusy(), "one fake clan ties first: Tie, rerolling")
+Tick(15)
 local won, group = 0, 0
 for _, row in pairs(sim.clans) do
     if row.status == "won" then won = won + 1 end
     if row.status == "group" then group = group + 1 end
 end
-check(won >= 2 and group == 1, "fake leaders report winners (" .. won .. "), one not in a group")
+check(won >= 2 and group == 1 and not R.AllBusy(), "fake leaders report winners (" .. won .. "), one not in a group; then it's over")
 SlashCmdList.YEAHNAHMATE("dev sim off"); Tick(1)
 
 -- /ynm dev rollreset: everything fresh.

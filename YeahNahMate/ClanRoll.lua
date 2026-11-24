@@ -187,7 +187,8 @@ function R.Start(opts)
         r.ask = { id = R.asked.id, from = R.asked.from }
         R.asked = nil
     end
-    if r.ask and not opts.parent then R.Report(r.ask, { t = "CRP", id = r.ask.id, r = race }) end
+    -- The one who asked sees it start (a tie reroll too: Rolling again, with its time).
+    if r.ask then R.Report(r.ask, { t = "CRP", id = r.ask.id, r = race, rd = r.round }) end
     R.cur = r
     R.unreadable = false
     R.Arm(r)
@@ -660,8 +661,10 @@ local function ToLeader(to, msg)
     end
 end
 
--- Still going: a clan that may yet start or finish (until the asks run out). Then Ask turns into Cancel.
-local PENDING = { waiting = true, rolling = true, tie = true, group = true }
+-- Still going: a clan that may yet start or finish (until the asks run out); Ask is Cancel meanwhile.
+-- "Not in a group" doesn't hold it up: if that leader groups up and starts anyway, their reports still
+-- count until a new all-clans roll replaces this one.
+local PENDING = { waiting = true, rolling = true, tie = true }
 function R.AllBusy(all)
     all = all or R.all
     if not all or all.cancelled then return false end
@@ -877,17 +880,33 @@ ns.devCommands.rollfakes = function(arg)
 end
 
 -- A fake leader (sim mode) asked to run their clan's roll: says got it, starts after a few seconds,
--- and reports a winner from their fake clan when the timer would end. One clan says it isn't in a group.
+-- and reports a winner from their fake clan when the timer would end. One clan says it isn't in a group,
+-- and one ties first, then rerolls.
 function R.SimLeader(msg, to)
     local race = msg.r
-    local first = true
-    for r2 in pairs(R.all and R.all.clans or {}) do if r2 < race then first = false end end
+    -- Which fake-led clan this is, in the order they were asked: the 1st isn't in a group, the 2nd ties.
+    local nth = 0
+    for _, r2 in ipairs(R.all and R.all.order or {}) do
+        local row = R.all.clans[r2]
+        if row.to and ns.Sim.IsFake(row.to) then nth = nth + 1 end
+        if r2 == race then break end
+    end
+    local first = nth == 1
     C_Timer.After(1.5, function() R.OnReport({ t = "CRK", id = msg.id, r = race, g = not first or nil }, to) end)
     if first then return end
     C_Timer.After(4, function() R.OnReport({ t = "CRP", id = msg.id, r = race }, to) end)
     local pool = {}
     for _, m in ipairs(ns.Guild.list) do if m.sim and m.race == race and m.name ~= to then pool[#pool + 1] = m.name end end
-    C_Timer.After(4 + math.max(10, msg.tm or 0), function()
+    local ends = 4 + math.max(10, msg.tm or 0)
+    -- The second clan ties first: "Tie, rerolling", then its reroll starts and has a winner.
+    if nth == 2 and #pool >= 2 then
+        C_Timer.After(ends, function()
+            R.OnReport({ t = "CRW", id = msg.id, r = race, tie = { pool[1], pool[2] }, n = 97 }, to)
+        end)
+        C_Timer.After(ends + 3, function() R.OnReport({ t = "CRP", id = msg.id, r = race, rd = 2 }, to) end)
+        ends = ends + 3 + math.max(10, msg.tm or 0)
+    end
+    C_Timer.After(ends, function()
         local w = pool[math.random(1, math.max(1, #pool))]
         R.OnReport({ t = "CRW", id = msg.id, r = race, w = w, n = w and math.random(60, 100) or nil }, to)
     end)
