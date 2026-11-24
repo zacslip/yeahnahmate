@@ -21,6 +21,14 @@
 --       CRE { r, id, w, n, tie }                     it ended: winner and roll, or the tied players
 --     Each screen checks the sender may run that clan's rolls (its own roster) and is in its group;
 --     followers count rolls themselves for the screen, but the winner is always the starter's.
+--   * All clans: the guild master or a manager asks each clan's leader (or second in command) to run
+--     the same roll in their own group, by addon whisper:
+--       CRA { id, r, m, i, tm, cd }   please run this roll (starter -> leader); the leader's addon checks
+--                                      the sender is the guild master or a manager on its own roster
+--       CRK { id, r, g }              got it (g: I'm in a group) - the leader's addon, at once
+--       CRP { id, r }                 the leader clicked Start
+--       CRW { id, r, w, n, tie }      it ended: winner and roll, or the tied players (sent by itself)
+--     A report counts only from the person that clan's roll was sent to. The leader still clicks Start.
 --   * "Roll over" is posted once, with no click, when a roll the player started with a click closes
 --     (timer or Stop). It's the deliberate second exception to the no-automation rule (CONTRIBUTING.md).
 local ADDON, ns = ...
@@ -165,10 +173,15 @@ function R.Start(opts)
         id = now .. "-" .. math.random(1000, 9999), race = race, by = ns.me, at = now,
         msg = msg, item = R.Item(opts.item), timer = timer, countdown = (opts.countdown and timer > 0) or false,
         others = opts.others and true or false, skip = opts.skip and true or false,
-        rolls = {}, n = 0, open = true, clicked = opts.clicked ~= false,
+        rolls = {}, n = 0, open = true, clicked = opts.clicked ~= false, ask = opts.ask,
         round = (opts.parent and (opts.parent.round or 1) + 1) or 1, tied = opts.tied,
         noticed = false, endsAt = timer > 0 and (GetTime() + timer) or nil,
     }
+    if not r.ask and not opts.parent and R.asked and R.asked.race == race then
+        r.ask = { id = R.asked.id, from = R.asked.from }
+        R.asked = nil
+    end
+    if r.ask and not opts.parent then R.Report(r.ask, { t = "CRP", id = r.ask.id, r = race }) end
     R.cur = r
     R.unreadable = false
     R.Arm(r)
@@ -323,6 +336,7 @@ function R.Stop()
         R.PostOver(r)
     end
     R.Broadcast(r, { t = "CRE", r = r.race, id = r.id, w = r.winner, n = r.winRoll, tie = r.ties })
+    if r.ask then R.Report(r.ask, { t = "CRW", id = r.ask.id, r = r.race, w = r.winner, n = r.winRoll, tie = r.ties }) end
     ns.Fire("CLANROLL_OVER", r)
     Changed()
 end
@@ -334,7 +348,7 @@ function R.Reroll()
     local tied = {}
     for _, k in ipairs(r.ties) do tied[k] = true end
     return R.Start({ race = r.race, msg = r.msg, item = r.item, timer = r.timer, countdown = r.countdown,
-        others = r.others, skip = r.skip, tied = tied, parent = r })
+        others = r.others, skip = r.skip, tied = tied, parent = r, ask = r.ask })
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -480,6 +494,156 @@ ns.Comm.On("CRE", function(msg, from, channel, isSelf)
     Changed()
 end)
 
+---------------------------------------------------------------------------------------------------
+-- All clans: the guild master or a manager starts one roll across every clan
+
+R.ALL_WAIT = 20                   -- seconds for a leader's addon to say it got the ask
+R.MIN_VER = "0.28.0"              -- the first version that can run an all-clans roll
+R.all = nil                       -- the one I started: { id, at, msg, item, timer, countdown, clans = { race -> row } }
+R.asked = nil                     -- an ask I got as a leader: { id, from, race, msg, item, timer, countdown, at }
+
+-- Statuses on the starter's screen, in plain words (Strings.lua): waiting, rolling, won, tie, none,
+-- offline, noaddon, update, group, noanswer.
+
+function R.CanStartAll() return ns.Board.IsManager(ns.me) or ns.Board.devEditor == true end
+local function RealAll() return ns.Board.IsManager(ns.me) end
+
+-- An addon message to whoever asked (or to my own screen, when I asked myself).
+function R.Report(ask, msg)
+    if not ask then return end
+    if ask.from == ns.me then
+        ns.Safe(R.OnReport, msg, ns.me)
+    elseif ns.Sim and ns.Sim.IsFake(ask.from) then
+        ns.Log("(sim) clan roll report kept on this screen")
+    else
+        ns.Comm.Send(msg, "WHISPER", ask.from)
+    end
+end
+
+-- Who runs this clan's roll: an online leader with the addon (a new enough one if there's a choice),
+-- else the second in command. Returns the name and whether their version is old, or nil and why
+-- ("noleader" / "offline" / "noaddon").
+function R.PickLeader(race)
+    local cands = {}
+    for _, n in ipairs(ns.Clans.Leaders(race)) do cands[#cands + 1] = n end
+    local d = ns.ClanChallenge.Deputy(race)
+    if d and d.who then cands[#cands + 1] = d.who end
+    if #cands == 0 then return nil, "noleader" end
+    local anyOnline, old = false, nil
+    for _, n in ipairs(cands) do
+        local m = ns.Guild.Get(n)
+        local online = n == ns.me or (m and m.online)
+        if online then
+            anyOnline = true
+            if n == ns.me then return n, false end
+            local u = ns.Comm.users[n]
+            if u then
+                local ver = u.ver
+                if u.sim or (ver and ver ~= "?" and ns.CompareVersions(ver, R.MIN_VER) >= 0) then return n, false end
+                old = old or n
+            end
+        end
+    end
+    if old then return old, true end
+    return nil, anyOnline and "noaddon" or "offline"
+end
+
+local function AllChanged() ns.Fire("CLANROLL_ALL") end
+
+-- Ask every clan's leader. opts = { msg, item, timer, countdown }.
+function R.StartAll(opts)
+    if not R.CanStartAll() then return nil end
+    local now = GetServerTime()
+    local timer = 0
+    for _, t in ipairs(R.TIMERS) do if t == opts.timer then timer = t end end
+    local all = { id = "A" .. now .. "-" .. math.random(1000, 9999), at = now, msg = R.Plain(opts.msg or L.CLANROLL_DEFAULT, MSG_MAX),
+        item = R.Item(opts.item), timer = timer, countdown = (opts.countdown and timer > 0) or false, clans = {}, order = {} }
+    R.all = all
+    for _, c in ipairs(ns.Clans.List()) do
+        local race = c.race
+        local row = { race = race }
+        all.clans[race] = row
+        all.order[#all.order + 1] = race
+        local to, why = R.PickLeader(race)
+        if not to then
+            row.status = why
+        else
+            row.to, row.old, row.status, row.sentAt = to, why == true or nil, "waiting", GetTime()
+            local msg = { t = "CRA", id = all.id, r = race, m = all.msg, i = all.item, tm = timer, cd = all.countdown or nil }
+            if to == ns.me then
+                ns.Safe(R.OnAsk, msg, ns.me)
+            elseif ns.Sim and ns.Sim.IsFake(to) then
+                if R.SimLeader then R.SimLeader(msg, to) end
+            elseif RealAll() then
+                ns.Comm.Send(msg, "WHISPER", to)
+            else
+                ns.Log("(dev) all-clans roll ask kept on this screen: your rank can't start one")
+            end
+        end
+    end
+    C_Timer.After(R.ALL_WAIT, function()
+        if R.all ~= all then return end
+        for _, row in pairs(all.clans) do
+            if row.status == "waiting" and not row.acked then row.status = row.old and "update" or "noanswer" end
+        end
+        AllChanged()
+    end)
+    AllChanged()
+    return all
+end
+
+-- A leader's addon: someone asked me to run my clan's roll.
+function R.OnAsk(msg, from)
+    local race = ns.Clans.CleanRace(msg.r)
+    if not race or type(msg.id) ~= "string" or #msg.id > 40 then return end
+    if not ns.Board.IsManager(from) then
+        ns.Log("dropped: an all-clans roll from " .. from .. ", who isn't the guild master or a manager")
+        return
+    end
+    if not ns.ClanMeet.CanRun(ns.me, race) then return end
+    local timer = 0
+    for _, t in ipairs(R.TIMERS) do if t == msg.tm then timer = t end end
+    R.asked = { id = msg.id, from = from, race = race, msg = R.Plain(type(msg.m) == "string" and msg.m or "", MSG_MAX),
+        item = R.Item(type(msg.i) == "string" and msg.i or nil), timer = timer, countdown = msg.cd == true and timer > 0, at = GetServerTime() }
+    R.Report(R.asked, { t = "CRK", id = msg.id, r = race, g = (IsInGroup and IsInGroup()) and true or nil })
+    ns.Fire("CLANROLL_ASKED", R.asked)
+    Changed()
+end
+
+-- The starter's addon: a leader's report. Only from the person that clan's roll was sent to.
+function R.OnReport(msg, from)
+    local all = R.all
+    local race = ns.Clans.CleanRace(msg.r)
+    local row = all and race and all.clans[race]
+    if not row or msg.id ~= all.id or row.to ~= from then return end
+    if msg.t == "CRK" then
+        row.acked = true
+        if row.status == "waiting" or row.status == "noanswer" or row.status == "update" then
+            row.status = msg.g and "waiting" or "group"
+        end
+    elseif msg.t == "CRP" then
+        row.acked = true
+        row.status = "rolling"
+    elseif msg.t == "CRW" then
+        row.acked = true
+        row.winner = type(msg.w) == "string" and ns.Key(msg.w) or nil
+        row.roll = tonumber(msg.n)
+        row.status = row.winner and "won" or ((type(msg.tie) == "table" and #msg.tie > 0) and "tie" or "none")
+    end
+    AllChanged()
+end
+
+ns.Comm.On("CRA", function(msg, from, channel, isSelf)
+    if isSelf or channel ~= "WHISPER" then return end
+    R.OnAsk(msg, from)
+end)
+for _, t in ipairs({ "CRK", "CRP", "CRW" }) do
+    ns.Comm.On(t, function(msg, from, channel, isSelf)
+        if isSelf or channel ~= "WHISPER" then return end
+        R.OnReport(msg, from)
+    end)
+end
+
 -- Dev only: the CurseForge build leaves this out (BigWigs packager's do-not-package markers).
 --@do-not-package@
 -- /ynm dev rollfakes [tie]   fake guildies of the roll's clan "join" my group and /roll over the next
@@ -516,5 +680,22 @@ ns.devCommands.rollfakes = function(arg)
         C_Timer.After(step[1], function() ns.Safe(R.OnRollLine, step[2]) end)
     end
     ns.Print("(dev) " .. #same .. " fake clan members joined your group and are rolling" .. (other and (", plus " .. other .. " from another clan") or "") .. ".")
+end
+
+-- A fake leader (sim mode) asked to run their clan's roll: says got it, starts after a few seconds,
+-- and reports a winner from their fake clan when the timer would end. One clan says it isn't in a group.
+function R.SimLeader(msg, to)
+    local race = msg.r
+    local first = true
+    for r2 in pairs(R.all and R.all.clans or {}) do if r2 < race then first = false end end
+    C_Timer.After(1.5, function() R.OnReport({ t = "CRK", id = msg.id, r = race, g = not first or nil }, to) end)
+    if first then return end
+    C_Timer.After(4, function() R.OnReport({ t = "CRP", id = msg.id, r = race }, to) end)
+    local pool = {}
+    for _, m in ipairs(ns.Guild.list) do if m.sim and m.race == race and m.name ~= to then pool[#pool + 1] = m.name end end
+    C_Timer.After(4 + math.max(10, msg.tm or 0), function()
+        local w = pool[math.random(1, math.max(1, #pool))]
+        R.OnReport({ t = "CRW", id = msg.id, r = race, w = w, n = w and math.random(60, 100) or nil }, to)
+    end)
 end
 --@end-do-not-package@

@@ -26,7 +26,7 @@ Load order is the `.toc`. Each feature is one module (logic) plus one UI file.
 | `Calendar.lua`, `Gather.lua` | Guild events and answers (`EVT`, `RSVP`, `EVR`, `EVM`); gathering for an event (`GTH`, `GAK`). |
 | `Board.lua` | Guild info, managers, which ranks moderate each tab, streamer cards (`BRD`). |
 | `Clans.lua`, `ClanMeet.lua` | Clans by race: guildies' race and roles (in `HI`, `ME`), each clan's leader rank (`BRD` kind `clr`); clan meetings (`CMT`, `CAK`, and "inv" whispers read on the organiser's side). |
-| `ClanRoll.lua`, `UI/ClanRoll.lua` | The clan roll on the Clans tab's My Clan view: only the game's own roll lines (1-100, first roll, my group, the clan), ties and rerolls, past winners, history; Start / Announce lines and the one no-click "Roll over" line to party or raid chat. |
+| `ClanRoll.lua`, `UI/ClanRoll.lua` | The clan roll on the Clans tab's My Clan view: only the game's own roll lines (1-100, first roll, my group, the clan), ties and rerolls, past winners, history; Start / Announce lines and the one no-click "Roll over" line to party or raid chat; `CRS` / `CRE` so group members follow; the all-clans roll (`CRA`, `CRK`, `CRP`, `CRW` by whisper between the guild master or a manager and each clan's leader). |
 | `ClanChallenge.lua` | Leadership challenges (`CHG`; results only from those who settle them) and second in command (`DEP`). |
 | `Milestones.lua` | Milestone and welcome cards (`BRD` kinds `ms`, `wel`), posting them (`MSF`, `MSW`). |
 | `Comm.lua` whispers | Skips offline guildies, sends bulk whispers one at a time per person, and stops (and hides the game's line) when the server says they've gone. |

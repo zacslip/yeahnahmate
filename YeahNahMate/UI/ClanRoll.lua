@@ -7,6 +7,9 @@
 --            winner, can't win), Who hasn't rolled, the time left. Stop closes it early.
 --   After:   the winner (or the tie), Announce (+ Whisper winner) and Reroll ties.
 --   History: the last 20 rolls with their date and time.
+--   All clans roll (the guild master and managers): the same setup, Ask every clan, then one row per
+--            clan with how it's going (ClanRoll.lua R.StartAll). A leader who's asked gets a pop-up and
+--            the roll window, filled in; they click Start.
 -- The countdown shows big in the middle of the screen (CountShow), never in chat.
 local ADDON, ns = ...
 local L = ns.L
@@ -101,7 +104,8 @@ function CU.Build(parent, x, y)
     p.race = nil
     local prefs = CU.Prefs()
 
-    p.title = Text(p, "", "GameFontNormal", 12, -10, 360)
+    p.title = Text(p, "", "GameFontNormal", 12, -10, 280)
+    CU.panel = p
     p.histBtn = WithTip(Button(p, L.CLANROLL_HISTORY, 90, W - 100, -6, function()
         p.history = not p.history
         p.histOff = 0
@@ -109,6 +113,11 @@ function CU.Build(parent, x, y)
     end, 22), { L.CLANROLL_HISTORY, L.CLANROLL_HISTORY_TIP })
     p.popBtn = WithTip(Button(p, L.CLANROLL_POP, 90, W - 194, -6, function() CU.OpenPop(false, p.race) end, 22),
         { L.CLANROLL_POP, L.CLANROLL_POP_TIP })
+    p.allBtn = WithTip(Button(p, L.CLANROLL_ALL_BTN, 100, W - 298, -6, function()
+        p.mode = (p.mode ~= "all") and "all" or nil
+        p.history = false
+        UI.Dirty()
+    end, 22), { L.CLANROLL_ALL_BTN, L.CLANROLL_ALL_TIP })
 
     -- Setup
     local sy = -34
@@ -141,11 +150,13 @@ function CU.Build(parent, x, y)
         return c, fs
     end
     p.countdown, p.countdownText = Tick(L.CLANROLL_COUNTDOWN, "countdown", L.CLANROLL_COUNTDOWN_TIP, 160, sy + 2)
-    p.others = Tick(L.CLANROLL_OTHERS, "others", L.CLANROLL_OTHERS_TIP, 280, sy + 2)
+    p.others, p.othersText = Tick(L.CLANROLL_OTHERS, "others", L.CLANROLL_OTHERS_TIP, 280, sy + 2)
     sy = sy - 24
-    p.skip = Tick(L.CLANROLL_SKIP, "skip", L.CLANROLL_SKIP_TIP, 280, sy + 2)
+    p.skip, p.skipText = Tick(L.CLANROLL_SKIP, "skip", L.CLANROLL_SKIP_TIP, 280, sy + 2)
 
-    p.start = WithTip(Button(p, L.CLANROLL_START_BTN, 110, 12, sy - 2, function() CU.Start(p) end, 24),
+    p.start = WithTip(Button(p, L.CLANROLL_START_BTN, 110, 12, sy - 2, function()
+        if p.mode == "all" then CU.StartAll(p) else CU.Start(p) end
+    end, 24),
         { L.CLANROLL_START_BTN, L.CLANROLL_START_TIP })
     p.stop = WithTip(Button(p, L.CLANROLL_STOP_BTN, 110, 12, sy - 2, function() R.Stop() end, 24),
         { L.CLANROLL_STOP_BTN, L.CLANROLL_STOP_TIP })
@@ -178,10 +189,21 @@ function CU.Build(parent, x, y)
     p.announce = WithTip(Button(p, L.CLANROLL_ANNOUNCE, 100, 12, by, function()
         R.Announce(R.cur, CU.Prefs().whisper)
     end, 24), { L.CLANROLL_ANNOUNCE, L.CLANROLL_ANNOUNCE_TIP })
-    p.whisper = Tick(L.CLANROLL_WHISPER_WIN, "whisper", L.CLANROLL_WHISPER_WIN_TIP, 118, by)
+    p.whisper, p.whisperText = Tick(L.CLANROLL_WHISPER_WIN, "whisper", L.CLANROLL_WHISPER_WIN_TIP, 118, by)
     p.reroll = WithTip(Button(p, L.CLANROLL_REROLL, 110, 290, by, function() CU.Reroll() end, 24),
         { L.CLANROLL_REROLL, L.CLANROLL_REROLL_TIP })
     p.result = Text(p, "", "GameFontHighlight", 410, by - 5, W - 420)
+
+    -- All clans: one row per clan (its name and who was asked; how it's going).
+    p.allRows = {}
+    for i = 1, 6 do
+        local r = UI.Row(p, 10, ly - 16 - (i - 1) * 22, W - 20, 20)
+        r.stripe:SetShown(i % 2 == 0)
+        r.left = Text(r, "", "GameFontHighlight", 6, -4, 230)
+        r.right = Text(r, "", "GameFontHighlight", 240, -4, W - 270)
+        r:Hide()
+        p.allRows[i] = r
+    end
 
     p.Refresh = function(race) CU.Refresh(p, race) end
     return p
@@ -209,6 +231,57 @@ function CU.Start(p)
         R.PostStart(r)
     end
     UI.Dirty()
+end
+
+function CU.StartAll(p)
+    local pr = CU.Prefs()
+    pr.msg = p.msg:GetText()
+    ns.ClanRoll.StartAll({ msg = pr.msg, item = p.item:GetText(), timer = pr.timer, countdown = pr.countdown })
+    UI.Dirty()
+end
+
+local STATUS_COL = { waiting = "|cffffffff", rolling = "|cff40ff40", won = "|cffe6c35c", tie = "|cffe6c35c", none = "|cff9d9d9d",
+    offline = "|cffff6060", noleader = "|cff9d9d9d", noaddon = "|cffff6060", update = "|cffff9020", group = "|cffff9020", noanswer = "|cffff6060" }
+
+-- One clan's row in plain words.
+function CU.AllStatus(row)
+    local s = row.status
+    local text = L["CLANROLL_ALL_" .. string.upper(s or "waiting")] or s or ""
+    if s == "won" and row.winner then text = string.format(text, Who(row.winner), row.roll or 0) end
+    return (STATUS_COL[s] or "") .. text .. "|r"
+end
+
+function CU.RefreshAll(p)
+    local R = ns.ClanRoll
+    local pr = CU.Prefs()
+    p.title:SetText(ns.GOLD .. L.CLANROLL_ALL_TITLE .. "|r")
+    for _, f in ipairs({ p.msg, p.item, p.itemClear, p.down, p.up, p.countdown }) do f:SetEnabled(true) end
+    p.timer:SetText(pr.timer > 0 and (pr.timer .. "s") or L.CLANROLL_TIMER_OFF)
+    p.down:SetEnabled(pr.timer > 0)
+    p.up:SetEnabled(pr.timer < R.TIMERS[#R.TIMERS])
+    p.countdown:SetEnabled(pr.timer > 0)
+    p.countdown:SetChecked(pr.countdown and true or false)
+    p.start:SetText(L.CLANROLL_ALL_START)
+    p.start:Show()
+    p.start:SetEnabled(true)
+    p.stop:Hide()
+    for _, row in ipairs(p.res) do row:Hide() end
+    for _, row in ipairs(p.miss) do row:Hide() end
+    for _, row in ipairs(p.hist) do row:Hide() end
+    local all = R.all
+    p.status:SetText(all and (ns.GREY .. string.format(L.CLANROLL_ALL_ASKED, all.msg .. (all.item and (" " .. R.ItemName(all.item)) or "")) .. "|r")
+        or (ns.GREY .. L.CLANROLL_ALL_HINT .. "|r"))
+    p.resTitle:SetText(all and L.CLANROLL_ALL_ROWS or "")
+    for i, row in ipairs(p.allRows) do
+        local race = all and all.order[i]
+        local c = race and all.clans[race]
+        row:SetShown(c ~= nil)
+        if c then
+            row.left:SetText(string.format(L.CLAN_NAME, ns.Clans.RaceName(race))
+                .. (c.to and (ns.GREY .. "  " .. (c.to:match("^%S+") or c.to) .. "|r") or ""))
+            row.right:SetText(CU.AllStatus(c))
+        end
+    end
 end
 
 function CU.Reroll()
@@ -284,8 +357,19 @@ function CU.Refresh(p, race)
     local r = R.cur
     if r and r.race ~= race then r = nil end
     local open = r and r.open
-    p.title:SetText(ns.GOLD .. string.format(L.CLANROLL_TITLE, ns.Clans.RaceName(race)) .. "|r")
     CU.lastRace = race
+    local canAll = R.CanStartAll()
+    if not canAll then p.mode = nil end
+    p.allBtn:SetShown(canAll)
+    p.allBtn:SetText(p.mode == "all" and L.CLANROLL_ONE_BTN or L.CLANROLL_ALL_BTN)
+    local allMode = p.mode == "all"
+    for _, f in ipairs({ p.others, p.othersText, p.skip, p.skipText, p.announce, p.whisper, p.whisperText, p.reroll,
+        p.result, p.note, p.histBtn, p.missTitle }) do f:SetShown(not allMode) end
+    for _, row in ipairs(p.allRows) do row:Hide() end
+    if allMode then CU.RefreshAll(p) return end
+    local asked = R.asked and R.asked.race == race and R.asked
+    p.title:SetText(ns.GOLD .. string.format(L.CLANROLL_TITLE, ns.Clans.RaceName(race)) .. "|r"
+        .. (asked and (ns.GREY .. " " .. string.format(L.CLANROLL_ASKED_BY, asked.from:match("^%S+") or asked.from) .. "|r") or ""))
 
     -- Setup: only before a roll, and only for those who may run one.
     local setup = can and not open
@@ -301,6 +385,7 @@ function CU.Refresh(p, race)
     p.skip:SetChecked(pr.skip and true or false)
     p.whisper:SetChecked(pr.whisper and true or false)
 
+    p.start:SetText(L.CLANROLL_START_BTN)
     p.start:SetShown(not open)
     p.start:SetEnabled(can and true or false)
     p.stop:SetShown(open and r.by == ns.me or false)
@@ -515,7 +600,9 @@ function CU.RefreshPop()
     f.race = race
     local open = r and r.open
     local can = race and R.CanStart(race)
-    f.title:SetText(ns.GOLD .. string.format(L.CLANROLL_TITLE, ns.Clans.RaceName(race)) .. "|r")
+    local asked = R.asked and R.asked.race == race and R.asked
+    f.title:SetText(ns.GOLD .. string.format(L.CLANROLL_TITLE, ns.Clans.RaceName(race)) .. "|r"
+        .. (asked and (ns.GREY .. " " .. string.format(L.CLANROLL_ASKED_BY, asked.from:match("^%S+") or asked.from) .. "|r") or ""))
 
     local setup = can and not open
     f.setup:SetShown(setup and true or false)
@@ -605,3 +692,19 @@ ns.Listen("CLANROLL_OVER", function(r)
     end)
 end)
 ns.Listen("CLANROLL", function() ns.Safe(CU.RefreshPop) end)
+
+-- A leader asked to run their clan's roll (all clans): the roll filled in, the window open, a pop-up.
+ns.Listen("CLANROLL_ASKED", function(a)
+    local pr = CU.Prefs()
+    pr.msg, pr.timer, pr.countdown = a.msg, a.timer, a.countdown
+    local item = a.item or ""
+    if CU.panel then CU.panel.msg:SetText(a.msg); CU.panel.item:SetText(item) end
+    CU.OpenPop(false, a.race)
+    if pop then pop.msg:SetText(a.msg); pop.item:SetText(item) end
+    CU.RefreshPop()
+    ns.Toast.nextTab = "clans"
+    ns.Toast.Show(string.format(L.TOAST_ROLL_ASKED, a.from:match("^%S+") or a.from),
+        string.format(L.TOAST_ROLL_ASKED_TEXT, string.format(L.CLAN_NAME, ns.Clans.RaceName(a.race))), nil)
+    UI.Dirty()
+end)
+ns.Listen("CLANROLL_ALL", UI.Dirty)
