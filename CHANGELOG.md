@@ -9,7 +9,7 @@
 - When a roll ends, the addon posts one "Roll over" line to group chat for the person who started it.
 - Group members with the addon see each roll above that player's head, and the winner gets a gold crowned die for 10 seconds plus a pop-up. You can turn this off with **Show rolls above heads** in Settings.
 - The roll panel can pop out into its own small window, also opened with `/ynm roll`. It opens by itself for group members when a roll starts and they can't see it.
-- The guild master or a manager can run an **All clans roll** from its own view on the Clans tab. Tick the clans to include and set the roll up; each clan's leader gets that setup and clicks Start in their own group. If a leader isn't in a group, their second in command is asked instead.
+- The guild master or a manager can run an **All clans roll** from its own view on the Clans tab. Tick the clans to include and set the roll up; each clan's leader gets that setup and clicks Start in their own group. If a leader isn't in a group or doesn't answer, the next leader or their second in command is asked instead.
 - You see who'll be asked, how each clan is going, each clan's winner and the overall winner: the highest roll across the clans. Start roll turns into Cancel while it's going. Announce posts the winners to guild chat, or to group chat, and the last 20 all-clans rolls are saved.
 - Several clans can roll in the same raid: each player's screen follows their own clan's roll.
 

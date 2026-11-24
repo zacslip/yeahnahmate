@@ -382,7 +382,7 @@ function CA.RefreshPanel(p)
     end
     p.result:SetShown(not hist and all ~= nil)
     p.announce:SetEnabled(all ~= nil and #R.AllLines(all) > 0)
-    p.clear:SetShown(all ~= nil)
+    p.clear:SetShown(all ~= nil and not busy)          -- while it's going, Cancel is the way
 end
 
 function CA.Refresh(col, panel)

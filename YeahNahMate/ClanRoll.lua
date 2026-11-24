@@ -30,10 +30,12 @@
 --                                       checks the sender is the guild master or a manager on its own
 --                                       roster, and its setup is locked to this until it starts (30 min)
 --       CRK { id, r, g }                got it (g: I'm in a group) - the leader's addon, at once. Not in a
---                                       group: the next one who could run it is asked instead
+--                                       group, or no answer in 20 s: the next one who could run it is asked
+--                                       instead
 --       CRP { id, r, rd }               the leader clicked Start (rd: the round; a tie reroll is round 2+)
 --       CRW { id, r, w, n, tie }        it ended: winner and roll, or the tied players (sent by itself)
---       CRX { id, r, h }                cancelled (starter -> leader); h: handed on to someone else
+--       CRX { id, r, h }                withdrawn (starter -> leader): Cancel, Clear, a new all-clans roll,
+--                                       or h: handed on to someone else
 --     A report counts only from the person that clan's roll was sent to. The leader still clicks Start.
 --     A clan whose timed roll is 30 s past its end with no word shows "No result" (the leader reloaded or
 --     dropped); the guild master starts it again.
@@ -752,18 +754,29 @@ function R.AllLeft(all)
     return left
 end
 
--- Cancel: every clan that isn't done is told; a leader who hasn't started loses the ask, one who has
--- sees their roll stop (no winner, no Roll over line). Late reports are ignored.
+-- Every ask still out there is withdrawn (each leader that hasn't finished is told once): a leader
+-- who hasn't started loses the ask, one who has sees their roll stop (no winner, no Roll over line).
+local DONE = { won = true, none = true, cancelled = true }
+local function Withdraw(all)
+    if not all then return end
+    for _, race in ipairs(all.order) do
+        local row = all.clans[race]
+        if row.to and not DONE[row.status] and not row.withdrawn then
+            row.withdrawn = true
+            ToLeader(row.to, { t = "CRX", id = all.id, r = race })
+        end
+    end
+end
+
+-- Cancel: the clans that aren't done show Cancelled. Late reports are ignored.
 function R.CancelAll()
     local all = R.all
     if not all or all.cancelled or not R.CanStartAll() then return false end
     all.cancelled = true
+    Withdraw(all)
     for _, race in ipairs(all.order) do
         local row = all.clans[race]
-        if PENDING[row.status] or row.status == "noanswer" then
-            if row.to then ToLeader(row.to, { t = "CRX", id = all.id, r = race }) end
-            row.status = "cancelled"
-        end
+        if PENDING[row.status] or row.status == "noanswer" then row.status = "cancelled" end
     end
     AllChanged()
     return true
@@ -790,7 +803,8 @@ function R.OnCancel(msg, from)
     end
 end
 
--- Ask this clan's current candidate; no answer in ALL_WAIT seconds: "No answer" (or "Needs an update").
+-- Ask this clan's current candidate. No answer in ALL_WAIT seconds: the next one is asked (this one's
+-- ask withdrawn as handed on); with nobody left, "No answer" (or "Needs an update" for an old version).
 AskRow = function(all, row)
     local c = row.cands[row.ci]
     row.to, row.old, row.status, row.acked, row.sentAt = c.name, c.old or nil, "waiting", nil, GetTime()
@@ -798,8 +812,14 @@ AskRow = function(all, row)
         cd = all.countdown or nil, s = all.skip or nil })
     local to = c.name
     C_Timer.After(R.ALL_WAIT, function()
-        if R.all ~= all or row.to ~= to or row.acked or row.status ~= "waiting" then return end
-        row.status = row.old and "update" or "noanswer"
+        if R.all ~= all or all.cancelled or row.to ~= to or row.acked or row.status ~= "waiting" then return end
+        if row.ci < #row.cands then
+            ToLeader(to, { t = "CRX", id = all.id, r = row.race, h = true })
+            row.ci = row.ci + 1
+            AskRow(all, row)
+        else
+            row.status = row.old and "update" or "noanswer"
+        end
         AllChanged()
     end)
 end
@@ -813,6 +833,8 @@ function R.StartAll(opts)
         if not opts.only or opts.only[c.race] then clans[#clans + 1] = c end
     end
     if #clans == 0 then return nil end
+    if R.AllBusy() then return nil end               -- one at a time: Cancel first
+    Withdraw(R.all)                                   -- the last one's leftover asks (not in a group, ...)
     local now = GetServerTime()
     local timer = 0
     for _, t in ipairs(R.TIMERS) do if t == opts.timer then timer = t end end
@@ -902,10 +924,14 @@ for _, t in ipairs({ "CRK", "CRP", "CRW" }) do
     end)
 end
 
--- Done with an all-clans roll: its results leave the screen (the history keeps them).
+-- Done with an all-clans roll: its results leave the screen (the history keeps them), and any ask
+-- still out there is withdrawn. Not while it's going: that's Cancel.
 function R.ClearAll()
+    if R.AllBusy() then return false end
+    Withdraw(R.all)
     R.all = nil
     AllChanged()
+    return true
 end
 
 -- Dev only: the CurseForge build leaves this out (BigWigs packager's do-not-package markers).

@@ -62,25 +62,22 @@ INJECT("YNM", Msg({ t = "CRP", id = all.id, r = "Orc" }), "WHISPER", "Bingo Heel
 check(all.clans.Orc.status == "waiting", "a report from someone not asked is ignored")
 INJECT("YNM", Msg({ t = "CRK", id = all.id, r = "Orc", g = true }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(all.clans.Orc.status == "waiting" and all.clans.Orc.acked, "Bluey's addon got it")
--- Chilli's addon never answers: No answer after 20 s.
+-- Chilli's addon answers that he isn't in a group: the Trolls' roll is handed to the next who could
+-- run it, Bingo (an old version, last in line); Chilli's ask is withdrawn as "handed on".
+before = #SENT
+INJECT("YNM", Msg({ t = "CRK", id = all.id, r = "Troll" }), "WHISPER", "Chilli Heeler"); Tick(1)
+local cx0, ca0 = Sent("CRX", before + 1), Sent("CRA", before + 1)
+check(#cx0 == 1 and cx0[1]._target == "Chilli Heeler" and cx0[1].h == true and #ca0 == 1 and ca0[1]._target == "Bingo Heeler"
+    and all.clans.Troll.to == "Bingo Heeler" and all.clans.Troll.status == "waiting", "Chilli isn't in a group: handed on to Bingo")
+-- Bingo's old addon never answers, and nobody's left: Needs an update after 20 s.
 Tick(20)
-check(all.clans.Troll.status == "noanswer" and all.clans.Orc.status == "waiting", "Chilli: No answer; Bluey still waiting")
+check(all.clans.Troll.status == "update" and all.clans.Orc.status == "waiting", "Bingo: Needs an update; Bluey still waiting")
 INJECT("YNM", Msg({ t = "CRP", id = "wrong-id", r = "Orc" }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(all.clans.Orc.status == "waiting", "a report for another roll is ignored")
 INJECT("YNM", Msg({ t = "CRP", id = all.id, r = "Orc" }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(all.clans.Orc.status == "rolling", "Bluey started: Rolling")
 INJECT("YNM", Msg({ t = "CRW", id = all.id, r = "Orc", w = "Bingo Heeler", n = 88 }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(all.clans.Orc.status == "won" and all.clans.Orc.winner == "Bingo Heeler" and all.clans.Orc.roll == 88, "the Orcs' winner: Bingo, 88")
--- An answer saying "not in a group".
--- Chilli answers (late) that he isn't in a group: the Trolls' roll is handed to the next who could run
--- it, Bingo (an old version, last in line); Chilli's ask is withdrawn as "handed on".
-before = #SENT
-INJECT("YNM", Msg({ t = "CRK", id = all.id, r = "Troll" }), "WHISPER", "Chilli Heeler"); Tick(1)
-local cx0, ca0 = Sent("CRX", before + 1), Sent("CRA", before + 1)
-check(#cx0 == 1 and cx0[1]._target == "Chilli Heeler" and cx0[1].h == true and #ca0 == 1 and ca0[1]._target == "Bingo Heeler"
-    and all.clans.Troll.to == "Bingo Heeler" and all.clans.Troll.status == "waiting", "Chilli isn't in a group: handed on to Bingo")
-Tick(20)
-check(all.clans.Troll.status == "update", "Bingo's old addon never answers: Needs an update")
 
 -- The starter's screen: All clans roll beside the view switch opens its own view, laid out like My
 -- Clan: the clans on the left (tick box, who's asked, how it's going), the roll on the right (Winners,
@@ -146,7 +143,7 @@ ap.start:Click(); Tick(1)
 local asks = Sent("CRA", before + 1)
 check(R.all ~= all and #asks == 1 and asks[1].r == "Orc" and R.all.clans.Troll == nil, "Ask ticked clans: only the Orcs asked")
 check(asks[1].o == nil and asks[1].s == true and asks[1].tm == CA.Prefs().timer, "with every control (skip past winners, timer), never non-clan members")
-check(ap.status:GetText() == string.format(L.CLANROLL_ALL_ASKED, #R.all.order) and ap.clear:IsShown(), "how many were asked; Clear")
+check(ap.status:GetText() == string.format(L.CLANROLL_ALL_ASKED, #R.all.order) and not ap.clear:IsShown(), "how many were asked; no Clear while it's going")
 check(block.Orc.status:GetText():find(L.CLANROLL_ALL_WAITING, 1, true), "the Orcs: Waiting")
 -- While it's going, Ask turns into Cancel; once a clan rolls, the time left shows beside it.
 check(ap.start:GetText():find(L.CLANROLL_ALL_CANCEL, 1, true) and ap.start:IsEnabled() and R.AllBusy(), "going: Ask turns into Cancel")
@@ -198,12 +195,31 @@ local lost = R.all
 INJECT("YNM", Msg({ t = "CRK", id = lost.id, r = "Orc", g = true }), "WHISPER", "Bluey Heeler")
 INJECT("YNM", Msg({ t = "CRP", id = lost.id, r = "Orc" }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(lost.clans.Orc.status == "rolling" and R.AllBusy(), "the Orcs are rolling")
+check(not ap.clear:IsShown() and R.ClearAll() == false and R.all == lost, "while it's going there's no Clear (Cancel is the way)")
 Tick(lost.timer + R.LOST_AFTER + 2)
 check(lost.clans.Orc.status == "noresult" and not R.AllBusy() and block.Orc.status:GetText():find(L.CLANROLL_ALL_NORESULT, 1, true)
     and ap.start:GetText() == L.CLANROLL_ALL_START, "no word 30 s after the timer: No result, and Start roll is back")
+-- A new all-clans roll first withdraws the asks still out there (Bluey's lost one), then asks again.
+-- A leader who doesn't answer at all is passed over for the next one in line after 20 s.
+before = #SENT
+local quiet = R.StartAll({ msg = "Roll for", timer = 10, only = { Orc = true, Troll = true } })
+local wx = Sent("CRX", before + 1)
+check(#wx == 1 and wx[1]._target == "Bluey Heeler" and wx[1].id == lost.id and not wx[1].h, "a new roll withdraws Bluey's leftover ask")
+check(quiet.clans.Troll.to == "Chilli Heeler", "the Trolls: Chilli asked first")
+before = #SENT
+Tick(21)
+local qx, qa = Sent("CRX", before + 1), Sent("CRA", before + 1)
+check(#qx == 1 and qx[1]._target == "Chilli Heeler" and qx[1].h == true and #qa == 1 and qa[1]._target == "Bingo Heeler"
+    and quiet.clans.Troll.to == "Bingo Heeler", "Chilli never answers: handed on to Bingo after 20 s")
+INJECT("YNM", Msg({ t = "CRK", id = quiet.id, r = "Troll", g = true }), "WHISPER", "Chilli Heeler"); Tick(1)
+check(quiet.clans.Troll.to == "Bingo Heeler" and quiet.clans.Troll.status == "waiting", "Chilli's late answer doesn't count any more")
+R.CancelAll(); Tick(1)
+-- Clear withdraws asks still out there too (here: none left, the Cancel told them).
+before = #SENT
+check(R.ClearAll() and R.all == nil and #Sent("CRX", before + 1) == 0, "Clear after Cancel: nothing more to tell anyone")
 -- History keeps each all-clans roll; Clear takes the results off the screen.
 local h = R.AllHistory()
-check(#h == 4 and h[#h].id == R.all.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner (" .. #h .. ")")
+check(#h == 5 and h[#h].id == quiet.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner (" .. #h .. ")")
 ap.clear:Click(); Tick(1)
 check(R.all == nil and not ap.clear:IsShown() and not block.Orc.status:GetText():find(L.CLANROLL_ALL_WAITING, 1, true), "Clear")
 ap.histBtn:Click(); Tick(1)
@@ -337,6 +353,8 @@ ns.ClanRollUI.ClosePop()
 -- Alone (fake guildies): the fake clan leaders answer, start and report a winner; one isn't in a group.
 ns.ClanChallenge.deputies.Orc = nil       -- (from above) so nobody else can take the Orcs' roll
 SlashCmdList.YEAHNAHMATE("dev sim on"); Tick(20)
+check(R.StartAll({ msg = "x" }) == nil, "one all-clans roll at a time: a new one waits for Cancel")
+R.CancelAll(); Tick(1)
 local sim = R.StartAll({ msg = "Roll for", item = "Lucky coin", timer = 10 })
 Tick(1)
 local fakes = 0
@@ -347,11 +365,13 @@ local tied = 0
 for _, row in pairs(sim.clans) do if row.status == "tie" then tied = tied + 1 end end
 check(tied == 1 and R.AllBusy(), "one fake clan ties first: Tie, rerolling")
 Tick(15)
+Tick(40)                                  -- (the real Troll leader never answers: a fake one takes it over)
 local won, group = 0, 0
 for _, row in pairs(sim.clans) do
     if row.status == "won" then won = won + 1 end
     if row.status == "group" then group = group + 1 end
 end
+check(sim.clans.Troll.status == "won" and ns.Sim.IsFake(sim.clans.Troll.to), "the Trolls' real leader never answered: a fake one took it and won")
 check(won >= 2 and group == 1 and not R.AllBusy(), "fake leaders report winners (" .. won .. "), one not in a group; then it's over")
 SlashCmdList.YEAHNAHMATE("dev sim off"); Tick(1)
 
