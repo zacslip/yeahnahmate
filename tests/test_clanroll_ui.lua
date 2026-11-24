@@ -72,7 +72,7 @@ check(ns.ClanRollUI.Big().text:GetText() == "3" or ns.ClanRollUI.Big().text:GetT
 Tick(4)
 check(not R.cur.open and p.result:GetText():find("Bingo", 1, true), "the timer closes it: Bingo wins")
 check(WHISPERS[#WHISPERS].text == "Roll over: Roll for " .. link, "Roll over posted by the timer")
-check(p.start:IsShown() and p.announce:IsEnabled() and p.whisper:IsEnabled() and not p.reroll:IsEnabled(),
+check(p.start:IsShown() and p.announce:IsEnabled() and p.whisper:IsEnabled() and not p.reroll:IsShown(),
     "after: Announce and Whisper winner on, nothing to reroll")
 
 -- Announce with Whisper winner ticked.
@@ -90,10 +90,19 @@ p.start:Click(); Tick(1)
 Roll("Bluey Heeler", 70)
 Roll("Bingo Heeler", 70)
 p.stop:Click(); Tick(1)
-check(p.result:GetText():find("Tie at 70", 1, true) and p.reroll:IsEnabled(), "a tie: Reroll ties on")
+check(p.result:GetText():find("Tie at 70", 1, true) and p.reroll:IsShown() and p.reroll:IsEnabled(), "a tie: Reroll ties on")
+check(p.reroll._pt[2] == 12 and p.reroll._pt[3] == p.startY and p.start._pt[2] >= 12 + p.reroll._w + 4
+    and p.start._pt[3] == p.startY and not p.status:IsShown(), "Reroll ties where Start was, Start moved over one")
+-- The pop-out: Reroll ties takes Start's place, Start goes to the bottom right.
+ns.ClanRollUI.OpenPop(false, p.race); Tick(1)
+local pf = ns.ClanRollUI.Pop()
+check(pf.reroll:IsShown() and pf.reroll._pt[2] == 170 and pf.start._pt[1] == "TOPLEFT" and pf.start._pt[3] == "TOPLEFT"
+    and pf.start._pt[4] == 300 - 100, "pop-out: Reroll ties in Start's place, Start at the bottom")
+ns.ClanRollUI.ClosePop()
 local chat2 = #WHISPERS
 p.reroll:Click(); Tick(1)
 check(R.cur.open and R.cur.round == 2 and WHISPERS[chat2 + 1].text:find("^Tie reroll: "), "Reroll ties opens round 2 and says so")
+check(not p.reroll:IsShown() and p.start._pt[2] == 12 and p.status:IsShown(), "rerolling: Reroll ties gone, Start back in its place")
 Roll("Bluey Heeler", 3)
 p.stop:Click(); Tick(1)
 

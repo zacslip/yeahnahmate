@@ -149,6 +149,7 @@ function CU.Build(parent, x, y)
     sy = sy - 24
     p.skip, p.skipText = Tick(L.CLANROLL_SKIP, "skip", L.CLANROLL_SKIP_TIP, 280, sy + 2)
 
+    p.startY = sy - 2
     p.start = WithTip(Button(p, L.CLANROLL_START_BTN, 110, 12, sy - 2, function() CU.Start(p) end, 24),
         { L.CLANROLL_START_BTN, L.CLANROLL_START_TIP })
     p.stop = WithTip(Button(p, L.CLANROLL_STOP_BTN, 110, 12, sy - 2, function() R.Stop() end, 24),
@@ -183,7 +184,8 @@ function CU.Build(parent, x, y)
         R.Announce(R.cur, CU.Prefs().whisper)
     end, 24), { L.CLANROLL_ANNOUNCE, L.CLANROLL_ANNOUNCE_TIP })
     p.whisper, p.whisperText = Tick(L.CLANROLL_WHISPER_WIN, "whisper", L.CLANROLL_WHISPER_WIN_TIP, 118, by)
-    p.reroll = WithTip(Button(p, L.CLANROLL_REROLL, 110, 290, by, function() CU.Reroll() end, 24),
+    -- Reroll ties: only after my roll tied, and then first in Start's place (Start moves over one).
+    p.reroll = WithTip(Button(p, L.CLANROLL_REROLL, 110, 12, p.startY, function() CU.Reroll() end, 24),
         { L.CLANROLL_REROLL, L.CLANROLL_REROLL_TIP })
     p.result = Text(p, "", "GameFontHighlight", 410, by - 5, W - 420)
 
@@ -362,7 +364,12 @@ function CU.Refresh(p, race)
     local mine = done and r.by == ns.me
     p.announce:SetEnabled(mine and true or false)
     p.whisper:SetEnabled(mine and r.winner ~= nil and r.winner ~= ns.me or false)
-    p.reroll:SetEnabled(mine and r.ties ~= nil or false)
+    -- A tie of mine: Reroll ties first, where Start is; Start one over; the status makes room.
+    local tie = mine and r.ties ~= nil or false
+    p.reroll:SetShown(tie)
+    p.start:ClearAllPoints()
+    p.start:SetPoint("TOPLEFT", tie and 128 or 12, p.startY)
+    p.status:SetShown(not tie)
     p.note:SetText((not p.history and set and not open) and (ns.GREY .. string.format(L.CLANROLL_ASKED_SET, set.from:match("^%S+") or set.from) .. "|r")
         or (not p.history and pr.others) and (BLUE .. L.CLANROLL_OUTSIDER_TAG .. "|r " .. ns.GREY .. L.CLANROLL_OUTSIDER_NOTE .. "|r") or "")
 end
@@ -516,7 +523,7 @@ local function BuildPop()
     wc:SetHitRectInsets(0, -((wfs:GetStringWidth() or 60) + 6), 0, 0)
     WithTip(wc, { L.CLANROLL_WHISPER_WIN, L.CLANROLL_WHISPER_WIN_TIP })
     f.whisper = wc
-    f.reroll = WithTip(Button(f, L.CLANROLL_REROLL, 90, PW - 100, -PH + 32, function() CU.Reroll() end, 22),
+    f.reroll = WithTip(Button(f, L.CLANROLL_REROLL, 120, 170, -74, function() CU.Reroll() end, 24),
         { L.CLANROLL_REROLL, L.CLANROLL_REROLL_TIP })
     f:Hide()
     return f
@@ -603,7 +610,17 @@ function CU.RefreshPop()
     f.whisper:SetShown(mine and true or false)
     f.whisper:SetChecked(pr.whisper and true or false)
     f.whisper:SetEnabled(mine and r.winner ~= nil and r.winner ~= ns.me or false)
-    f.reroll:SetShown(mine and r.ties ~= nil or false)
+    -- A tie of mine: Reroll ties takes Start's place; Start moves to the bottom right.
+    local tie = mine and r.ties ~= nil or false
+    f.reroll:SetShown(tie)
+    f.start:ClearAllPoints()
+    if tie then
+        f.start:SetPoint("TOPLEFT", f, "TOPLEFT", PW - 100, -PH + 32)
+        f.start:SetWidth(90)
+    else
+        f.start:SetPoint("TOPLEFT", f.setup, "TOPLEFT", 170, -46)
+        f.start:SetWidth(120)
+    end
 end
 
 -- auto: opened by itself for a member (closes itself after the result).
