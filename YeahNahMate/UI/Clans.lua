@@ -4,11 +4,13 @@
 -- tooltip.
 -- During my clan meeting (ClanMeet.lua) that clan's list is the invite list: green = asked (ready to
 -- invite), gold = was in the group before Disband, a tick = in my group; click a name to invite them.
--- Along the top, one bar: My roles (icons), then the buttons for the picked clan (my own unless I
--- click another clan's name, which only someone who may run that clan's meetings can do), and
--- Challenge / Withdraw (two clicks) for my own clan.
--- At the right of the bar, one switch: My Clan (the picked clan's list, with the Clan roll panel,
--- UI/ClanRoll.lua, beside it) or All clans (every list side by side). Kept after /reload.
+-- Along the top, one bar: first one switch, My Clan (the picked clan's list, with the Clan roll panel,
+-- UI/ClanRoll.lua, beside it) or All clans (every list side by side), kept after /reload; for the guild
+-- master and managers, All clans roll beside it (a third view, laid out like My Clan: the clans with
+-- tick boxes on the left, the all-clans roll on the right, UI/ClanRollAll.lua); then My roles (icons),
+-- then the buttons for the picked clan (my own unless I click another clan's name, which only someone
+-- who may run that clan's meetings can do), and Challenge / Withdraw (two clicks) for my own clan.
+-- When the bar is full, Withdraw and Challenge narrow, then All clans roll, then My roles loses its label.
 -- Challenges (ClanChallenge.lua): crossed swords after a challenger's name; the list's title shows how
 -- many, hover it for the order. Right-click a name for what I may do: Invite, Whisper, and for the
 -- guild master / Clan moderators: Won / Lost on a challenger, give or end second in command.
@@ -27,7 +29,10 @@ local TOP = 82                       -- where a list's rows start, under its tit
 local UP = " |TInterface\\Buttons\\Arrow-Up-Up:10:10:0:-2|t"
 local DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:10:10:0:2|t"
 local SURE_FOR = 5                   -- seconds a "Sure? Disband" waits for the second click
-local VIEW_W = 80                    -- the My Clan / All clans switch, at the bar's right end
+local VIEW_W = 80                    -- the My Clan / All clans switch, at the bar's left end
+local ALLROLL_W = { 104, 76, 30 }    -- All clans roll (guild master and managers): full, "Roll all", a die
+local DIE = "|TInterface\\Buttons\\UI-GroupLoot-Dice-Up:18:18|t"
+local CHAL_NARROW = 36               -- Challenge's width when the bar is full: just the crossed swords
 local PAGE_W = COLS * COL_W + (COLS - 1) * GAP
 local WITHDRAW_NARROW = 84           -- Withdraw's width when the bar is full (a meeting and Make raid)
 local LEADER_ICON = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t"
@@ -194,10 +199,24 @@ end
 
 local function BuildBar(p)
     local y = 0
-    Text(p, ns.GOLD .. L.CLAN_MY_ROLES .. "|r", "GameFontNormalSmall", 4, y - 6, 60)
+    p.viewBtn = Button(p, "", VIEW_W, 0, y, function()
+        ns.settings.clanView = (ns.settings.clanView == "mine") and "all" or "mine"
+        UI.Dirty()
+    end, 24)
+    p.viewBtn:SetScript("OnEnter", function(self) Tip(self, { L.CLAN_VIEW_MINE .. " / " .. L.CLAN_VIEW_ALL, L.CLAN_VIEW_TIP }) end)
+    p.viewBtn:SetScript("OnLeave", NoTip)
+    -- All clans roll: the third view; again goes back to the view I came from.
+    p.rollBtn = Button(p, L.CLANROLL_ALL_BTN, ALLROLL_W[1], VIEW_W + 4, y, function()
+        local s = ns.settings
+        if s.clanView == "roll" then s.clanView = p.backView or "all" else p.backView = s.clanView; s.clanView = "roll" end
+        UI.Dirty()
+    end, 24)
+    p.rollBtn:SetScript("OnEnter", function(self) Tip(self, { L.CLANROLL_ALL_BTN, L.CLANROLL_ALL_TIP }) end)
+    p.rollBtn:SetScript("OnLeave", NoTip)
+    p.rolesLabel = Text(p, ns.GOLD .. L.CLAN_MY_ROLES .. "|r", "GameFontNormalSmall", 0, y - 6, 60)
     p.roleBtns = {}
     for i, r in ipairs(ns.Clans.ROLES) do
-        local b = Button(p, UI.ROLE_ICON[r], 30, 62 + (i - 1) * 32, y, function() ns.Clans.ToggleRole(r) end, 24)
+        local b = Button(p, UI.ROLE_ICON[r], 30, 0, y, function() ns.Clans.ToggleRole(r) end, 24)
         b.sel = b:CreateTexture(nil, "OVERLAY")
         b.sel:SetColorTexture(1, 0.82, 0, 1)
         b.sel:SetPoint("BOTTOMLEFT", 4, 2)
@@ -208,10 +227,9 @@ local function BuildBar(p)
         b:SetScript("OnLeave", NoTip)
         p.roleBtns[r] = b
     end
-    local line = p:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(0.9, 0.76, 0.36, 0.5)
-    line:SetPoint("TOPLEFT", 164, y - 2)
-    line:SetSize(1, 20)
+    p.rolesLine = p:CreateTexture(nil, "ARTWORK")
+    p.rolesLine:SetColorTexture(0.9, 0.76, 0.36, 0.5)
+    p.rolesLine:SetSize(1, 20)
 
     local CM = ns.ClanMeet
     p.bar = {
@@ -248,12 +266,6 @@ local function BuildBar(p)
     for k, btn in pairs(p.bar) do btn._barW = widths[k] end
     p.barHint = Text(p, "", "GameFontDisableSmall", 0, y - 6, 300)
     p.barY = y
-    p.viewBtn = Button(p, "", VIEW_W, PAGE_W - VIEW_W, y, function()
-        ns.settings.clanView = (ns.settings.clanView == "mine") and "all" or "mine"
-        UI.Dirty()
-    end, 24)
-    p.viewBtn:SetScript("OnEnter", function(self) Tip(self, { L.CLAN_VIEW_MINE .. " / " .. L.CLAN_VIEW_ALL, L.CLAN_VIEW_TIP }) end)
-    p.viewBtn:SetScript("OnLeave", NoTip)
 end
 
 -- Right-click on a name: what I may do with them.
@@ -306,6 +318,10 @@ local function Build(p)
     BuildMenu(p)
     p.roll = ns.ClanRollUI.Build(p, COL_W + GAP, -BAR_H)
     p.roll:Hide()
+    p.allCol = ns.ClanRollAllUI.BuildColumn(p, 0, -BAR_H)
+    p.allPanel = ns.ClanRollAllUI.BuildPanel(p, COL_W + GAP, -BAR_H)
+    p.allCol:Hide()
+    p.allPanel:Hide()
 end
 
 local function RefreshColumn(p, c, info, picked)
@@ -427,18 +443,54 @@ local function RefreshBar(p, picked)
         b.withdraw:SetWidth(120)
         show[#show + 1] = b.withdraw
     elseif X.CanChallenge() then
+        b.challenge._barW = 104
+        b.challenge:SetWidth(104)
+        b.challenge:SetText(SWORDS .. " " .. L.CHAL_BTN)
         show[#show + 1] = b.challenge
     end
-    -- Everything has to end before the view switch. When it's full, Withdraw narrows to its short word.
-    local total = 172
-    for _, btn in ipairs(show) do total = total + btn._barW + 4 end
-    if total - 4 > PAGE_W - VIEW_W - 4 and b.withdraw.IsShown and show[#show] == b.withdraw then
+    -- Everything has to end before the page's edge. When it's full, in this order: Withdraw and Challenge
+    -- narrow, All clans roll becomes "Roll all" then a die, then My roles loses its label.
+    local gm = ns.ClanRoll.CanStartAll()
+    local gmStep, label = 1, true
+    local function RolesX() return VIEW_W + 4 + (gm and (ALLROLL_W[gmStep] + 4) or 0) + 4 end
+    local function BtnsX() return RolesX() + (label and 172 or 112) end
+    local function Total()
+        local t = BtnsX()
+        for _, btn in ipairs(show) do t = t + btn._barW + 4 end
+        return t - 4
+    end
+    if Total() > PAGE_W and show[#show] == b.withdraw then
         b.withdraw._barW = WITHDRAW_NARROW
         b.withdraw:SetWidth(WITHDRAW_NARROW)
         local sure = p.wdAt and GetTime() - p.wdAt < SURE_FOR
         b.withdraw:SetText(sure and ("|cffff6060" .. L.CHAL_WITHDRAW_SURE_SHORT .. "|r") or L.CHAL_WITHDRAW_SHORT)
     end
-    local x = 172
+    if Total() > PAGE_W and show[#show] == b.challenge then
+        b.challenge._barW = CHAL_NARROW
+        b.challenge:SetWidth(CHAL_NARROW)
+        b.challenge:SetText(SWORDS)
+    end
+    while gm and gmStep < #ALLROLL_W and Total() > PAGE_W do gmStep = gmStep + 1 end
+    if Total() > PAGE_W then label = false end
+    p.rollBtn:SetShown(gm and true or false)
+    if gm then
+        p.rollBtn:SetWidth(ALLROLL_W[gmStep])
+        p.rollBtn:SetText(gmStep == 1 and L.CLANROLL_ALL_BTN or gmStep == 2 and L.CLANROLL_ALL_BTN_SHORT or DIE)
+        if ns.settings.clanView == "roll" then p.rollBtn:LockHighlight() else p.rollBtn:UnlockHighlight() end
+    end
+    local rx = RolesX()
+    p.rolesLabel:ClearAllPoints()
+    p.rolesLabel:SetPoint("TOPLEFT", rx + 4, p.barY - 6)
+    p.rolesLabel:SetShown(label)
+    for i, r in ipairs(ns.Clans.ROLES) do
+        local rb = p.roleBtns[r]
+        rb:ClearAllPoints()
+        rb:SetPoint("TOPLEFT", rx + (label and 62 or 4) + (i - 1) * 32, p.barY)
+    end
+    p.rolesLine:ClearAllPoints()
+    p.rolesLine:SetPoint("TOPLEFT", rx + (label and 164 or 104), p.barY - 2)
+    local limit = PAGE_W
+    local x = BtnsX()
     for _, btn in ipairs(show) do
         btn:ClearAllPoints()
         btn:SetPoint("TOPLEFT", x, p.barY)
@@ -448,7 +500,8 @@ local function RefreshBar(p, picked)
     p.barHint:SetText((meeting and meeting.race == picked) and L.CLAN_BAR_HINT or "")
     p.barHint:ClearAllPoints()
     p.barHint:SetPoint("TOPLEFT", x + 6, p.barY - 6)
-    p.barHint:SetWidth(math.max(0, PAGE_W - VIEW_W - x - 10))
+    p.barHint:SetWidth(math.max(0, limit - x - 6))
+    p.barHint:SetShown(limit - x - 6 >= 60)
     p.viewBtn:SetText(ns.settings.clanView == "mine" and L.CLAN_VIEW_ALL or L.CLAN_VIEW_MINE)
 end
 
@@ -456,8 +509,17 @@ local function Refresh(p)
     local Cl = ns.Clans
     local list = Cl.List()
     local picked = Picked(p)
+    if ns.settings.clanView == "roll" and not ns.ClanRoll.CanStartAll() then ns.settings.clanView = "all" end
+    local rollView = ns.settings.clanView == "roll"
     local mineView = ns.settings.clanView == "mine" and picked ~= nil
-    if mineView then
+    p.allCol:SetShown(rollView)
+    p.allPanel:SetShown(rollView)
+    if rollView then
+        -- All clans roll: the clans on the left, the roll beside them.
+        for _, c in ipairs(p.cols) do c:Hide() end
+        p.roll:Hide()
+        ns.ClanRollAllUI.Refresh(p.allCol, p.allPanel)
+    elseif mineView then
         -- My Clan: the picked clan's list first, the Clan roll beside it.
         local info
         for _, c in ipairs(list) do if c.race == picked then info = c end end

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.0
+
+- Clans tab: a new **My Clan / All clans** switch at the left of the bar. My Clan shows your clan's list next to the new Clan roll panel.
+- New **Clan roll**: your clan's leader, second in command, moderators, managers and the guild master can run a /roll for an item, with an optional timer and an on-screen countdown. Results sort live, with who hasn't rolled yet, tie rerolls, Announce and Whisper winner, and the last 20 rolls saved.
+- Only a normal /roll (1-100) counts, and only your first one. Rolls with another range, repeats and rolls outside the timer are ignored. If you roll again, your own screen tells you your first roll stands.
+- Options to let non-clan members roll, and to skip people who already won this meeting.
+- When a roll ends, the addon posts one "Roll over" line to group chat for the person who started it.
+- Group members with the addon see each roll above that player's head, and the winner gets a gold crowned die for 10 seconds plus a pop-up. You can turn this off with **Show rolls above heads** in Settings.
+- The roll panel can pop out into its own small window, also opened with `/ynm roll`. It opens by itself for group members when a roll starts and they can't see it.
+- The guild master or a manager can run an **All clans roll** from its own view on the Clans tab. Tick the clans to include and set the roll up; each clan's leader gets that setup and clicks Start in their own group. You see who'll be asked, how each clan is going, the winners, and the last 20 all-clans rolls. Announce posts the winners to group chat, or to guild chat.
+
 ## 0.27.1
 
 - Clan invites: "got an inv, cheers" no longer counts as someone asking for an invite. "got an inv?" and "got an inv pls" still do.

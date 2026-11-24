@@ -295,6 +295,12 @@ function Plates.ShowWinner(key, n)
 end
 function Plates.RollMarkFor(unit) return rollMarks[unit] end
 
+-- Everything down at once: the numbers and the winner's die.
+function Plates.ClearRolls()
+    rollsShown, winner = {}, nil
+    Plates.RefreshRolls()
+end
+
 ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit) if type(unit) == "string" then ShowRoll(unit) end end)
 ns.OnEvent("NAME_PLATE_UNIT_REMOVED", function(unit) if type(unit) == "string" then HideRoll(unit) end end)
 ns.Listen("SETTINGS", function() ns.Safe(Plates.RefreshRolls) end)

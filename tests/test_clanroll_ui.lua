@@ -131,3 +131,12 @@ check(res[1].roll == 100 and res[2].roll == 100, "tie: two fakes on 100")
 R.Stop()
 check(r.ties and #r.ties == 2, "a tie to reroll")
 SlashCmdList.YEAHNAHMATE("dev sim off"); Tick(1)
+
+-- The pop-out and the countdown sit over the main window (DIALOG), under pop-ups (FULLSCREEN_DIALOG).
+local ORDER = { LOW = 1, MEDIUM = 2, HIGH = 3, DIALOG = 4, FULLSCREEN = 5, FULLSCREEN_DIALOG = 6 }
+ns.ClanRollUI.OpenPop(false)
+ns.ClanRollUI.CountShow("3")
+local popS, bigS = ns.ClanRollUI.Pop():GetFrameStrata(), ns.ClanRollUI.Big():GetFrameStrata()
+check(ORDER[popS] and ORDER[popS] > ORDER.DIALOG and ORDER[popS] < ORDER.FULLSCREEN_DIALOG, "the pop-out is over the main window (" .. tostring(popS) .. ")")
+check(ORDER[bigS] and ORDER[bigS] > ORDER.DIALOG, "the countdown is over the main window (" .. tostring(bigS) .. ")")
+ns.ClanRollUI.ClosePop()

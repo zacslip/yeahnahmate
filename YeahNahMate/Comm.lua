@@ -61,7 +61,8 @@ local NAMES = { HI = { "hello", "hellos" }, ST = { "status", "statuses" }, POS =
     GTH = { "gathering", "gatherings" }, GAK = { "invite ask", "invite asks" }, ALT = { "alt link", "alt links" },
     CRS = { "clan roll start", "clan roll starts" }, CRE = { "clan roll result", "clan roll results" },
     CRA = { "all-clans roll ask", "all-clans roll asks" }, CRK = { "roll ask answer", "roll ask answers" },
-    CRP = { "clan roll started report", "clan roll started reports" }, CRW = { "clan roll winner report", "clan roll winner reports" } }
+    CRP = { "clan roll started report", "clan roll started reports" }, CRW = { "clan roll winner report", "clan roll winner reports" },
+    CRX = { "all-clans roll cancel", "all-clans roll cancels" } }
 
 local function Describe(msg)
     local t = msg.t

@@ -242,17 +242,18 @@ check(trollCol.shown:GetText() ~= "" and trollCol.rows[#trollCol.rows]:IsShown()
 trollCol.rows[1]._scripts.OnMouseWheel(trollCol.rows[1], -1); Tick(1)
 check(trollCol.offset == 3 and trollCol.rows[1].m.name ~= "Shazza Kettle", "the mouse wheel scrolls it")
 Inside(cp, "Clans")
--- My Clan: one list, the Clan roll beside it; the view switch at the bar's right end.
+-- My Clan: one list, the Clan roll beside it; the view switch at the bar's left end, My roles after it.
 local realRace = UnitRace
 function UnitRace() return "Orc", "Orc", 2 end
 UI.Dirty(); Tick(1)
 check(cp.viewBtn:GetText() == L.CLAN_VIEW_MINE and not cp.roll:IsShown(), "Clans: All clans by default, the switch offers My Clan")
+check(cp.viewBtn._pt[2] == 0 and cp.roleBtns.t._pt[2] > cp.viewBtn._w, "the switch is first, left of My roles")
 cp.viewBtn:Click(); Tick(1)
 check(ns.settings.clanView == "mine" and cp.roll:IsShown() and cp.cols[1]:IsShown() and not cp.cols[2]:IsShown(),
     "My Clan: my clan's list and the Clan roll")
 check(cp.viewBtn:GetText() == L.CLAN_VIEW_ALL, "the switch now offers All clans")
 Inside(cp, "Clans My Clan", true)
--- The fullest bar: my meeting, Make raid and Withdraw, all before the switch.
+-- The fullest bar: my meeting, Make raid and Withdraw, all inside the page.
 local realRaid, realOpen = ns.Gather.CanMakeRaid, ns.ClanChallenge.OpenOf
 ns.Gather.CanMakeRaid = function() return true end
 ns.ClanChallenge.OpenOf = function(name) if name == ns.me then return { id = 1 } end end
@@ -260,9 +261,48 @@ ns.Board.devEditor = true
 ns.ClanMeet.Start(ns.Clans.MyRace()); UI.Dirty(); Tick(1)
 local wd = cp.bar.withdraw
 check(cp.bar.raid:IsShown() and wd:IsShown(), "fullest bar: meeting buttons, Make raid and Withdraw")
-check(wd._pt[2] + wd._w <= 736 - 80 - 4 and wd:GetText() == L.CHAL_WITHDRAW_SHORT,
-    "Withdraw narrows to fit before the switch (" .. wd._pt[2] .. "+" .. wd._w .. ")")
+check(wd._pt[2] + wd._w <= 736 and wd:GetText() == L.CHAL_WITHDRAW_SHORT,
+    "Withdraw narrows to fit inside the page (" .. wd._pt[2] .. "+" .. wd._w .. ")")
 Inside(cp, "Clans fullest bar", true)
+-- As a manager (the test editor here): All clans roll right after the switch, then My roles, then the
+-- clan's buttons; nothing overlaps and nothing passes the page's edge, however full the bar is.
+local function Right(f) return f._pt[2] + f._w end
+local function BarFits(what)
+    local first, last = 736, 0
+    for _, btn in pairs(cp.bar) do
+        if btn:IsShown() then first, last = math.min(first, btn._pt[2]), math.max(last, Right(btn)) end
+    end
+    local rolesFrom, rolesTo = 736, 0
+    for _, rb in pairs(cp.roleBtns) do rolesFrom, rolesTo = math.min(rolesFrom, rb._pt[2]), math.max(rolesTo, Right(rb)) end
+    check(cp.rollBtn:IsShown() and cp.rollBtn._pt[2] >= Right(cp.viewBtn) and rolesFrom >= Right(cp.rollBtn)
+        and rolesTo <= first and last <= 736, what .. " (" .. cp.rollBtn._w .. " wide, bar ends at " .. last .. ")")
+    Inside(cp, what, true)
+end
+BarFits("fullest bar with All clans roll")
+check(cp.rollBtn._w == 30 and not cp.rolesLabel:IsShown(), "fullest: All clans roll is a die, My roles loses its label")
+ns.ClanChallenge.OpenOf = realOpen
+UI.Dirty(); Tick(1)
+local ch = cp.bar.challenge
+check(ch:IsShown() and ch._w == 36, "meeting, Make raid and Challenge: Challenge narrows to its swords")
+BarFits("bar with Challenge and All clans roll")
+local realCan = ns.ClanChallenge.CanChallenge
+ns.ClanChallenge.CanChallenge = function() return false end
+UI.Dirty(); Tick(1)
+BarFits("meeting and Make raid with All clans roll")
+check(cp.rollBtn:GetText() == L.CLANROLL_ALL_BTN_SHORT and cp.rolesLabel:IsShown(), "there: Roll all, My roles keeps its label")
+ns.ClanMeet.Stop(); UI.Dirty(); Tick(1)
+BarFits("no meeting, with All clans roll")
+check(cp.rollBtn:GetText() == L.CLANROLL_ALL_BTN, "with room: All clans roll in full")
+-- The All clans roll view: the clans on the left, the roll beside them, like My Clan.
+cp.rollBtn:Click(); Tick(1)
+check(ns.settings.clanView == "roll" and cp.allCol:IsShown() and cp.allPanel:IsShown() and not cp.roll:IsShown()
+    and not cp.cols[1]:IsShown(), "All clans roll: its own view")
+check(cp.allCol._pt[2] == cp.cols[1]._pt[2] and cp.allPanel._pt[2] == cp.roll._pt[2] and cp.allPanel._w == cp.roll._w,
+    "laid out like My Clan")
+Inside(cp, "Clans All clans roll view", true)
+cp.rollBtn:Click(); Tick(1)
+check(ns.settings.clanView == "mine" and cp.roll:IsShown(), "All clans roll again: back where I was")
+ns.ClanChallenge.CanChallenge = realCan
 ns.ClanMeet.Stop()
 ns.Board.devEditor = false
 ns.Gather.CanMakeRaid, ns.ClanChallenge.OpenOf = realRaid, realOpen

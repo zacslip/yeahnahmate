@@ -164,6 +164,12 @@ function R.CanStart(race) return race ~= nil and ns.ClanMeet.ICanRun(race) end
 function R.Start(opts)
     local race = opts.race
     if not R.CanStart(race) then return nil end
+    -- Asked by the guild master or a manager: their setup, whatever my screen says.
+    local asked = not opts.parent and R.AskedFor(race)
+    if asked then
+        opts = { race = race, msg = asked.msg, item = asked.item, timer = asked.timer, countdown = asked.countdown,
+            others = asked.others, skip = asked.skip, clicked = opts.clicked }
+    end
     if R.cur and R.cur.open then R.Stop() end
     local now = GetServerTime()
     local msg = R.Plain(opts.msg or L.CLANROLL_DEFAULT, MSG_MAX)
@@ -177,7 +183,7 @@ function R.Start(opts)
         round = (opts.parent and (opts.parent.round or 1) + 1) or 1, tied = opts.tied,
         noticed = false, endsAt = timer > 0 and (GetTime() + timer) or nil,
     }
-    if not r.ask and not opts.parent and R.asked and R.asked.race == race then
+    if not r.ask and asked then
         r.ask = { id = R.asked.id, from = R.asked.from }
         R.asked = nil
     end
@@ -316,6 +322,13 @@ function R.Stop()
         Changed()
         return
     end
+    if r.cancelled then
+        -- Cancelled by the guild master or manager who asked for it: no winner, no history, no lines.
+        R.Broadcast(r, { t = "CRE", r = r.race, id = r.id })
+        ns.Fire("CLANROLL_OVER", r)
+        Changed()
+        return
+    end
     local winner, tiedOrRoll, tieRoll = R.Winner(r)
     r.winner = winner
     r.winRoll = winner and tiedOrRoll or tieRoll
@@ -384,6 +397,35 @@ local function Channel()
     if IsInRaid and IsInRaid() then return "RAID" end
     if IsInGroup and IsInGroup() then return "PARTY" end
     return nil
+end
+
+-- The all-clans winners for chat: "All clans roll, Roll for [item]: Orc Bingo (88), ...", cut into lines
+-- that fit (a clan is never split). Only clans that finished.
+function R.AllLines(all)
+    local parts = {}
+    for _, race in ipairs(all.order) do
+        local row = all.clans[race]
+        local name = ns.Clans.RaceName(race)
+        if row.status == "won" and row.winner then
+            parts[#parts + 1] = string.format(L.CLANROLL_ALL_LINE_WON, name, row.winner:match("^[^-]+") or row.winner, row.roll or 0)
+        elseif row.status == "none" then
+            parts[#parts + 1] = string.format(L.CLANROLL_ALL_LINE_NONE, name)
+        end
+    end
+    if #parts == 0 then return {} end
+    local lines, cur = {}, string.format(L.CLANROLL_ALL_LINE_HEAD, R.Head(all))
+    local first = true
+    for _, part in ipairs(parts) do
+        local add = (first and " " or ", ") .. part
+        if #cur + #add > CHAT_MAX then
+            lines[#lines + 1] = cur
+            cur, add = L.CLANROLL_ALL_LINE_MORE, " " .. part
+        end
+        cur = cur .. add
+        first = false
+    end
+    lines[#lines + 1] = cur
+    return lines
 end
 
 -- May this screen really send for the roll? In test mode (a rank I don't really have) it stays here.
@@ -548,18 +590,154 @@ function R.PickLeader(race)
     return nil, anyOnline and "noaddon" or "offline"
 end
 
-local function AllChanged() ns.Fire("CLANROLL_ALL") end
+-- All-clans history, newest last: { id, at, by, msg, item, clans = { race -> { st, w, n, to } } }.
+function R.AllHistory()
+    local g = ns.GuildData()
+    if not g then return {} end
+    if type(g.clanRollsAll) ~= "table" then g.clanRollsAll = {} end
+    return g.clanRollsAll
+end
 
--- Ask every clan's leader. opts = { msg, item, timer, countdown }.
+-- Keep the roll I started in the history as it goes.
+local function SaveAll(all)
+    if not all then return end
+    local h = R.AllHistory()
+    local e
+    for _, x in ipairs(h) do if x.id == all.id then e = x end end
+    if not e then
+        e = { id = all.id, at = all.at, by = ns.me, msg = all.msg, item = all.item }
+        h[#h + 1] = e
+        while #h > R.HISTORY do table.remove(h, 1) end
+    end
+    e.clans = {}
+    for race, row in pairs(all.clans) do e.clans[race] = { st = row.status, w = row.winner, n = row.roll, to = row.to } end
+end
+
+local function AllChanged()
+    ns.Safe(SaveAll, R.all)
+    ns.Fire("CLANROLL_ALL")
+end
+
+-- Announce the winners: the player's click. guild = to guild chat, else party or raid chat.
+function R.AnnounceAll(all, guild)
+    all = all or R.all
+    if not all then return false end
+    local lines = R.AllLines(all)
+    if #lines == 0 then return false end
+    local chan = guild and "GUILD" or Channel()
+    if not chan then ns.Print(L.CLANROLL_NOT_IN_GROUP) return false end
+    if not RealAll() then
+        for _, line in ipairs(lines) do ns.Log("(dev) all-clans line kept on this screen: " .. line) end
+        return true
+    end
+    local send = Sender()
+    if not send then ns.Print(L.CLANROLL_CHAT_LOCKED) return false end
+    for _, line in ipairs(lines) do
+        local ok, err = pcall(send, ns.CutBytes(line, CHAT_MAX), chan)
+        if not ok then ns.Print(string.format(L.CLANROLL_CHAT_FAILED, tostring(err))) return false end
+    end
+    return true
+end
+
+-- An ask I got for this clan, while it's fresh (30 minutes): it sets the roll's setup.
+R.ASK_FOR = 30 * 60
+function R.AskedFor(race)
+    local a = R.asked
+    if a and a.race == race and GetServerTime() - (a.at or 0) <= R.ASK_FOR then return a end
+    return nil
+end
+
+-- An all-clans message to a clan's leader: to my own screen, a fake leader (dev), or a whisper.
+local function ToLeader(to, msg)
+    if to == ns.me then
+        if msg.t == "CRA" then ns.Safe(R.OnAsk, msg, ns.me) else ns.Safe(R.OnCancel, msg, ns.me) end
+    elseif ns.Sim and ns.Sim.IsFake(to) then
+        if msg.t == "CRA" and R.SimLeader then R.SimLeader(msg, to) end
+    elseif RealAll() then
+        ns.Comm.Send(msg, "WHISPER", to)
+    else
+        ns.Log("(dev) all-clans roll message kept on this screen: your rank can't start one")
+    end
+end
+
+-- Still going: a clan that may yet start or finish (until the asks run out). Then Ask turns into Cancel.
+local PENDING = { waiting = true, rolling = true, tie = true, group = true }
+function R.AllBusy(all)
+    all = all or R.all
+    if not all or all.cancelled then return false end
+    if GetServerTime() - (all.at or 0) > R.ASK_FOR + (all.timer or 0) + 60 then return false end
+    for _, row in pairs(all.clans) do if PENDING[row.status] then return true end end
+    return false
+end
+
+-- Seconds left on the longest clan roll that's running (with a timer), or nil.
+function R.AllLeft(all)
+    all = all or R.all
+    local left
+    for _, row in pairs(all and all.clans or {}) do
+        if row.status == "rolling" and row.endsAt then
+            local s = math.max(0, math.ceil(row.endsAt - GetTime()))
+            if not left or s > left then left = s end
+        end
+    end
+    return left
+end
+
+-- Cancel: every clan that isn't done is told; a leader who hasn't started loses the ask, one who has
+-- sees their roll stop (no winner, no Roll over line). Late reports are ignored.
+function R.CancelAll()
+    local all = R.all
+    if not all or all.cancelled or not R.CanStartAll() then return false end
+    all.cancelled = true
+    for _, race in ipairs(all.order) do
+        local row = all.clans[race]
+        if PENDING[row.status] or row.status == "noanswer" then
+            if row.to then ToLeader(row.to, { t = "CRX", id = all.id, r = race }) end
+            row.status = "cancelled"
+        end
+    end
+    AllChanged()
+    return true
+end
+
+-- A leader's addon: the one who asked called it off.
+function R.OnCancel(msg, from)
+    local race = ns.Clans.CleanRace(msg.r)
+    if not race or type(msg.id) ~= "string" then return end
+    local hit = false
+    if R.asked and R.asked.id == msg.id and R.asked.from == from then
+        R.asked = nil
+        hit = true
+    end
+    local r = R.cur
+    if r and r.open and r.ask and r.ask.id == msg.id and r.ask.from == from then
+        r.cancelled = true
+        R.Stop()
+        hit = true
+    end
+    if hit then
+        ns.Fire("CLANROLL_CANCELLED", from, race)
+        Changed()
+    end
+end
+
+-- Ask the leaders of the ticked clans. opts = { msg, item, timer, countdown, others, skip, only }; only = { race -> true }
+-- (nil: every clan). Nothing ticked: nothing asked.
 function R.StartAll(opts)
     if not R.CanStartAll() then return nil end
+    local clans = {}
+    for _, c in ipairs(ns.Clans.List()) do
+        if not opts.only or opts.only[c.race] then clans[#clans + 1] = c end
+    end
+    if #clans == 0 then return nil end
     local now = GetServerTime()
     local timer = 0
     for _, t in ipairs(R.TIMERS) do if t == opts.timer then timer = t end end
     local all = { id = "A" .. now .. "-" .. math.random(1000, 9999), at = now, msg = R.Plain(opts.msg or L.CLANROLL_DEFAULT, MSG_MAX),
-        item = R.Item(opts.item), timer = timer, countdown = (opts.countdown and timer > 0) or false, clans = {}, order = {} }
+        item = R.Item(opts.item), timer = timer, countdown = (opts.countdown and timer > 0) or false,
+        others = opts.others and true or false, skip = opts.skip and true or false, clans = {}, order = {} }
     R.all = all
-    for _, c in ipairs(ns.Clans.List()) do
+    for _, c in ipairs(clans) do
         local race = c.race
         local row = { race = race }
         all.clans[race] = row
@@ -569,16 +747,8 @@ function R.StartAll(opts)
             row.status = why
         else
             row.to, row.old, row.status, row.sentAt = to, why == true or nil, "waiting", GetTime()
-            local msg = { t = "CRA", id = all.id, r = race, m = all.msg, i = all.item, tm = timer, cd = all.countdown or nil }
-            if to == ns.me then
-                ns.Safe(R.OnAsk, msg, ns.me)
-            elseif ns.Sim and ns.Sim.IsFake(to) then
-                if R.SimLeader then R.SimLeader(msg, to) end
-            elseif RealAll() then
-                ns.Comm.Send(msg, "WHISPER", to)
-            else
-                ns.Log("(dev) all-clans roll ask kept on this screen: your rank can't start one")
-            end
+            ToLeader(to, { t = "CRA", id = all.id, r = race, m = all.msg, i = all.item, tm = timer, cd = all.countdown or nil,
+                o = all.others or nil, s = all.skip or nil })
         end
     end
     C_Timer.After(R.ALL_WAIT, function()
@@ -604,7 +774,8 @@ function R.OnAsk(msg, from)
     local timer = 0
     for _, t in ipairs(R.TIMERS) do if t == msg.tm then timer = t end end
     R.asked = { id = msg.id, from = from, race = race, msg = R.Plain(type(msg.m) == "string" and msg.m or "", MSG_MAX),
-        item = R.Item(type(msg.i) == "string" and msg.i or nil), timer = timer, countdown = msg.cd == true and timer > 0, at = GetServerTime() }
+        item = R.Item(type(msg.i) == "string" and msg.i or nil), timer = timer, countdown = msg.cd == true and timer > 0,
+        others = msg.o == true, skip = msg.s == true, at = GetServerTime() }
     R.Report(R.asked, { t = "CRK", id = msg.id, r = race, g = (IsInGroup and IsInGroup()) and true or nil })
     ns.Fire("CLANROLL_ASKED", R.asked)
     Changed()
@@ -615,7 +786,7 @@ function R.OnReport(msg, from)
     local all = R.all
     local race = ns.Clans.CleanRace(msg.r)
     local row = all and race and all.clans[race]
-    if not row or msg.id ~= all.id or row.to ~= from then return end
+    if not row or msg.id ~= all.id or row.to ~= from or all.cancelled then return end
     if msg.t == "CRK" then
         row.acked = true
         if row.status == "waiting" or row.status == "noanswer" or row.status == "update" then
@@ -624,6 +795,7 @@ function R.OnReport(msg, from)
     elseif msg.t == "CRP" then
         row.acked = true
         row.status = "rolling"
+        row.endsAt = (all.timer or 0) > 0 and (GetTime() + all.timer) or nil
     elseif msg.t == "CRW" then
         row.acked = true
         row.winner = type(msg.w) == "string" and ns.Key(msg.w) or nil
@@ -637,6 +809,10 @@ ns.Comm.On("CRA", function(msg, from, channel, isSelf)
     if isSelf or channel ~= "WHISPER" then return end
     R.OnAsk(msg, from)
 end)
+ns.Comm.On("CRX", function(msg, from, channel, isSelf)
+    if isSelf or channel ~= "WHISPER" then return end
+    R.OnCancel(msg, from)
+end)
 for _, t in ipairs({ "CRK", "CRP", "CRW" }) do
     ns.Comm.On(t, function(msg, from, channel, isSelf)
         if isSelf or channel ~= "WHISPER" then return end
@@ -644,8 +820,26 @@ for _, t in ipairs({ "CRK", "CRP", "CRW" }) do
     end)
 end
 
+-- Done with an all-clans roll: its results leave the screen (the history keeps them).
+function R.ClearAll()
+    R.all = nil
+    AllChanged()
+end
+
 -- Dev only: the CurseForge build leaves this out (BigWigs packager's do-not-package markers).
 --@do-not-package@
+-- /ynm dev rollreset   everything back to fresh: the roll, the all-clans roll, an ask, the history (and
+--                      with it past winners), the numbers over heads, and the setup (UI listens).
+ns.devCommands.rollreset = function()
+    R.cur, R.all, R.asked, R.unreadable = nil, nil, nil, false
+    local g = ns.GuildData()
+    if g then g.clanRolls, g.clanRollsAll = {}, {} end
+    ns.Fire("CLANROLL_RESET")
+    Changed()
+    AllChanged()
+    ns.Print("(dev) Clan rolls reset: no roll, no all-clans roll, history and past winners wiped, setup back to the defaults.")
+end
+
 -- /ynm dev rollfakes [tie]   fake guildies of the roll's clan "join" my group and /roll over the next
 --                            few seconds (needs fake guildies, /ynm dev sim on, and an open roll):
 --                            one rolls twice, one tries /roll 100 100, one from another clan rolls too.

@@ -54,7 +54,8 @@ and the WoW Terms of Use:
     "Post milestones & welcomes from my character".
   - The clan roll's "Roll over" line (`ClanRoll.lua`): one line to party or raid chat when a roll the
     player started with a click ends, by its timer or Stop. Once per roll, never anywhere else.
-    Starting a roll, announcing the winner and whispering them stay the player's own clicks.
+    Starting a roll, announcing the winner and whispering them stay the player's own clicks, and so
+    does the all-clans roll's Announce (each clan's winner to party, raid or guild chat).
 - **No workarounds.** If the game blocks something (protected functions, hardware-event
   requirements, layer detection through GUIDs, secret values), the feature is dropped.
 - **Free and readable.** Plain Lua: no obfuscation, no minifying, no encoded blobs, no paid features.

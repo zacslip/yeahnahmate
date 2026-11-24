@@ -82,10 +82,15 @@ for _, f in ipairs(files) do
         end
     elseif f:match("/ClanRoll%.lua$") and not f:find("/UI/", 1, true) then
         -- The clan roll: party/raid lines only through ToGroup() (Start and Announce are clicks; Roll
-        -- over is the one no-click line, once per roll), and the winner whisper from Announce's click.
+        -- over is the one no-click line, once per roll), the winner whisper from Announce's click, and
+        -- the all-clans Announce (a click; party/raid, or guild chat when ticked; only in AnnounceAll).
         local n = select(2, bare:gsub("SendChatMessage", ""))
-        if n > 2 or select(2, code:gsub("pcall%(send, ", "")) ~= 2 or not code:find("pcall(send, line, chan)", 1, true)
+        local allBody = code:match("function R%.AnnounceAll%(.-\nend\n") or ""
+        if n > 2 or select(2, code:gsub("pcall%(send, ", "")) ~= 3 or not code:find("pcall(send, line, chan)", 1, true)
             or not code:find('pcall(send, text, "WHISPER", nil, who)', 1, true)
+            or not allBody:find("pcall(send, ns.CutBytes(line, CHAT_MAX), chan)", 1, true)
+            or not allBody:find('local chan = guild and "GUILD" or Channel()', 1, true)
+            or select(2, code:gsub("R%.AnnounceAll%(", "")) ~= 1   -- only called from the panel's click
             or select(2, code:gsub("R%.PostOver%(r%)", "")) ~= 2   -- defined once, called once (R.Stop)
             or code:find('"SAY"', 1, true) or code:find('"YELL"', 1, true) then
             -- ("GUILD" is allowed: the CRS / CRE addon messages go there through Comm.Send, never chat.)

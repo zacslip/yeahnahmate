@@ -62,6 +62,7 @@ UI\Home.lua
 UI\Breakdown.lua
 UI\Roster.lua
 UI\ClanRoll.lua
+UI\ClanRollAll.lua
 UI\Clans.lua
 UI\Nameplates.lua
 UI\Professions.lua
