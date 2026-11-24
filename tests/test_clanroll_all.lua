@@ -169,6 +169,18 @@ check(tieAll.clans.Orc.status == "rolling" and tieAll.clans.Orc.endsAt ~= nil, "
 INJECT("YNM", Msg({ t = "CRW", id = tieAll.id, r = "Orc", w = "Chilli Heeler", n = 41 }), "WHISPER", "Bluey Heeler"); Tick(1)
 check(tieAll.clans.Orc.status == "won" and tieAll.clans.Orc.winner == "Chilli Heeler" and not R.AllBusy()
     and ap.start:GetText() == L.CLANROLL_ALL_START, "the reroll's winner ends it: Ask is back")
+-- The overall winner: the highest roll among the clans' winners (both, if they tie on it).
+local top, topRoll = R.TopOf({ Orc = { status = "won", winner = "Bingo Heeler", roll = 88 },
+    Troll = { status = "won", winner = "Chilli Heeler", roll = 93 }, Tauren = { status = "none" } })
+check(#top == 1 and top[1].winner == "Chilli Heeler" and top[1].race == "Troll" and topRoll == 93, "overall: the Trolls' Chilli, 93")
+local tt, tr = R.TopOf({ Orc = { status = "won", winner = "Bingo Heeler", roll = 93 }, Troll = { status = "won", winner = "Chilli Heeler", roll = 93 } })
+check(#tt == 2 and tr == 93, "a tie on the top roll: both named")
+check(R.TopOf({ Orc = { status = "none" } }) == nil, "no winners: no overall winner")
+check(ap.result:GetText():find("Chilli", 1, true) and ap.result:GetText():find("41", 1, true)
+    and ap.resTitle:GetText():find("1 of", 1, true), "the panel: the overall winner, and how many are done")
+check(ap.res[1].left:GetText():find("LeaderIcon", 1, true), "the top row is crowned")
+local tl = R.AllLines(tieAll)
+check(tl[#tl]:find(string.format(L.CLANROLL_ALL_LINE_TOP, "Chilli Heeler", 41), 1, true), "Announce ends with the overall winner")
 -- History keeps each all-clans roll; Clear takes the results off the screen.
 local h = R.AllHistory()
 check(#h == 3 and h[#h].id == R.all.id and h[1].clans.Orc.w == "Bingo Heeler", "History: every all-clans roll, with each clan's winner (" .. #h .. ")")

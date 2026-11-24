@@ -27,6 +27,7 @@ local DOT = {
     red = "|TInterface\\COMMON\\Indicator-Red:12:12|t",
     grey = "|TInterface\\COMMON\\Indicator-Gray:12:12|t",
 }
+local CROWN = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t"
 local ROW_DOT = { offline = "red", noaddon = "red", noanswer = "red", update = "orange", group = "orange", noleader = "grey",
     cancelled = "grey" }
 
@@ -266,7 +267,7 @@ function CA.BuildPanel(parent, x, y)
     p.guild = Tick(L.CLANROLL_ALL_GUILD, "guild", L.CLANROLL_ALL_GUILD_TIP, 118, by)
     p.clear = WithTip(Button(p, L.CLANROLL_ALL_CLEAR, 80, 290, by, function() R.ClearAll() end, 24),
         { L.CLANROLL_ALL_CLEAR, L.CLANROLL_ALL_CLEAR_TIP })
-    p.result = Text(p, "", "GameFontHighlight", 380, by - 5, W - 392, "RIGHT")
+    p.result = Text(p, "", "GameFontHighlight", 380, by - 5, W - 392, "RIGHT")   -- the overall winner
     return p
 end
 
@@ -279,6 +280,23 @@ function CA.Ask(p)
         others = pr.others, skip = pr.skip, only = only })
     p.history = false
     UI.Dirty()
+end
+
+-- The overall winner in words: "Winner: Bingo (Orc) 88", "Tied on 88: Bingo (Orc), Muffin (Scourge)", or
+-- while clans are still going "Leading: ...".
+function CA.TopText(clans, going)
+    local top, roll = ns.ClanRoll.TopOf(clans)
+    if not top then return "" end
+    local CU = ns.ClanRollUI
+    local function One(t) return CU.Who(t.winner) .. ns.GREY .. " (" .. ns.Clans.RaceName(t.race) .. ")|r" end
+    local gold = ns.GOLD .. roll .. "|r"
+    if going then return string.format(L.CLANROLL_ALL_LEADING, One(top[1]), gold) end
+    if #top > 1 then
+        local names = {}
+        for _, t in ipairs(top) do names[#names + 1] = One(t) end
+        return string.format(L.CLANROLL_ALL_TOP_TIE, gold, table.concat(names, ", "))
+    end
+    return ns.GOLD .. string.format(L.CLANROLL_ALL_TOP, One(top[1]), gold) .. "|r"
 end
 
 local function Done(row) return row.status == "won" or row.status == "none" end
@@ -326,8 +344,10 @@ function CA.RefreshPanel(p)
                     if Done({ status = x.st }) then won = won + 1 end
                 end
                 local what = (e.msg or "") .. (e.item and (" " .. R.ItemName(e.item)) or "")
-                row.left:SetText(ns.GREY .. date("%d %b %H:%M", e.at or 0) .. "|r  " .. what .. ns.GREY .. "  "
-                    .. string.format(L.CLANROLL_ALL_DONE, won, asked) .. "|r")
+                local clans = {}
+                for race, x in pairs(e.clans or {}) do clans[race] = { status = x.st, winner = x.w, roll = x.n } end
+                local top = R.TopOf(clans) and CA.TopText(clans, false) or (ns.GREY .. string.format(L.CLANROLL_ALL_DONE, won, asked) .. "|r")
+                row.left:SetText(ns.GREY .. date("%d %b %H:%M", e.at or 0) .. "|r  " .. what .. "  " .. top)
                 row.right:SetText(ns.GREY .. string.format(L.CLANROLL_HIST_BY, (e.by or "?"):match("^%S+") or "?") .. "|r")
             end
         end
@@ -338,12 +358,14 @@ function CA.RefreshPanel(p)
             if Done(row) then winners[#winners + 1] = race else pending[#pending + 1] = race end
         end
         table.sort(winners, function(a, b) return (all.clans[a].roll or -1) > (all.clans[b].roll or -1) end)
+        local top, roll = R.TopOf(all and all.clans)
         for i, row in ipairs(p.res) do
             local race = winners[i]
             row:SetShown(race ~= nil)
             if race then
                 local x = all.clans[race]
-                row.left:SetText(ClanName(race) .. "  " .. (x.winner and CU.Who(x.winner) or (ns.GREY .. L.CLANROLL_ALL_NONE .. "|r")))
+                local crown = (top and roll == x.roll and x.winner) and (CROWN .. " ") or ""
+                row.left:SetText(crown .. ClanName(race) .. "  " .. (x.winner and CU.Who(x.winner) or (ns.GREY .. L.CLANROLL_ALL_NONE .. "|r")))
                 row.right:SetText(x.roll and (ns.GOLD .. x.roll .. "|r") or "")
             end
         end
@@ -355,7 +377,8 @@ function CA.RefreshPanel(p)
                 row.right:SetText(CU.AllStatus(all.clans[race]))
             end
         end
-        p.result:SetText(all and string.format(L.CLANROLL_ALL_DONE, #winners, #all.order) or "")
+        p.resTitle:SetText(all and string.format(L.CLANROLL_ALL_WINNERS_DONE, #winners, #all.order) or L.CLANROLL_ALL_WINNERS)
+        p.result:SetText(all and CA.TopText(all.clans, R.AllBusy(all)) or "")
     end
     p.result:SetShown(not hist and all ~= nil)
     p.announce:SetEnabled(all ~= nil and #R.AllLines(all) > 0)

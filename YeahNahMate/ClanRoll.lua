@@ -400,6 +400,21 @@ local function Channel()
     return nil
 end
 
+-- The overall winner: the highest roll among the clans' winners. Returns { { race, winner }, ... } (more
+-- than one when clans' winners tie on it) and the roll, or nil. clans = { race -> { status, winner, roll } }.
+function R.TopOf(clans)
+    local top, roll = {}, nil
+    for race, row in pairs(clans or {}) do
+        if row.status == "won" and row.winner and row.roll then
+            if not roll or row.roll > roll then top, roll = { { race = race, winner = row.winner } }, row.roll
+            elseif row.roll == roll then top[#top + 1] = { race = race, winner = row.winner } end
+        end
+    end
+    table.sort(top, function(a, b) return a.race < b.race end)
+    if not roll then return nil end
+    return top, roll
+end
+
 -- The all-clans winners for chat: "All clans roll, Roll for [item]: Orc Bingo (88), ...", cut into lines
 -- that fit (a clan is never split). Only clans that finished.
 function R.AllLines(all)
@@ -414,6 +429,16 @@ function R.AllLines(all)
         end
     end
     if #parts == 0 then return {} end
+    -- Once it's over: who won overall.
+    local top, roll = R.TopOf(all.clans)
+    if top and not R.AllBusy(all) then
+        local names = {}
+        for i, t in ipairs(top) do
+            if i <= 3 then names[#names + 1] = t.winner:match("^[^-]+") or t.winner end
+        end
+        if #top > 3 then names[#names + 1] = string.format(L.CLANROLL_ALL_LINE_MORE_N, #top - 3) end
+        parts[#parts + 1] = string.format(#top > 1 and L.CLANROLL_ALL_LINE_TIE or L.CLANROLL_ALL_LINE_TOP, #names > 1 and (table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names]) or names[1], roll)
+    end
     local lines, cur = {}, string.format(L.CLANROLL_ALL_LINE_HEAD, R.Head(all))
     local first = true
     for _, part in ipairs(parts) do
