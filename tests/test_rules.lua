@@ -80,6 +80,28 @@ for _, f in ipairs(files) do
         if n > 2 or not code:find('L.MSPROBE_CHAT_LINE, "GUILD"', 1, true) then
             check(false, f .. ": the probe may only send its one GUILD test line"); bad = bad + 1
         end
+    elseif f:match("/ClanRoll%.lua$") and not f:find("/UI/", 1, true) then
+        -- The clan roll: party/raid lines only through ToGroup() (Start and Announce are clicks; Roll
+        -- over is the one no-click line, once per roll), and the winner whisper from Announce's click.
+        local n = select(2, bare:gsub("SendChatMessage", ""))
+        if n > 2 or select(2, code:gsub("pcall%(send, ", "")) ~= 2 or not code:find("pcall(send, line, chan)", 1, true)
+            or not code:find('pcall(send, text, "WHISPER", nil, who)', 1, true)
+            or select(2, code:gsub("R%.PostOver%(r%)", "")) ~= 2   -- defined once, called once (R.Stop)
+            or code:find('"SAY"', 1, true) or code:find('"YELL"', 1, true) then
+            -- ("GUILD" is allowed: the CRS / CRE addon messages go there through Comm.Send, never chat.)
+            check(false, f .. ": the clan roll may only post its group lines and the winner whisper"); bad = bad + 1
+        end
+    elseif f:match("/RollProbe%.lua$") then
+        -- The roll probe (dev only): from the developer's click, one party/raid line plus one whisper,
+        -- and one party/raid line 10 s after a click (the clan roll's "Roll over" test). Never guild,
+        -- say or yell: the group line's channel only ever comes from Channel() (RAID or PARTY).
+        local n = select(2, bare:gsub("SendChatMessage", ""))
+        local sends = select(2, code:gsub("pcall%(send, ", ""))
+        if n > 2 or sends ~= 3 or select(2, code:gsub("pcall%(send, %u+_LINE, chan%)", "")) ~= 2
+            or not code:find('pcall(send, TEST_WHISPER, "WHISPER", nil, who)', 1, true)
+            or code:find('"GUILD"', 1, true) or code:find('"SAY"', 1, true) or code:find('"YELL"', 1, true) then
+            check(false, f .. ": the roll probe may only send its party/raid test lines and one whisper"); bad = bad + 1
+        end
     elseif f:match("/Milestones%.lua$") then
         -- Milestone and welcome posts are the one no-click guild chat line. Only through
         -- Post(), only "GUILD", and every line starts with the [Yeah Nah Mate] tag (MS.Fire).

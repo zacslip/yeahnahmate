@@ -392,6 +392,9 @@ function UI.Toggle()
     if frame:IsShown() then frame:Hide() else frame:Show() end
 end
 
+-- Is the window open on this page right now?
+function UI.Showing(key) return frame ~= nil and frame:IsShown() and current == key end
+
 function UI.Open(key)
     if not frame then Build() end
     ComeBack(true)

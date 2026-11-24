@@ -86,8 +86,17 @@ local function Build(p)
         GameTooltip:Show()
     end)
     p.plates:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    p.rollPlates = UI.Check(p, L.SET_ROLL_PLATES, 176, -200, s.rollPlates ~= false, function(on) s.rollPlates = on; Changed() end)
+    p.rollPlates:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L.SET_ROLL_PLATES, 1, 0.82, 0)
+        GameTooltip:AddLine(L.SET_ROLL_PLATES_TIP, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.rollPlates:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     -- How much memory the addon uses (a guildie asked). Only our own addon, only when Settings opens.
-    p.memory = Text(p, "", "GameFontHighlightSmall", 4, -206, 346)
+    p.memory = Text(p, "", "GameFontHighlightSmall", 4, -206, 168)
     p:HookScript("OnShow", function() ns.Safe(ShowMemory, p) end)
     ShowMemory(p)
 

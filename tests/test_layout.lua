@@ -242,6 +242,35 @@ check(trollCol.shown:GetText() ~= "" and trollCol.rows[#trollCol.rows]:IsShown()
 trollCol.rows[1]._scripts.OnMouseWheel(trollCol.rows[1], -1); Tick(1)
 check(trollCol.offset == 3 and trollCol.rows[1].m.name ~= "Shazza Kettle", "the mouse wheel scrolls it")
 Inside(cp, "Clans")
+-- My Clan: one list, the Clan roll beside it; the view switch at the bar's right end.
+local realRace = UnitRace
+function UnitRace() return "Orc", "Orc", 2 end
+UI.Dirty(); Tick(1)
+check(cp.viewBtn:GetText() == L.CLAN_VIEW_MINE and not cp.roll:IsShown(), "Clans: All clans by default, the switch offers My Clan")
+cp.viewBtn:Click(); Tick(1)
+check(ns.settings.clanView == "mine" and cp.roll:IsShown() and cp.cols[1]:IsShown() and not cp.cols[2]:IsShown(),
+    "My Clan: my clan's list and the Clan roll")
+check(cp.viewBtn:GetText() == L.CLAN_VIEW_ALL, "the switch now offers All clans")
+Inside(cp, "Clans My Clan", true)
+-- The fullest bar: my meeting, Make raid and Withdraw, all before the switch.
+local realRaid, realOpen = ns.Gather.CanMakeRaid, ns.ClanChallenge.OpenOf
+ns.Gather.CanMakeRaid = function() return true end
+ns.ClanChallenge.OpenOf = function(name) if name == ns.me then return { id = 1 } end end
+ns.Board.devEditor = true
+ns.ClanMeet.Start(ns.Clans.MyRace()); UI.Dirty(); Tick(1)
+local wd = cp.bar.withdraw
+check(cp.bar.raid:IsShown() and wd:IsShown(), "fullest bar: meeting buttons, Make raid and Withdraw")
+check(wd._pt[2] + wd._w <= 736 - 80 - 4 and wd:GetText() == L.CHAL_WITHDRAW_SHORT,
+    "Withdraw narrows to fit before the switch (" .. wd._pt[2] .. "+" .. wd._w .. ")")
+Inside(cp, "Clans fullest bar", true)
+ns.ClanMeet.Stop()
+ns.Board.devEditor = false
+ns.Gather.CanMakeRaid, ns.ClanChallenge.OpenOf = realRaid, realOpen
+UI.Dirty(); Tick(1)
+check(cp.bar.withdraw:GetText() ~= L.CHAL_WITHDRAW_SHORT or not cp.bar.withdraw:IsShown(), "and back to full width with room")
+cp.viewBtn:Click(); Tick(1)
+check(ns.settings.clanView == "all" and not cp.roll:IsShown() and cp.cols[2]:IsShown(), "back to All clans")
+UnitRace = realRace
 ns.Guild.SetFakes(nil)
 SlashCmdList.YEAHNAHMATE("dev sim off"); Tick(1)
 SlashCmdList.YEAHNAHMATE("dev sim on"); Tick(16)

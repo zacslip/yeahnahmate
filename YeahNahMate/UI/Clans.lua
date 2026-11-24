@@ -7,6 +7,8 @@
 -- Along the top, one bar: My roles (icons), then the buttons for the picked clan (my own unless I
 -- click another clan's name, which only someone who may run that clan's meetings can do), and
 -- Challenge / Withdraw (two clicks) for my own clan.
+-- At the right of the bar, one switch: My Clan (the picked clan's list, with the Clan roll panel,
+-- UI/ClanRoll.lua, beside it) or All clans (every list side by side). Kept after /reload.
 -- Challenges (ClanChallenge.lua): crossed swords after a challenger's name; the list's title shows how
 -- many, hover it for the order. Right-click a name for what I may do: Invite, Whisper, and for the
 -- guild master / Clan moderators: Won / Lost on a challenger, give or end second in command.
@@ -25,6 +27,9 @@ local TOP = 82                       -- where a list's rows start, under its tit
 local UP = " |TInterface\\Buttons\\Arrow-Up-Up:10:10:0:-2|t"
 local DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:10:10:0:2|t"
 local SURE_FOR = 5                   -- seconds a "Sure? Disband" waits for the second click
+local VIEW_W = 80                    -- the My Clan / All clans switch, at the bar's right end
+local PAGE_W = COLS * COL_W + (COLS - 1) * GAP
+local WITHDRAW_NARROW = 84           -- Withdraw's width when the bar is full (a meeting and Make raid)
 local LEADER_ICON = "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t"
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
 local SWORDS = "|TInterface\\Icons\\Ability_DualWield:12:12|t"
@@ -243,6 +248,12 @@ local function BuildBar(p)
     for k, btn in pairs(p.bar) do btn._barW = widths[k] end
     p.barHint = Text(p, "", "GameFontDisableSmall", 0, y - 6, 300)
     p.barY = y
+    p.viewBtn = Button(p, "", VIEW_W, PAGE_W - VIEW_W, y, function()
+        ns.settings.clanView = (ns.settings.clanView == "mine") and "all" or "mine"
+        UI.Dirty()
+    end, 24)
+    p.viewBtn:SetScript("OnEnter", function(self) Tip(self, { L.CLAN_VIEW_MINE .. " / " .. L.CLAN_VIEW_ALL, L.CLAN_VIEW_TIP }) end)
+    p.viewBtn:SetScript("OnLeave", NoTip)
 end
 
 -- Right-click on a name: what I may do with them.
@@ -293,6 +304,8 @@ local function Build(p)
     for i = 1, COLS do p.cols[i] = BuildColumn(p, i) end
     BuildBar(p)
     BuildMenu(p)
+    p.roll = ns.ClanRollUI.Build(p, COL_W + GAP, -BAR_H)
+    p.roll:Hide()
 end
 
 local function RefreshColumn(p, c, info, picked)
@@ -410,9 +423,20 @@ local function RefreshBar(p, picked)
     if myRace and X.OpenOf(ns.me, myRace) then
         local sure = p.wdAt and GetTime() - p.wdAt < SURE_FOR
         b.withdraw:SetText(sure and ("|cffff6060" .. L.CHAL_WITHDRAW_SURE .. "|r") or L.CHAL_WITHDRAW)
+        b.withdraw._barW = 120
+        b.withdraw:SetWidth(120)
         show[#show + 1] = b.withdraw
     elseif X.CanChallenge() then
         show[#show + 1] = b.challenge
+    end
+    -- Everything has to end before the view switch. When it's full, Withdraw narrows to its short word.
+    local total = 172
+    for _, btn in ipairs(show) do total = total + btn._barW + 4 end
+    if total - 4 > PAGE_W - VIEW_W - 4 and b.withdraw.IsShown and show[#show] == b.withdraw then
+        b.withdraw._barW = WITHDRAW_NARROW
+        b.withdraw:SetWidth(WITHDRAW_NARROW)
+        local sure = p.wdAt and GetTime() - p.wdAt < SURE_FOR
+        b.withdraw:SetText(sure and ("|cffff6060" .. L.CHAL_WITHDRAW_SURE_SHORT .. "|r") or L.CHAL_WITHDRAW_SHORT)
     end
     local x = 172
     for _, btn in ipairs(show) do
@@ -424,14 +448,28 @@ local function RefreshBar(p, picked)
     p.barHint:SetText((meeting and meeting.race == picked) and L.CLAN_BAR_HINT or "")
     p.barHint:ClearAllPoints()
     p.barHint:SetPoint("TOPLEFT", x + 6, p.barY - 6)
-    p.barHint:SetWidth(math.max(40, 736 - x - 6))
+    p.barHint:SetWidth(math.max(0, PAGE_W - VIEW_W - x - 10))
+    p.viewBtn:SetText(ns.settings.clanView == "mine" and L.CLAN_VIEW_ALL or L.CLAN_VIEW_MINE)
 end
 
 local function Refresh(p)
     local Cl = ns.Clans
     local list = Cl.List()
     local picked = Picked(p)
-    for i, c in ipairs(p.cols) do RefreshColumn(p, c, list[i], picked) end
+    local mineView = ns.settings.clanView == "mine" and picked ~= nil
+    if mineView then
+        -- My Clan: the picked clan's list first, the Clan roll beside it.
+        local info
+        for _, c in ipairs(list) do if c.race == picked then info = c end end
+        info = info or { race = picked, n = 0, online = 0, leaders = Cl.Leaders(picked) }
+        RefreshColumn(p, p.cols[1], info, picked)
+        for i = 2, #p.cols do p.cols[i]:Hide() end
+        p.roll:Show()
+        p.roll.Refresh(picked)
+    else
+        p.roll:Hide()
+        for i, c in ipairs(p.cols) do RefreshColumn(p, c, list[i], picked) end
+    end
 
     local roles = Cl.MyRoles()
     for _, r in ipairs(Cl.ROLES) do
@@ -446,6 +484,7 @@ end
 UI.AddPage("clans", Build, Refresh)
 
 ns.Listen("CLANS", UI.Dirty)
+ns.Listen("CLANROLL", UI.Dirty)
 ns.Listen("CLANMEET", UI.Dirty)
 ns.Listen("BOARD", UI.Dirty)
 ns.Listen("STATUS", UI.Dirty)

@@ -10,6 +10,10 @@
 --
 -- A guildie: the game's own UnitIsInMyGuild, or the name on my roster. Forever gives the surname
 -- where the realm usually goes, so UnitName's two parts make the "First Surname" key.
+-- Clan roll (ClanRoll.lua): while a roll is open, each roller's number over their nameplate (the
+-- highest gold); when it ends, the winner gets a gold die with a small crown and their roll, pulsing,
+-- for 10 s. Its own Settings switch ("Show rolls above heads"), separate from the brackets. Found by
+-- name among the nameplates on screen: the game refuses GetNamePlateForUnit("party1").
 -- Dev: Plates.preview (/ynm dev platepreview) marks every player's nameplate, coloured by their race,
 -- to see the look in a busy town.
 local ADDON, ns = ...
@@ -198,3 +202,99 @@ ns.devCommands.platefit = function(arg)
         Plates.FIT.x, Plates.FIT.y, Plates.FIT.top, Plates.FIT.dy))
 end
 --@end-do-not-package@
+
+---------------------------------------------------------------------------------------------------
+-- Clan roll numbers over heads
+
+Plates.WINNER_SECS = 10
+local DICE = "Interface\\Buttons\\UI-GroupLoot-Dice-Up"
+local WIN_DIE = "Interface\\AddOns\\YeahNahMate\\Media\\rolldie"
+local rollsShown = {}             -- roster key -> { n = roll, top = true/nil }
+local winner = nil                -- { key, n, till, token }
+local rollMarks, rollSpare = {}, {}   -- nameplate token -> frame
+
+function Plates.RollsOn() return ns.settings and ns.settings.rollPlates ~= false end
+
+-- A nameplate's "First Surname", or nil (my own plate, or not a readable player).
+local function PlateKey(unit)
+    if not ns.Public(UnitIsPlayer and UnitIsPlayer(unit), "boolean") then return nil end
+    if UnitIsUnit and ns.Public(UnitIsUnit(unit, "player"), "boolean") then return nil end
+    return ns.UnitKey(unit)
+end
+
+local function NewRollMark()
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetSize(64, 28)
+    f.die = f:CreateTexture(nil, "OVERLAY")
+    f.die:SetPoint("LEFT")
+    f.num = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.num:SetPoint("LEFT", f.die, "RIGHT", 2, 0)
+    f:SetScript("OnUpdate", function(self)
+        if self.pulse then self:SetAlpha(0.65 + 0.35 * math.abs(math.sin(GetTime() * 3))) end
+    end)
+    return f
+end
+
+local function HideRoll(unit)
+    local f = rollMarks[unit]
+    if not f then return end
+    rollMarks[unit] = nil
+    f:Hide()
+    f:ClearAllPoints()
+    rollSpare[#rollSpare + 1] = f
+end
+
+local function ShowRoll(unit)
+    local key = Plates.RollsOn() and PlateKey(unit)
+    local won = key and winner and winner.key == key and GetTime() < winner.till
+    local e = key and rollsShown[key]
+    if not (won or e) then HideRoll(unit) return end
+    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
+    if not plate or (plate.IsForbidden and plate:IsForbidden()) then HideRoll(unit) return end
+    local f = rollMarks[unit] or table.remove(rollSpare) or NewRollMark()
+    rollMarks[unit] = f
+    if won then
+        f.die:SetTexture(WIN_DIE)
+        f.die:SetSize(28, 28)
+        f.num:SetText(ns.GOLD .. winner.n .. "|r")
+        f.pulse = true
+    else
+        f.die:SetTexture(DICE)
+        f.die:SetSize(20, 20)
+        f.num:SetText((e.top and ns.GOLD or "|cffffffff") .. e.n .. "|r")
+        f.pulse = nil
+        f:SetAlpha(1)
+    end
+    f.key = key
+    f.winning = won or nil
+    f:ClearAllPoints()
+    f:SetPoint("BOTTOM", plate, "TOP", 0, 10)
+    f:Show()
+end
+
+function Plates.RefreshRolls()
+    for unit in pairs(rollMarks) do if not live[unit] then HideRoll(unit) end end
+    for unit in pairs(live) do ns.Safe(ShowRoll, unit) end
+end
+
+-- The rolls to show: key -> { n, top }. Empty (or nil) takes them all down.
+function Plates.SetRolls(map)
+    rollsShown = map or {}
+    Plates.RefreshRolls()
+end
+
+-- The winner's crowned die and roll, for 10 s.
+function Plates.ShowWinner(key, n)
+    if not key then return end
+    local token = {}
+    winner = { key = key, n = n or 0, till = GetTime() + Plates.WINNER_SECS, token = token }
+    Plates.RefreshRolls()
+    C_Timer.After(Plates.WINNER_SECS + 0.05, function()
+        if winner and winner.token == token then winner = nil; ns.Safe(Plates.RefreshRolls) end
+    end)
+end
+function Plates.RollMarkFor(unit) return rollMarks[unit] end
+
+ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit) if type(unit) == "string" then ShowRoll(unit) end end)
+ns.OnEvent("NAME_PLATE_UNIT_REMOVED", function(unit) if type(unit) == "string" then HideRoll(unit) end end)
+ns.Listen("SETTINGS", function() ns.Safe(Plates.RefreshRolls) end)

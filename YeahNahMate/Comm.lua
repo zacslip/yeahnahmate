@@ -58,7 +58,8 @@ local NAMES = { HI = { "hello", "hellos" }, ST = { "status", "statuses" }, POS =
     GRP = { "group post", "group posts" }, SIGN = { "sign-up", "sign-ups" }, ANS = { "answer", "answers" },
     AVL = { "availability", "availabilities" }, EVT = { "event", "events" }, RSVP = { "event answer", "event answers" },
     BRD = { "board item", "board items" }, RQ = { "craft request", "craft requests" }, CL = { "I'll-make-it", "I'll-make-its" },
-    GTH = { "gathering", "gatherings" }, GAK = { "invite ask", "invite asks" }, ALT = { "alt link", "alt links" } }
+    GTH = { "gathering", "gatherings" }, GAK = { "invite ask", "invite asks" }, ALT = { "alt link", "alt links" },
+    CRS = { "clan roll start", "clan roll starts" }, CRE = { "clan roll result", "clan roll results" } }
 
 local function Describe(msg)
     local t = msg.t

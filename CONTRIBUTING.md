@@ -47,10 +47,14 @@ and the WoW Terms of Use:
 
 - **No automation.** Every invite, whisper, sign-up, trade or chat line is the player's own click or
   Enter. No auto-accept, no auto-invite, no auto-reply, nothing on a timer that plays the game for
-  them. The one deliberate exception is milestone and welcome posts in guild chat, which the guild's
-  managers switch on per card (`Milestones.lua`, tagged `[Yeah Nah Mate]`, rate-limited). A welcome is
-  posted from an online officer's character; each player can stop the addon posting from theirs
-  with the Settings tick "Post milestones & welcomes from my character".
+  them. There are two deliberate exceptions:
+  - Milestone and welcome posts in guild chat, which the guild's managers switch on per card
+    (`Milestones.lua`, tagged `[Yeah Nah Mate]`, rate-limited). A welcome is posted from an online
+    officer's character; each player can stop the addon posting from theirs with the Settings tick
+    "Post milestones & welcomes from my character".
+  - The clan roll's "Roll over" line (`ClanRoll.lua`): one line to party or raid chat when a roll the
+    player started with a click ends, by its timer or Stop. Once per roll, never anywhere else.
+    Starting a roll, announcing the winner and whispering them stay the player's own clicks.
 - **No workarounds.** If the game blocks something (protected functions, hardware-event
   requirements, layer detection through GUIDs, secret values), the feature is dropped.
 - **Free and readable.** Plain Lua: no obfuscation, no minifying, no encoded blobs, no paid features.

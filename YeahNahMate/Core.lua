@@ -423,6 +423,8 @@ function ns.Slash(input)
         ShowLog()
     elseif cmd == "errors" then
         ns.Report.Command(rest)
+    elseif cmd == "roll" then
+        if ns.ClanRollUI then ns.ClanRollUI.TogglePop() end
     elseif cmd == "reset" then
         if ns.UI and ns.UI.ResetPosition then ns.UI.ResetPosition() end
         ns.Print(L.RESET_DONE)
