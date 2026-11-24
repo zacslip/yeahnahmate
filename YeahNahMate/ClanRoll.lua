@@ -437,7 +437,9 @@ function R.AllLines(all)
             if i <= 3 then names[#names + 1] = t.winner:match("^[^-]+") or t.winner end
         end
         if #top > 3 then names[#names + 1] = string.format(L.CLANROLL_ALL_LINE_MORE_N, #top - 3) end
-        parts[#parts + 1] = string.format(#top > 1 and L.CLANROLL_ALL_LINE_TIE or L.CLANROLL_ALL_LINE_TOP, #names > 1 and (table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names]) or names[1], roll)
+        local who = names[1]
+        if #names > 1 then who = table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names] end
+        parts[#parts + 1] = string.format(#top > 1 and L.CLANROLL_ALL_LINE_TIE or L.CLANROLL_ALL_LINE_TOP, who, roll)
     end
     local lines, cur = {}, string.format(L.CLANROLL_ALL_LINE_HEAD, R.Head(all))
     local first = true
