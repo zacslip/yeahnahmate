@@ -5,7 +5,7 @@
 --     bottom. Hover a clan for the details.
 --   Right panel (like the Clan roll panel, UI/ClanRoll.lua): Message, Item, Timer, Countdown, Let
 --     non-clan members roll, Skip past winners, all sent to each leader (their setup is locked to it),
---     and Ask ticked clans where Start is. Under it: Winners and Still waiting on. At the bottom:
+--     and Start roll (asks each ticked clan's leader). Under it: Winners and Still waiting on. At the bottom:
 --     Announce (party or raid chat, or guild chat with Guild chat ticked) and Clear. History: the last
 --     20 all-clans rolls.
 -- The rules and messages are in ClanRoll.lua (R.StartAll, R.AnnounceAll, R.AllHistory).
@@ -207,7 +207,7 @@ function CA.BuildPanel(parent, x, y)
     p.others = Tick(L.CLANROLL_OTHERS, "others", L.CLANROLL_OTHERS_TIP, 280, sy + 2)
     sy = sy - 24
     p.skip = Tick(L.CLANROLL_SKIP, "skip", L.CLANROLL_SKIP_TIP, 280, sy + 2)
-    -- Ask ticked clans; while it's going, Cancel (the time left beside it).
+    -- Start roll (asks the ticked clans); while it's going, Cancel (the time left beside it).
     p.start = Button(p, L.CLANROLL_ALL_START, 130, 12, sy - 2, function()
         if R.AllBusy() then R.CancelAll() else CA.Ask(p) end
         UI.Dirty()
