@@ -63,12 +63,16 @@ local function Changed() ns.Fire("CLANROLL") end
 -- Reading a roll line
 
 -- The game's own roll line ("%s rolls %d (%d-%d)") turned into a pattern: name, roll, low, high.
+-- Built once per format (every system line runs through it while a roll is open).
+local patterns = {}
 function R.Pattern(fmt)
     fmt = ns.Public(fmt or RANDOM_ROLL_RESULT, "string")
     if not fmt then return nil end
+    if patterns[fmt] then return patterns[fmt] end
     local p = fmt:gsub("[%(%)%.%+%-%*%?%[%]%^]", "%%%0")
     p = p:gsub("%%%d?%$?s", "(.+)"):gsub("%%%d?%$?d", "(%%d+)")
-    return "^" .. p .. "$"
+    patterns[fmt] = "^" .. p .. "$"
+    return patterns[fmt]
 end
 
 -- name, roll, low, high from a game roll line, or nil.
@@ -454,7 +458,7 @@ function R.AllLines(all)
         end
         if #top > 3 then names[#names + 1] = string.format(L.CLANROLL_ALL_LINE_MORE_N, #top - 3) end
         local who = names[1]
-        if #names > 1 then who = table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names] end
+        if #names > 1 then who = table.concat(names, ", ", 1, #names - 1) .. L.CLANROLL_ALL_LINE_AND .. names[#names] end
         parts[#parts + 1] = string.format(#top > 1 and L.CLANROLL_ALL_LINE_TIE or L.CLANROLL_ALL_LINE_TOP, who, roll)
     end
     local lines, cur = {}, string.format(L.CLANROLL_ALL_LINE_HEAD, R.Head(all))

@@ -79,9 +79,7 @@ local function Guildie(unit)
     if not isPlayer then return nil end
     -- My own plate (the personal resource display) never gets brackets.
     if UnitIsUnit and ns.Public(UnitIsUnit(unit, "player"), "boolean") then return nil end
-    local name, surname = UnitName(unit)
-    name, surname = ns.Public(name, "string"), ns.Public(surname, "string")
-    local key = name and ((surname and surname ~= "") and (name .. " " .. surname) or name) or nil
+    local key = ns.UnitKey(unit)                  -- the same "First Surname" key as the roll numbers use
     local inGuild = ns.Public(UnitIsInMyGuild and UnitIsInMyGuild(unit), "boolean")
     -- The game's own answer wins when it's readable: someone else with a guildie's name isn't marked.
     -- The roster name is only used when the game won't say (nil or secret).

@@ -287,7 +287,8 @@ ns.ANNOUNCED_VERSION = ns.AnnouncedVersion(ns.VERSION,
 ns.DEFAULTS = {
     settings = {
         minimap = true,         -- show the minimap button
-        guildPlates = true,     -- brackets and the owl on guildies' nameplates (UI/Nameplates.lua)        minimapAngle = 200,
+        guildPlates = true,     -- brackets and the owl on guildies' nameplates (UI/Nameplates.lua)
+        minimapAngle = 200,     -- where the minimap button sits (degrees round the minimap)
         showWorld = true,       -- guildies' dots on the world map
         showMinimap = true,     -- and on the minimap
         dotSize = 2,            -- 1 small, 2 medium, 3 large

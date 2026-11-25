@@ -44,6 +44,7 @@ Q.MAX_POSTS = 4                 -- posts per person on one card (an answer and a
 local MAX_POSTERS = 30          -- people posting on one card
 local MAX_LINKS = 2
 local MAX_STORE = 400
+local MAX_STUBS = 200           -- posts waiting for a question we haven't heard of (a copy batch is <= 80)
 local MAX_COPIES = 80           -- questions sent to a guildie who asks
 local ASK_WINDOW = 300
 
@@ -704,6 +705,12 @@ local function TakePosts(owner, id, poster, msg, direct)
     if not q then
         -- Posts on a question we haven't heard of yet: kept until the question comes (copies).
         if owner == ns.me then return false end
+        local stubs = 0
+        for _, s in pairs(store) do if s.stub then stubs = stubs + 1 end end
+        if stubs >= MAX_STUBS then
+            ns.Log("dropped: posts from " .. poster .. " on a question we haven't heard of (too many waiting)")
+            return false
+        end
         q = { owner = owner, id = id, stub = true, at = GetServerTime(), posts = {} }
         store[key] = q
     end
@@ -975,8 +982,9 @@ local function Tidy()
     for rk, r in pairs(rms) do
         if type(r) ~= "table" or type(r.ev) ~= "number" or r.ev < now - Q.RM_KEEP then rms[rk] = nil end
     end
+    -- Stubs don't count: they have their own limit (MAX_STUBS) and must never push real cards out.
     local count = 0
-    for _ in pairs(store) do count = count + 1 end
+    for _, q in pairs(store) do if not q.stub then count = count + 1 end end
     if count > MAX_STORE then
         table.sort(ended, function(a, b) return a[2] < b[2] end)
         for i = 1, math.min(#ended, count - MAX_STORE) do store[ended[i][1]] = nil end

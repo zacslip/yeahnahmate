@@ -111,7 +111,7 @@ function Board.EditRank() return Contiguous(Board.TabMask("info")) end
 local function RankOf(name)
     if name == ns.me then return ns.Guild.myRank end
     local m = ns.Guild.Get(name)
-    return m and not m.sim and m.rankIndex or (m and m.sim and m.rankIndex) or nil
+    return m and m.rankIndex or nil               -- real and fake (sim) guildies alike
 end
 
 function Board.IsGuildMaster(name)

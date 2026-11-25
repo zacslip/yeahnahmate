@@ -62,9 +62,11 @@ end
 -- Storage. Mine per character; everyone else's per guild (cached so offline crafters stay searchable).
 
 function Prof.MyData()
+    -- Before log-in I don't know who I am: an empty list, nothing saved under a made-up name.
+    if not ns.me then return { profs = {}, pv = 0 } end
     local chars = ns.db.chars
     if type(chars) ~= "table" then chars = {}; ns.db.chars = chars end
-    local key = ns.me or "?"
+    local key = ns.me
     local c = chars[key]
     if type(c) ~= "table" then c = {}; chars[key] = c end
     if type(c.profs) ~= "table" then c.profs = {} end
@@ -508,10 +510,12 @@ end
 ns.OnEvent("SKILL_LINES_CHANGED", function() C_Timer.After(2, function() ns.Safe(CheckDropped) end) end)
 
 -- Sharing switched on or off: tell the guild (on: my list; off: forget it).
-local lastShare = nil
+-- lastShare nil means "never answered" (a first Yeah from the welcome page counts as switching on), so
+-- whether the saved settings have loaded is kept apart.
+local lastShare, shareLoaded = nil, false
 ns.Listen("SETTINGS", function()
     local now = ns.settings.shareProfessions
-    if lastShare == nil then lastShare = now; return end
+    if not shareLoaded then return end
     if now == lastShare then return end
     lastShare = now
     if now == nil then return end
@@ -519,7 +523,7 @@ ns.Listen("SETTINGS", function()
     mine.pv = GetServerTime()
     Prof.BroadcastSoon(1)
 end)
-ns.Listen("LOADED", function() lastShare = ns.settings.shareProfessions end)
+ns.Listen("LOADED", function() lastShare = ns.settings.shareProfessions; shareLoaded = true end)
 
 ---------------------------------------------------------------------------------------------------
 -- Receiving

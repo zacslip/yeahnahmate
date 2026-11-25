@@ -141,10 +141,13 @@ D.RoleSet, D.RoleString = RoleSet, RoleString
 -- My own group and availability (kept per character, so a /reload doesn't drop them).
 
 local function Mine()
+    -- Before log-in (GROUP_ROSTER_UPDATE after a /reload in a group) I don't know who I am yet:
+    -- nothing to read, and nothing saved under a made-up name.
+    if not ns.me then return {} end
     local chars = ns.db.chars
     if type(chars) ~= "table" then chars = {}; ns.db.chars = chars end
-    local c = chars[ns.me or "?"]
-    if type(c) ~= "table" then c = {}; chars[ns.me or "?"] = c end
+    local c = chars[ns.me]
+    if type(c) ~= "table" then c = {}; chars[ns.me] = c end
     return c
 end
 D.Mine = Mine

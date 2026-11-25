@@ -19,7 +19,7 @@ local CA = ns.ClanRollAllUI
 
 local COL_W, COL_H = 140, 372
 local BLOCK_H = 54                   -- one clan in the left column: name, who, status
-local BLOCKS = 6
+local BLOCKS = 5                     -- shown at once; more clans (a Horde guild can have 7) scroll
 local MISS_ROWS = 9
 local DOT = {
     green = "|TInterface\\COMMON\\Indicator-Green:12:12|t",
@@ -122,9 +122,16 @@ function CA.BuildColumn(parent, x, y)
         b:SetScript("OnClick", function(self)
             if self.race then CA.SetTicked(self.race, not CA.Ticked(self.race)) end
         end)
+        b:EnableMouseWheel(true)
+        b:SetScript("OnMouseWheel", function(_, d)
+            c.off = math.max(0, (c.off or 0) - d)
+            UI.Dirty()
+        end)
         b:Hide()
         c.blocks[i] = b
     end
+    c.off = 0
+    c.more = Text(c, "", "GameFontDisableSmall", 8, -30 - BLOCKS * BLOCK_H - 2, COL_W - 16, "CENTER")
     c.all = Button(c, L.CLANROLL_ALL_TICK_ALL, 60, 6, -COL_H + 30, function()
         wipe(CA.Prefs().allOff)
         UI.Dirty()
@@ -141,8 +148,11 @@ function CA.RefreshColumn(c)
     local all = ns.ClanRoll.all
     local _, n, total = CA.TickedSet()
     c.count:SetText(string.format(L.CLANROLL_ALL_PICKED, n, total))
+    local off = math.max(0, math.min(c.off or 0, #list - BLOCKS))
+    c.off = off
+    c.more:SetText(#list > BLOCKS and string.format(L.SHOWN, off + 1, off + BLOCKS, #list) or "")
     for i, b in ipairs(c.blocks) do
-        local cl = list[i]
+        local cl = list[off + i]
         b.race = cl and cl.race
         b:SetShown(cl ~= nil)
         if cl then

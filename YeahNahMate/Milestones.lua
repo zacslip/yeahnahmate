@@ -331,7 +331,9 @@ local CHAT_MAX = 255
 
 local function Char()
     ns.db.chars = type(ns.db.chars) == "table" and ns.db.chars or {}
-    local me = ns.me or "?"
+    -- Before log-in: nothing saved under a made-up name.
+    if not ns.me then return { msDone = {}, msPosts = {} } end
+    local me = ns.me
     if type(ns.db.chars[me]) ~= "table" then ns.db.chars[me] = {} end
     local c = ns.db.chars[me]
     if type(c.msDone) ~= "table" then c.msDone = {} end
@@ -415,11 +417,21 @@ function MS.ShowPop(from, text)
     ns.Toast.Show(L.MS_POP_TITLE, text, "milestone", { L.MS_POP_NICE, function() end })
 end
 
--- A guildie's milestone pop-up.
+-- A guildie's milestone pop-up. At most POP_PER_MIN from one guildie a minute (one level-up can fire
+-- a few cards at once; more than that is noise).
+MS.POP_PER_MIN = 3
+local popsFrom = {}
 ns.Comm.On("MSF", function(msg, from, channel, isSelf)
     if isSelf or channel ~= "GUILD" or not ns.Guild.IsMember(from) then return end
     local text = Clean(msg.m, MS.MAX_MSG)
     if text == "" then return end
+    local now, c = GetTime(), popsFrom[from]
+    if not c or now - c.start > 60 then c = { start = now, n = 0 }; popsFrom[from] = c end
+    c.n = c.n + 1
+    if c.n > MS.POP_PER_MIN then
+        ns.Log("dropped: a milestone pop-up from " .. from .. " (more than " .. MS.POP_PER_MIN .. " a minute)")
+        return
+    end
     MS.ShowPop(from, text)
 end)
 
@@ -754,9 +766,16 @@ function MS.OnJoin(newName)
     end)
 end
 
--- Another addon posted it: nobody else does.
+-- Another addon posted it: nobody else does. Only from someone who may post the welcome (rank index
+-- <= wr on my roster), so nobody else can stop it going out.
 ns.Comm.On("MSW", function(msg, from, channel, isSelf)
     if isSelf or channel ~= "GUILD" or not ns.Guild.IsMember(from) or type(msg.n) ~= "string" then return end
+    local m = ns.Guild.Get(from)
+    local rank = m and m.rankIndex
+    if type(rank) ~= "number" or rank > MS.Welcome().wr then
+        ns.Log("dropped: a welcome-done from " .. from .. ", who can't post the welcome")
+        return
+    end
     local key = ns.Key(msg.n)
     if key then MarkWelcomed(key) end
 end)

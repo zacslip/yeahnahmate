@@ -486,7 +486,8 @@ local function Take(owner, msg, direct)
         ns.Log("dropped: bad request from " .. owner)
         return false
     end
-    local r = old or { owner = owner, id = msg.id, at = now, cl = {} }
+    -- When it was posted: a copy says (an old request heard at log-in isn't the newest); else now.
+    local r = old or { owner = owner, id = msg.id, at = type(msg.at) == "number" and math.min(msg.at, now) or now, cl = {} }
     r.rid, r.it, r.note = rid, it, Clean(msg.note, MAX_NOTE)
     r.n = math.max(1, math.min(20, math.floor(tonumber(msg.n) or 1)))
     r.u = math.min(msg.u, now + R.LASTS)
