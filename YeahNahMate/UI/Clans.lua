@@ -86,7 +86,7 @@ local function BuildColumn(p, i)
         if c.race and ns.ClanMeet.ICanRun(c.race) then p.sel = c.race; UI.Dirty() end
     end)
     c.head:SetScript("OnEnter", function(self)
-        if c.race and ns.ClanMeet.ICanRun(c.race) and c.race ~= Picked(p) then Tip(self, { L.CLAN_PICK_TIP }) end
+        if c.race and ns.ClanMeet.ICanRun(c.race) and c.race ~= Picked(p) then Tip(self, { L.CLAN_PICK_TITLE, L.CLAN_PICK_TIP }) end
     end)
     c.head:SetScript("OnLeave", NoTip)
     c.title = Text(c, "", "GameFontNormal", 8, -8, COL_W - 16)
