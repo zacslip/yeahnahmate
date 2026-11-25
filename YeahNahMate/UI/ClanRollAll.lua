@@ -183,6 +183,7 @@ function CA.BuildPanel(parent, x, y)
         p.histOff = 0
         UI.Dirty()
     end, 22), { L.CLANROLL_HISTORY, L.CLANROLL_ALL_HIST_TIP })
+    ns.ClanRollHelp.AddButton(p, W - 194, ns.ClanRollHelp.BuildAll)
 
     -- Setup: everything here goes to each leader.
     local sy = -34

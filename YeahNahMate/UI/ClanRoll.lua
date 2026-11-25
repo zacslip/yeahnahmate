@@ -139,6 +139,7 @@ function CU.Build(parent, x, y)
     end, 22), { L.CLANROLL_HISTORY, L.CLANROLL_HISTORY_TIP })
     p.popBtn = WithTip(Button(p, L.CLANROLL_POP, 90, W - 194, -6, function() CU.OpenPop(false, p.race) end, 22),
         { L.CLANROLL_POP, L.CLANROLL_POP_TIP })
+    ns.ClanRollHelp.AddButton(p, W - 288, ns.ClanRollHelp.BuildLeader)
 
     -- Setup
     local sy = -34
