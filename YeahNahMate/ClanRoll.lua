@@ -18,7 +18,8 @@
 --   * Group members with the addon follow the roll on their own screens (numbers over heads, the
 --     countdown, their own "first roll stands" notice, the winner's die and pop-up), from:
 --       CRS { r, id, m, i, tm, cd, o, s, tie, rd }   a roll started (GUILD)
---       CRE { r, id, w, n, tie }                     it ended: winner and roll, or the tied players
+--       CRE { r, id, w, n, tie, x }                  it ended: winner and roll, or the tied players
+--                                                    (x: called off by whoever asked for it)
 --     Each screen checks the sender may run that clan's rolls (its own roster) and is in its group;
 --     followers count rolls themselves for the screen, but the winner is always the starter's.
 --   * Group members only follow their own clan's roll (another clan's only when it lets non-clan members
@@ -169,11 +170,16 @@ end
 
 function R.CanStart(race) return race ~= nil and ns.ClanMeet.ICanRun(race) end
 
+-- Is a roll of my own open (not one I'm only following)?
+function R.Busy() return R.cur ~= nil and R.cur.open and not R.cur.follower or false end
+
 -- Start a roll. opts = { race, msg, item, timer, countdown, others, skip, tied (keys) , parent }.
 -- Returns the roll, or nil if I may not run this clan's rolls.
 function R.Start(opts)
     local race = opts.race
     if not R.CanStart(race) then return nil end
+    -- (By design a new roll closes an open one, with its Roll over; the screen greys Start out and
+    -- ignores a second click while my own roll runs: R.Busy.)
     -- Asked by the guild master or a manager: their setup, whatever my screen says.
     local asked = not opts.parent and R.AskedFor(race)
     if asked then
@@ -335,7 +341,7 @@ function R.Stop()
     end
     if r.cancelled then
         -- Cancelled by the guild master or manager who asked for it: no winner, no history, no lines.
-        R.Broadcast(r, { t = "CRE", r = r.race, id = r.id })
+        R.Broadcast(r, { t = "CRE", r = r.race, id = r.id, x = true })
         ns.Fire("CLANROLL_OVER", r)
         Changed()
         return
@@ -499,7 +505,8 @@ function R.PostStart(r) return ToGroup(r, R.StartLine(r)) end
 -- Roll over: once per roll, no click (R.Stop only calls it for a roll started with a click).
 function R.PostOver(r) return ToGroup(r, R.OverLine(r)) end
 
--- Announce buttons: a click within this many seconds of the last one does nothing (everything throttled).
+-- Announce buttons: within this many seconds of one that went, a click does nothing (everything
+-- throttled). A click that failed (not in a group, chat locked) can be tried again at once.
 R.ANNOUNCE_GAP = 3
 local announcedAt, announcedAllAt
 local function TooSoon(at) return at and GetTime() - at < R.ANNOUNCE_GAP end
@@ -510,8 +517,8 @@ function R.Announce(r, whisper)
     r = r or R.cur
     if not r or r.open or r.cancelled then return false end
     if TooSoon(announcedAt) then return false end
-    announcedAt = GetTime()
     local ok = ToGroup(r, R.AnnounceLine(r))
+    if ok then announcedAt = GetTime() end
     if ok and whisper and r.winner and r.winner ~= ns.me then
         if not Real(r) then ns.Log("(dev) clan roll whisper kept on this screen") return true end
         local send = Sender()
@@ -575,6 +582,8 @@ ns.Comm.On("CRE", function(msg, from, channel, isSelf)
     local r = R.cur
     if not r or not r.follower or r.id ~= msg.id or r.by ~= from then return end
     r.open = false
+    r.ended = true                                -- the starter's word is in (the result is final)
+    r.cancelled = msg.x == true or nil            -- called off by the guild master or manager who asked
     r.closedAt = r.closedAt or GetServerTime()
     r.winner = type(msg.w) == "string" and ns.Key(msg.w) or nil
     r.winRoll = tonumber(msg.n)
@@ -686,15 +695,17 @@ function R.AnnounceAll(all, guild)
     local lines = R.AllLines(all)
     if #lines == 0 then return false end
     if TooSoon(announcedAllAt) then return false end
-    announcedAllAt = GetTime()
     local chan = guild and "GUILD" or Channel()
     if not chan then ns.Print(L.CLANROLL_NOT_IN_GROUP) return false end
     if not RealAll() then
         for _, line in ipairs(lines) do ns.Log("(dev) all-clans line kept on this screen: " .. line) end
+        announcedAllAt = GetTime()
         return true
     end
     local send = Sender()
     if not send then ns.Print(L.CLANROLL_CHAT_LOCKED) return false end
+    -- From the first line out, it counts as sent (a retry would post the first lines twice).
+    announcedAllAt = GetTime()
     for _, line in ipairs(lines) do
         local ok, err = pcall(send, ns.CutBytes(line, CHAT_MAX), chan)
         if not ok then ns.Print(string.format(L.CLANROLL_CHAT_FAILED, tostring(err))) return false end

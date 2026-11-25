@@ -125,4 +125,62 @@ R.CanStartAll = realCan
 ns.settings.clanView = "mine"
 UI.Dirty(); Tick(1)
 
+-- Second pass (review of the fixes above).
+-- a. /ynm roll (no clan given) shows the latest roll, not the clan the window showed last time.
+CU.OpenPop(true, "Troll"); Tick(1)
+CU.ClosePop()
+R.cur = { id = "o1", race = "Orc", by = ns.me, open = false, rolls = {}, n = 0, timer = 0, msg = "Roll for",
+    winner = "Bingo Heeler", winRoll = 61 }
+CU.TogglePop(); Tick(1)
+check(CU.Pop().title:GetText():find("Orc", 1, true) and CU.Pop().result:GetText():find("Bingo", 1, true),
+    "a: /ynm roll shows my latest Orc result, not the old Troll window")
+CU.ClosePop()
+
+-- b. A failed Announce (not in a group) can be tried again straight away.
+Tick(R.ANNOUNCE_GAP + 0.1)
+FAKE.group, FAKE.party = 0, {}
+w0 = #WHISPERS
+check(not R.Announce(R.cur) and #WHISPERS == w0, "b: Announce out of a group fails")
+FAKE.group, FAKE.party = 4, { "Bluey Heeler", "Bingo Heeler", "Chilli Heeler" }
+check(R.Announce(R.cur) and #WHISPERS == w0 + 1, "b: and works at once when tried again in a group")
+
+-- c. Followers of a cancelled roll see Cancelled; a followed roll's result waits for the starter's word.
+R.cur = nil
+INJECT("YNM", Msg({ t = "CRS", r = "Orc", id = "C-1", m = "Roll for", tm = 0, rd = 1 }), "GUILD", "Bluey Heeler"); Tick(1)
+check(R.cur and R.cur.follower and R.cur.open, "c: following Bluey's roll")
+R.cur.open = false                              -- closed on my screen, Bluey's word not in yet
+check(CU.ResultText(R.cur) == "", "c: no result until the starter's word")
+R.cur.open = true
+INJECT("YNM", Msg({ t = "CRE", r = "Orc", id = "C-1", x = true }), "GUILD", "Bluey Heeler"); Tick(1)
+UI.Dirty(); Tick(1)
+check(R.cur.cancelled and p.result:GetText():find(L.CLANROLL_ALL_CANCELLED, 1, true), "c: a follower's panel says Cancelled")
+INJECT("YNM", Msg({ t = "CRS", r = "Orc", id = "C-2", m = "Roll for", tm = 0, rd = 1 }), "GUILD", "Bluey Heeler"); Tick(1)
+INJECT("YNM", Msg({ t = "CRE", r = "Orc", id = "C-2" }), "GUILD", "Bluey Heeler"); Tick(1)
+check(CU.ResultText(R.cur):find(L.CLANROLL_NOBODY_SHORT, 1, true), "c: no winner from the starter: Nobody rolled")
+
+-- d. An ask for my clan while I follow another clan's open roll: the pop-out shows my clan's setup and Start.
+R.cur = { id = "t9", race = "Troll", by = "Chilli Heeler", follower = true, open = true, rolls = {}, n = 0, timer = 0, msg = "Roll for" }
+Ask("R4-D")
+pop = CU.Pop()
+check(pop.title:GetText():find("Orc", 1, true) and pop.setup:IsShown() and pop.start:IsEnabled(), "d: the asked clan's setup and Start")
+pop.start:Click(); Tick(1)
+check(R.cur.race == "Orc" and R.cur.by == ns.me and R.cur.open and R.cur.ask, "d: Start in the pop-out runs it")
+R.Stop(); Tick(1)
+CU.ClosePop()
+
+-- e. My Clan on History doesn't count as seeing the roll.
+UI.Dirty(); Tick(1)
+p.history = true
+check(not CU.RollVisible("Orc"), "e: History showing: the pop-out would open")
+p.history = false
+
+-- f. My own roll for another clan is open: Start on this clan's panel is greyed out, and a click does nothing.
+R.cur = { id = "t8", race = "Troll", by = ns.me, open = true, rolls = {}, n = 0, timer = 0, msg = "Roll for" }
+UI.Dirty(); Tick(1)
+check(p.start:IsShown() and not p.start:IsEnabled(), "f: Start greyed out while my Troll roll runs")
+CU.Start(p); Tick(1)
+check(R.cur.race == "Troll" and R.cur.open, "f: a click on it doesn't throw my open roll away")
+R.cur.open = false
+UI.Dirty(); Tick(1)
+
 check(#ERRORS == 0, "no errors (" .. tostring(ERRORS[1]) .. ")")

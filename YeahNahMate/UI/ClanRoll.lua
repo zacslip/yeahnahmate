@@ -54,7 +54,8 @@ end
 local function StartTip(f, getRace, tip)
     if f.SetMotionScriptsWhileDisabled then f:SetMotionScriptsWhileDisabled(true) end
     f:SetScript("OnEnter", function(self)
-        if ns.ClanRoll.CanStart(getRace()) then Tip(self, { L.CLANROLL_START_BTN, tip })
+        if ns.ClanRoll.CanStart(getRace()) and ns.ClanRoll.Busy() then Tip(self, { L.CLANROLL_START_BTN, L.CLANROLL_BUSY_TIP })
+        elseif ns.ClanRoll.CanStart(getRace()) then Tip(self, { L.CLANROLL_START_BTN, tip })
         else Tip(self, { L.CLANROLL_START_BTN, L.CLANROLL_ONLY_LEADERS }) end
     end)
     f:SetScript("OnLeave", NoTip)
@@ -82,6 +83,20 @@ local function Who(key)
     end
     return short
 end
+
+-- The result line of a closed roll, the same in the panel and the pop-out. A followed roll shows
+-- nothing until its starter's word is in.
+function CU.ResultText(r)
+    if not r or r.open then return "" end
+    if r.cancelled then return ns.GREY .. L.CLANROLL_ALL_CANCELLED .. "|r" end
+    if r.winner then return string.format(L.CLANROLL_WINNER, Who(r.winner), ns.GOLD .. (r.winRoll or "") .. "|r") end
+    if r.ties then return string.format(L.CLANROLL_TIE, r.winRoll or 0) end
+    if r.follower and not r.ended then return "" end
+    return ns.GREY .. L.CLANROLL_NOBODY_SHORT .. "|r"
+end
+
+-- My closed roll, with something to announce (not one called off).
+local function MineDone(r) return r ~= nil and not r.open and r.by == ns.me and not r.cancelled end
 
 local function Rows(parent, x, y, w, n)
     local rows = {}
@@ -215,13 +230,11 @@ function CU.TakeItem(p)
     end
 end
 
--- A roll of my own already open (a second click before the screen caught up). One I'm only following
--- (another clan's, or another leader's) doesn't stop me: R.Start closes it.
-local function Busy(R) return R.cur and R.cur.open and not R.cur.follower end
-
+-- A roll of my own already open (a second click before the screen caught up): nothing (R.Start says no
+-- too). One I'm only following (another clan's, or another leader's) gives way.
 function CU.Start(p)
     local R = ns.ClanRoll
-    if Busy(R) then return end
+    if R.Busy() then return end
     local pr = CU.Prefs()
     if not R.AskedFor(p.race) then pr.msg = p.msg:GetText() end
     local r = R.Start({ race = p.race, msg = pr.msg, item = p.item:GetText(), timer = pr.timer,
@@ -350,7 +363,7 @@ function CU.Refresh(p, race)
 
     p.start:SetText(L.CLANROLL_START_BTN)
     p.start:SetShown(not open)
-    p.start:SetEnabled(can and true or false)
+    p.start:SetEnabled(can and not R.Busy() or false)     -- my own roll for another clan: Stop it first
     p.stop:SetShown(open and r.by == ns.me or false)
 
     -- Status: time left, unreadable rolls, or who can run it.
@@ -373,14 +386,8 @@ function CU.Refresh(p, race)
     if p.history then FillHistory(p) else FillResults(p, r) end
 
     -- After: the result, Announce and Reroll ties.
-    local done = r and not r.open
-    local result = ""
-    if done and r.cancelled then result = ns.GREY .. L.CLANROLL_ALL_CANCELLED .. "|r"
-    elseif done and r.winner then result = string.format(L.CLANROLL_WINNER, Who(r.winner), ns.GOLD .. (r.winRoll or "") .. "|r")
-    elseif done and r.ties then result = string.format(L.CLANROLL_TIE, r.winRoll or 0)
-    elseif done then result = ns.GREY .. L.CLANROLL_NOBODY_SHORT .. "|r" end
-    p.result:SetText(result)
-    local mine = done and r.by == ns.me and not r.cancelled
+    p.result:SetText(CU.ResultText(r))
+    local mine = MineDone(r)
     -- Announce and Whisper winner: only for those who may run this clan's rolls.
     for _, f in ipairs({ p.announce, p.whisper, p.whisperText }) do f:SetShown(can and true or false) end
     p.announce:SetEnabled(mine and true or false)
@@ -552,7 +559,7 @@ end
 
 function CU.StartFrom(f)
     local R = ns.ClanRoll
-    if Busy(R) then return end
+    if R.Busy() then return end
     local pr = CU.Prefs()
     if not R.AskedFor(f.race) then pr.msg = f.msg:GetText() end
     local r = R.Start({ race = f.race, msg = pr.msg, item = f.item:GetText(), timer = pr.timer,
@@ -567,9 +574,12 @@ function CU.RefreshPop()
     if not f or not f:IsShown() then return end
     local R = ns.ClanRoll
     local r = R.cur
-    -- An open roll shows; otherwise the clan this window was opened for (an ask for my clan beats an
-    -- old closed roll of another clan), then the last roll's.
-    local race = (r and r.open and r.race) or f.race or (r and r.race) or CU.lastRace or ns.Clans.MyRace()
+    -- An open roll shows, unless it's one I'm only following and this window was opened for another
+    -- clan on purpose (an ask, or Pop out on that clan's panel: its setup and Start). Otherwise the clan
+    -- it was opened for (OpenPop: that clan, or the latest roll's).
+    local race
+    if r and r.open and not (r.follower and f.pinned and f.pinned ~= r.race) then race = r.race
+    else race = f.race or (r and r.race) or CU.lastRace or ns.Clans.MyRace() end
     if r and r.race ~= race then r = nil end
     f.race = race
     local pr, set = CU.Setup(race)
@@ -590,6 +600,7 @@ function CU.RefreshPop()
         f.timer:SetText(pr.timer > 0 and (pr.timer .. "s") or L.CLANROLL_TIMER_OFF)
         f.down:SetEnabled(not set and pr.timer > 0)
         f.up:SetEnabled(not set and pr.timer < R.TIMERS[#R.TIMERS])
+        f.start:SetEnabled(not R.Busy())
     end
     f.head:SetShown(not setup)
     f.status:SetShown(not setup)
@@ -622,14 +633,8 @@ function CU.RefreshPop()
     local missing = open and R.Missing(r) or {}
     f.missText:SetText(open and string.format(L.CLANROLL_MISSING, #missing) .. (#missing > 0 and (ns.GREY .. "  " .. L.CLANROLL_HOVER .. "|r") or "") or "")
 
-    local done = r and not r.open
-    local result = ""
-    if done and r.cancelled then result = ns.GREY .. L.CLANROLL_ALL_CANCELLED .. "|r"
-    elseif done and r.winner then result = string.format(L.CLANROLL_WINNER, Who(r.winner), ns.GOLD .. (r.winRoll or "") .. "|r")
-    elseif done and r.ties then result = string.format(L.CLANROLL_TIE, r.winRoll or 0)
-    elseif done and not r.follower then result = ns.GREY .. L.CLANROLL_NOBODY_SHORT .. "|r" end
-    f.result:SetText(result)
-    local mine = done and r.by == ns.me and not r.cancelled
+    f.result:SetText(CU.ResultText(r))
+    local mine = MineDone(r)
     f.announce:SetShown(mine and can and true or false)
     f.whisper:SetShown(mine and can and true or false)
     f.whisperText:SetShown(mine and can and true or false)
@@ -652,23 +657,28 @@ end
 function CU.OpenPop(auto, race)
     pop = pop or BuildPop()
     if not pop:IsShown() then pop.auto = auto and true or nil end
-    pop.race = race or pop.race
+    -- No clan given (/ynm roll): the latest roll's, not whatever the window showed last time.
+    local cur = ns.ClanRoll.cur
+    pop.race = race or (cur and cur.race) or pop.race
+    pop.pinned = (not auto and race) or nil
     if race and pop.msg then pop.msg:SetText(CU.Prefs().msg or "") end
     pop:Show()
     CU.RefreshPop()
 end
-function CU.ClosePop() if pop then pop:Hide(); pop.auto = nil end end
+function CU.ClosePop() if pop then pop:Hide(); pop.auto, pop.pinned = nil, nil end end
 function CU.TogglePop()
     if pop and pop:IsShown() then CU.ClosePop() else CU.OpenPop(false) end
 end
 function CU.Pop() return pop end
 
 -- Can I see this clan's roll already? The pop-out, or the main window on Clans > My Clan showing that
--- clan (race nil: any clan).
+-- clan's roll (not its History; race nil: any clan).
 function CU.RollVisible(race)
     if pop and pop:IsShown() then return true end
     if not (UI.Showing and UI.Showing("clans") and ns.settings.clanView == "mine") then return false end
-    return race == nil or (CU.panel ~= nil and CU.panel.race == race)
+    local p = CU.panel
+    if not (p and p:IsShown() and not p.history) then return false end
+    return race == nil or p.race == race
 end
 
 ns.Listen("CLANROLL_FOLLOW", function(r)
