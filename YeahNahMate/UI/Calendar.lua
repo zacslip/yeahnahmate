@@ -430,6 +430,7 @@ local function BuildForm(p)
         fields.pl = f.place:GetText() or ""
         if f.spot then fields.pm, fields.px, fields.py = f.spot[1], f.spot[2], f.spot[3] else fields.pm = 0 end
         local key, why = ns.Calendar.Save(p.editKey, fields)
+        if why == "full" then ns.Print(string.format(L.EVENT_FULL, ns.Calendar.MAX_OWN)) return end
         if not key then ns.Print(L.EVENT_SAVE_FAILED[why] or L.EVENT_NEEDS_TITLE) return end
         p.mode = nil
         UI.Dirty()
@@ -510,7 +511,18 @@ local function RefreshForm(p)
             y = y - b.h
         end
     end
-    f.tip:SetShown(y + 80 - 32 - 28 >= -410)      -- the tip only where it fits
+    -- A new event when I already have the most upcoming ones: say why up front (Save says it again
+    -- in chat, for when the form is too tall to show it here).
+    local full = not p.editKey and ns.Calendar.Full()
+    if full then
+        f.tip:SetText("|cffff6060" .. string.format(L.EVENT_FULL, ns.Calendar.MAX_OWN) .. "|r")
+        f.tip:SetHeight(40)
+        f.tip:SetShown(y + 80 - 32 - 40 >= -410)
+    else
+        f.tip:SetText(L.EVENT_TIP)
+        f.tip:SetHeight(28)
+        f.tip:SetShown(y + 80 - 32 - 28 >= -410)  -- the tip only where it fits
+    end
     -- Here gets a tick once the spot is set.
     f.here:SetText(f.spot and (L.PLACE_HERE .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12|t") or L.PLACE_HERE)
     f.unspot:SetEnabled(f.spot ~= nil or (f.place:GetText() or "") ~= "")

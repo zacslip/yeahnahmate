@@ -501,6 +501,7 @@ L.EVENT_SAVE_FAILED = {
     gone = "That event was cancelled or removed, so it can't be changed.",
     denied = "Only the event's owner or a Calendar moderator can change it.",
 }
+L.EVENT_FULL = "You already have %d upcoming events (a weekly event counts as one). Cancel one, or wait for one to pass, before adding another."
 L.EVENT_TIP = "Times show in each guildie's own time zone. Guildies going get a reminder 15 minutes before."
 L.TODAY = "Today"
 L.TOMORROW = "Tomorrow"

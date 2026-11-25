@@ -2,6 +2,8 @@
 -- events on Home. Times are kept as server time (GetServerTime, the same moment for everyone) and
 -- shown in each player's local time.
 --
+-- Limit: at most MAX_OWN (15) upcoming events per guildie, mine and others' (a weekly one counts once).
+--
 -- Messages
 --   EVT  { id, ti, at, k, nt, nh, nd, note, w, im, an, pl, pm, px, py, ev }  my event: title, start (server time),
 --                                                    kind (s social, d dungeon; l levelling and o other
@@ -50,10 +52,12 @@ local KEEP_CANCELLED = 30 * DAY -- a cancel is remembered this long (from when i
 local MAX_TITLE, MAX_NOTE = 40, 150    -- a note fills three lines (older versions cut it at 100)
 local MAX_PLACE = 30
 local MAX_COPIES = 40
+local MAX_OWN = 15              -- upcoming events one guildie can have at once (a weekly one counts once)
 local ASK_WINDOW = 300
 Cal.KINDS = { d = true, l = true, s = true, o = true }    -- accepted from others (older versions too)
 Cal.MAX_NOTE = MAX_NOTE
 Cal.MAX_PLACE = MAX_PLACE
+Cal.MAX_OWN = MAX_OWN
 Cal.MAKE = { s = true, d = true }                         -- kinds an event can be made as (raid later)
 Cal.IM_TIMES = { { 1, 15 }, { 2, 30 }, { 4, 60 } }        -- im bit, minutes before
 local IM_MAX = 7
@@ -116,6 +120,25 @@ function Cal.NextAt(e, now)
     local n = math.ceil((now - LIVE - e.at) / WEEK)
     return e.at + n * WEEK
 end
+
+-- Is it on now or still to come (not cancelled)? A weekly event always is.
+local function IsUpcoming(e, now)
+    return e ~= nil and not e.x and type(e.at) == "number" and Cal.NextAt(e, now) >= now - LIVE
+end
+
+-- How many upcoming events an owner has in my store (a weekly one counts once).
+function Cal.OwnCount(owner)
+    local store = Cal.Store()
+    if not store then return 0 end
+    local now, n = GetServerTime(), 0
+    for _, e in pairs(store) do
+        if e.owner == owner and IsUpcoming(e, now) then n = n + 1 end
+    end
+    return n
+end
+
+-- Has an owner reached the limit? Changes to events they already have still go through.
+function Cal.Full(owner) return Cal.OwnCount(owner or ns.me) >= MAX_OWN end
 
 -- Events happening on a local calendar day: { { e, key, at }, ... } sorted by time.
 function Cal.OnDay(y, m, d)
@@ -229,7 +252,8 @@ end
 
 -- fields: title, at (server time), k, nt, nh, nd, note, w, mute, im, an, pl, pm, px, py (px/py 0-1000).
 -- Returns the key, or nil and
--- why ("title", "kind", "gone": removed or cancelled, "denied": not mine to change).
+-- why ("title", "kind", "gone": removed or cancelled, "denied": not mine to change, "full": I already
+-- have MAX_OWN upcoming events).
 function Cal.Save(key, fields)
     local store = Cal.Store()
     if not store or not ns.me then return nil, "denied" end
@@ -258,6 +282,7 @@ function Cal.Save(key, fields)
         Changed()
         return key
     end
+    if not IsUpcoming(e, now) and Cal.Full(ns.me) then return nil, "full" end
     if not e then
         local id = now
         while store[ns.me .. ":" .. id] do id = id + 1 end
@@ -385,6 +410,13 @@ local function TakeEvent(owner, msg, direct)
             local title = Clean(msg.ti, MAX_TITLE)
             if title == "" or type(msg.at) ~= "number" or not Cal.KINDS[msg.k] then
                 ns.Log("dropped: bad event from " .. owner)
+                return false
+            end
+            -- One more upcoming event from an owner who already has MAX_OWN: not kept.
+            local now = GetServerTime()
+            if not IsUpcoming(old, now) and IsUpcoming({ at = math.floor(msg.at), w = msg.w == true or nil }, now)
+                and Cal.Full(owner) then
+                ns.Log("dropped: " .. owner .. " already has " .. MAX_OWN .. " upcoming events")
                 return false
             end
             local e = old or { owner = owner, id = msg.id, rs = {} }
