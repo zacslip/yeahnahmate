@@ -108,6 +108,8 @@ check(R.Announce(r, false), "Announce")
 local a = Chat(chat2)
 check(#a == 1 and a[1].text == "Roll for " .. link .. " - winner: Bingo Heeler (63)", "Announce posts the winner")
 chat2 = #WHISPERS
+check(not R.Announce(r, true), "a second Announce straight away does nothing (throttled)")
+Tick(R.ANNOUNCE_GAP)
 R.Announce(r, true)
 a = Chat(chat2)
 check(#a == 2 and a[2].kind == "WHISPER" and a[2].target == "Bingo Heeler" and a[2].text:find("(you rolled 63)", 1, true),
@@ -121,6 +123,7 @@ Roll("Ned Jones", 10)
 R.Stop()
 check(r.winner == nil and table.concat(r.ties, ",") == "Bingo Heeler,Bluey Heeler" and r.winRoll == 80, "a tie at 80")
 local chat3 = #WHISPERS
+Tick(R.ANNOUNCE_GAP)
 R.Announce(r)
 check(Chat(chat3)[1].text:find("tie between Bingo Heeler, Bluey Heeler (80)", 1, true), "Announce says it's a tie")
 local rr = R.Reroll()

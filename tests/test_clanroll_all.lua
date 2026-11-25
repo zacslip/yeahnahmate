@@ -115,6 +115,9 @@ ap.announce:Click(); Tick(1)
 check(#WHISPERS == w0 + 1 and WHISPERS[#WHISPERS].kind == "GUILD" and WHISPERS[#WHISPERS].text:find("Bingo Heeler (88)", 1, true), "Announce: the winners to guild chat")
 ap.guild:SetChecked(false); ap.guild:Click(); Tick(1)
 ap.announce:Click(); Tick(1)
+check(#WHISPERS == w0 + 1, "a second Announce within 3 s does nothing (throttled)")
+Tick(ns.ClanRoll.ANNOUNCE_GAP)
+ap.announce:Click(); Tick(1)
 check(#WHISPERS == w0 + 2 and WHISPERS[#WHISPERS].kind == "PARTY", "Guild chat unticked: to party chat")
 -- A long one splits into lines that fit, never cutting a clan.
 local long = { order = {}, clans = {}, msg = "Roll for", item = string.rep("x", 60) }

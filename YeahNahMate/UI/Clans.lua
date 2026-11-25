@@ -429,7 +429,8 @@ local function RefreshBar(p, picked)
     end
     local myRace = Cl.MyRace()
     local active = CM.ActiveFor(myRace)
-    if active and active.organiser ~= ns.me then
+    -- Not while I'm organising a meeting myself (I'm running my own group; and the bar would overflow).
+    if active and active.organiser ~= ns.me and not meeting then
         local asked = CM.HaveAsked(myRace)
         b.ask:SetText(asked and (TICK .. " " .. L.CLAN_ASKED) or L.CLAN_ASK)
         b.ask:SetEnabled(not asked)
@@ -509,8 +510,9 @@ local function Refresh(p)
     local Cl = ns.Clans
     local list = Cl.List()
     local picked = Picked(p)
-    if ns.settings.clanView == "roll" and not ns.ClanRoll.CanStartAll() then ns.settings.clanView = "all" end
-    local rollView = ns.settings.clanView == "roll"
+    -- The roll view for someone who can't start one shows All clans, but the setting is kept: right
+    -- after a /reload the roster (and with it my rank) may not have loaded yet.
+    local rollView = ns.settings.clanView == "roll" and ns.ClanRoll.CanStartAll()
     local mineView = ns.settings.clanView == "mine" and picked ~= nil
     p.allCol:SetShown(rollView)
     p.allPanel:SetShown(rollView)

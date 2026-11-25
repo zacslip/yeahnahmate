@@ -499,10 +499,18 @@ function R.PostStart(r) return ToGroup(r, R.StartLine(r)) end
 -- Roll over: once per roll, no click (R.Stop only calls it for a roll started with a click).
 function R.PostOver(r) return ToGroup(r, R.OverLine(r)) end
 
+-- Announce buttons: a click within this many seconds of the last one does nothing (everything throttled).
+R.ANNOUNCE_GAP = 3
+local announcedAt, announcedAllAt
+local function TooSoon(at) return at and GetTime() - at < R.ANNOUNCE_GAP end
+
 -- Announce: the player's click; whisper = also whisper the winner from the same click.
+-- A cancelled roll has nothing to announce.
 function R.Announce(r, whisper)
     r = r or R.cur
-    if not r or r.open then return false end
+    if not r or r.open or r.cancelled then return false end
+    if TooSoon(announcedAt) then return false end
+    announcedAt = GetTime()
     local ok = ToGroup(r, R.AnnounceLine(r))
     if ok and whisper and r.winner and r.winner ~= ns.me then
         if not Real(r) then ns.Log("(dev) clan roll whisper kept on this screen") return true end
@@ -677,6 +685,8 @@ function R.AnnounceAll(all, guild)
     if not all then return false end
     local lines = R.AllLines(all)
     if #lines == 0 then return false end
+    if TooSoon(announcedAllAt) then return false end
+    announcedAllAt = GetTime()
     local chan = guild and "GUILD" or Channel()
     if not chan then ns.Print(L.CLANROLL_NOT_IN_GROUP) return false end
     if not RealAll() then
