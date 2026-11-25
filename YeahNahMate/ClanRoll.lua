@@ -612,7 +612,8 @@ R.asked = nil                     -- an ask I got as a leader: { id, from, race,
 -- Statuses on the starter's screen, in plain words (Strings.lua): waiting, rolling, won, tie, none,
 -- offline, noaddon, update, group, noanswer, noresult, cancelled, noleader.
 
-function R.CanStartAll() return ns.Board.IsManager(ns.me) or ns.Board.devEditor == true end
+-- As shown on this screen (the test editor, and /ynm dev rank 0, show it too); RealAll for what's sent.
+function R.CanStartAll() return ns.Board.CanManage() end
 local function RealAll() return ns.Board.IsManager(ns.me) end
 
 -- An addon message to whoever asked (or to my own screen, when I asked myself).
