@@ -51,7 +51,22 @@ def guildies():
             continue
         for m in re.finditer(r'\["([A-Z][\w\'-]+ [A-Z][\w\'-]+)"\]', text):
             names.add(m.group(1))
-    return names
+    return names - sim_names()
+
+
+def sim_names():
+    """The sim's made-up guildies (YeahNahMate/Sim.lua, public): running the sim in game saves them too,
+    so without this they'd look like real guildies. Only the fake roster's own rows count, the lines
+    that start with { "First Surname", ..."""
+    out = set()
+    path = os.path.join(ROOT, "YeahNahMate", "Sim.lua")
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                m = re.match(r'\s*\{\s*"([A-Z][\w\'-]+ [A-Z][\w\'-]+)"\s*,', line)
+                if m:
+                    out.add(m.group(1))
+    return out
 
 
 # Fake guildies used in tests and sim mode are made up on purpose: never a hit.
