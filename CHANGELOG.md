@@ -16,6 +16,7 @@
 - Every name on the roll lists has **Whisper** and **Target** buttons, and the lists show full names. Whisper opens a message to that player; the winner's has "You won" filled in, and nothing is sent until you press Send. Target targets the player if they're in your group (greyed out for anyone else), never during a fight. On the All clans roll, each clan's winner shows by name.
 - **How it works** cards on the Clans tab: one on the Clan roll panel with the steps for clan leaders, and one on the All clans roll view showing how the roll goes out to each clan leader's addon and how the winners come back.
 - Leveling guide, Zones: a new **Fishing** column. It shows the fishing skill that catches anything in that zone and the skill where nothing gets away, for example 130 / 225 in Stranglethorn Vale. It's green when your skill lands everything there, gold when some fish still get away, and grey when your skill is too low. The numbers are Classic's. Forever's own zones (Zephras Isle, Riverglades, Shen'dralas, Mount Hyjal) are blank until they're known.
+- The tab buttons along the top are now sized to fit their names, so no name runs off the edge of its button.
 - Calendar: each guildie can have up to 15 upcoming events. A weekly event counts once. If you're at the limit, the new-event form tells you why.
 - Professions: the first "Yeah" to sharing your professions now actually shares them.
 - Milestone pop-ups: at most 3 a minute from any one guildie.

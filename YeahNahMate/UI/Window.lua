@@ -191,18 +191,64 @@ local function FootText()
     return L.FOOT_TIP
 end
 
--- Place the tabs that show, left to right.
+-- Place the tabs that show, left to right, across the whole row. Each is as wide as its own label (as the
+-- game measures it) plus a margin, and what's left of the row is shared out evenly, so no label runs off
+-- its button and short ones (Ask, Info) don't take room they don't need. If they still don't fit (a long
+-- translation, a big UI font), the labels step down a font size. Without a measure (offline tests) the
+-- fixed widths in TABS are used.
+local TAB_GAP, TAB_MARGIN, TAB_ROW = 2, 12, W - 24
+local function TabFont(b, small)
+    if not b.SetNormalFontObject or not GameFontNormalSmall then return end
+    b:SetNormalFontObject(small and GameFontNormalSmall or GameFontNormal)
+    b:SetHighlightFontObject(small and GameFontHighlightSmall or GameFontHighlight)
+    b:SetDisabledFontObject(small and GameFontDisableSmall or GameFontDisable)
+end
+local shown, widths, laidOut = {}, {}, nil     -- reused: the row is laid out again only when its tabs change
+local function TabWidths()
+    local total = 0
+    for i, s in ipairs(shown) do
+        local tw = s.b.GetTextWidth and s.b:GetTextWidth()
+        widths[i] = (tw and tw > 0) and math.ceil(tw) + TAB_MARGIN or s.t[3]
+        total = total + widths[i]
+    end
+    return total
+end
+-- Lay the row out again on the next redraw even if the same tabs show (labels changed size).
+function UI.TabsChanged() laidOut = nil end
 local function LayoutTabs()
-    local x = 12
-    for _, t in ipairs(TABS) do
+    local mask, n = 0, 0
+    for i, t in ipairs(TABS) do
         local b = tabButtons[t[1]]
         local on = not t[4] or t[4]()
         b:SetShown(on)
         if on then
-            b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", x, -82)
-            x = x + t[3] + 2
+            mask = mask + 2 ^ i
+            n = n + 1
+            local s = shown[n] or {}
+            s.t, s.b = t, b
+            shown[n] = s
         end
+    end
+    for i = #shown, n + 1, -1 do shown[i] = nil end
+    if mask == laidOut then return end
+    laidOut = mask
+    local room = TAB_ROW - TAB_GAP * (#shown - 1)
+    for _, s in ipairs(shown) do TabFont(s.b, false) end
+    local total = TabWidths()
+    if total > room then
+        for _, s in ipairs(shown) do TabFont(s.b, true) end
+        total = TabWidths()
+    end
+    -- share what's left (or, still too wide, take it back) evenly; the last tab ends at the row's end
+    local extra = math.floor((room - total) / #shown)
+    local x = 12
+    for i, s in ipairs(shown) do
+        local w = widths[i] + extra
+        if i == #shown then w = 12 + TAB_ROW - x end
+        s.b:SetWidth(w)
+        s.b:ClearAllPoints()
+        s.b:SetPoint("TOPLEFT", x, -82)
+        x = x + w + TAB_GAP
     end
 end
 
