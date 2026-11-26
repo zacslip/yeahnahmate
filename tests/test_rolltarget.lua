@@ -118,7 +118,7 @@ do  -- after everything above has shown and placed them
 end
 
 -- The pop-out has the same buttons: full names, Whisper ("You won" for the winner), Target placed against
--- UIParent; dragging it hides its Target buttons and they come back where it stops; closing it takes them away.
+-- UIParent; dragging it moves its Target buttons with it every frame; closing it takes them away.
 do
     if InCombatLockdown() then FAKE.combat = false; FireEvent("PLAYER_REGEN_ENABLED") end
     FAKE.group, FAKE.party = 3, { "Bluey Heeler", "Bingo Heeler" }
@@ -142,10 +142,17 @@ do
     row.whisperBtn:Click()
     ns.Whisper.Open = real2
     check(opened2 and opened2.m.name == "Bingo Heeler" and opened2.text == R.WhisperLine(R.cur), "pop-out: the winner's Whisper has You won filled in")
+    -- Dragged while the roll list keeps redrawing: Target follows the window every frame, not every redraw.
+    local t = row.targetBtn
     pop:GetScript("OnDragStart")(pop)
-    check(not row.targetBtn:IsShown(), "pop-out dragged: its Target buttons hide while it moves")
+    check(ns.RollTarget.Dragging() == pop and t:IsShown(), "pop-out dragged: its Target buttons stay up and follow it")
+    for _, r in ipairs(pop.rows) do r._left = 640 end    -- the window has moved
+    Tick(0.1)
+    check(t._pt and t._pt[2] == UIParent and math.abs(t._pt[4] - (640 + t.dx)) < 0.01,
+        "pop-out dragged: Target moved with it on the next frame (x " .. tostring(t._pt and t._pt[4]) .. ")")
     pop:GetScript("OnDragStop")(pop)
-    check(row.targetBtn:IsShown(), "pop-out dropped: Target back")
+    check(ns.RollTarget.Dragging() == nil and t:IsShown(), "pop-out dropped: Target stays, following stops")
+    for _, r in ipairs(pop.rows) do r._left = nil end
     ns.ClanRollUI.ClosePop(); Tick(1)
     check(not row.targetBtn:IsShown(), "pop-out closed: its Target buttons go too")
 end

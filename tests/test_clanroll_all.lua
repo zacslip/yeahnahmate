@@ -189,6 +189,19 @@ check(R.TopOf({ Orc = { status = "none" } }) == nil, "no winners: no overall win
 check(ap.result:GetText():find("Chilli", 1, true) and ap.result:GetText():find("41", 1, true)
     and ap.resTitle:GetText():find("1 of", 1, true), "the panel: the overall winner, and how many are done")
 check(ap.res[1].left:GetText():find("LeaderIcon", 1, true), "the top row is crowned")
+-- A winner's row is just the name (room for Whisper and Target); the clan is on mouse over.
+do
+    local txt = ap.res[1].left:GetText()
+    local clan = ns.Clans.RaceName("Orc")
+    check(txt:find("Chilli Heeler", 1, true) and not txt:find(clan, 1, true), "a winner's row: the name, no clan (" .. txt .. ")")
+    local lines, real = {}, GameTooltip.AddLine
+    GameTooltip.AddLine = function(_, l) lines[#lines + 1] = l end
+    ap.res[1]:GetScript("OnEnter")(ap.res[1])
+    GameTooltip.AddLine = real
+    ap.res[1]:GetScript("OnLeave")(ap.res[1])
+    check(lines[1] and lines[1]:find(clan, 1, true) and lines[2] and lines[2]:find("Chilli Heeler", 1, true)
+        and lines[2]:find("41", 1, true), "mouse over a winner: their clan, name and roll")
+end
 local tl = R.AllLines(tieAll)
 check(tl[#tl]:find(string.format(L.CLANROLL_ALL_LINE_TOP, "Chilli Heeler", 41), 1, true), "Announce ends with the overall winner")
 -- A leader who reloads or drops mid-roll: 30 s past the timer with no word, the clan shows "No result"

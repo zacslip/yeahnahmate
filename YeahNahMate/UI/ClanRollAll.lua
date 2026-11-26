@@ -249,7 +249,18 @@ function CA.BuildPanel(parent, x, y)
             if c.winner == row.key then return string.format(L.CLANROLL_WHISPER, R.Head(all), c.roll or 0) end
         end
     end)
-    for _, row in ipairs(p.res) do row.left:SetWidth(310 - 50 - 104) end
+    for _, row in ipairs(p.res) do
+        row.left:SetWidth(310 - 50 - 104)
+        -- Mouse over a winner: their clan (the row only has room for the name).
+        row:SetScript("OnEnter", function(self)
+            if self.hl then self.hl:Show() end
+            local x = self.race and R.all and R.all.clans[self.race]
+            if not x then return end
+            CU.Tip(self, { ClanName(self.race), (x.winner and CU.Who(x.winner, true) or L.CLANROLL_ALL_NONE)
+                .. (x.roll and ("  " .. ns.GOLD .. x.roll .. "|r") or "") })
+        end)
+        row:SetScript("OnLeave", function(self) if self.hl then self.hl:Hide() end; CU.NoTip() end)
+    end
     for _, r in ipairs(p.miss) do
         r.left:SetWidth(100)
         r.right:ClearAllPoints()
@@ -382,10 +393,14 @@ function CA.RefreshPanel(p)
         for i, row in ipairs(p.res) do
             local race = winners[i]
             row:SetShown(race ~= nil)
+            row.race = race
             if race then
                 local x = all.clans[race]
                 local crown = (top and roll == x.roll and x.winner) and (CROWN .. " ") or ""
-                row.left:SetText(crown .. ClanName(race) .. "  " .. (x.winner and CU.Who(x.winner, true) or (ns.GREY .. L.CLANROLL_ALL_NONE .. "|r")))
+                -- The winner's name only (room for Whisper and Target); the clan is on mouse over.
+                -- No winner: no buttons either, so the clan fits.
+                row.left:SetText(crown .. (x.winner and CU.Who(x.winner, true)
+                    or (ClanName(race) .. "  " .. ns.GREY .. L.CLANROLL_ALL_NONE .. "|r")))
                 row.right:SetText(x.roll and (ns.GOLD .. x.roll .. "|r") or "")
             end
             ns.RollTarget.Set(row, race and all.clans[race].winner or nil)

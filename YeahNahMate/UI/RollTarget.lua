@@ -8,6 +8,7 @@
 --            whenever the list redraws or the window is dragged). A secure frame anchored to (or inside)
 --            our window makes the game protect the whole window, and a protected window can't be told to
 --            pass keys on: with the window open, / and Enter never reached chat (0.28.0 before release).
+--            While the window is dragged they're placed again every frame, so they move with it.
 --            In a fight nothing secure can be changed, so every Target button hides when combat
 --            starts and comes back after it.
 local ADDON, ns = ...
@@ -72,8 +73,26 @@ function T.RefreshAll(top)
     end
 end
 
--- Dragging a window: its buttons can't follow (they aren't anchored), so they hide while it moves and
--- come back where it stops. Hooked once on each window rows are in.
+-- Dragging a window: its buttons aren't anchored, so they're placed again every frame while it moves
+-- (only then; a plain frame's OnUpdate, nothing secure). Hiding them for the drag wasn't enough: a roll
+-- redraws its list twice a second, which put them back at a stale spot, so they lagged behind.
+local dragging
+local follow = CreateFrame("Frame", nil, UIParent)
+follow:Hide()
+follow:SetScript("OnUpdate", function(self)
+    local list = dragging and rowsIn[dragging]
+    if not list or Fight() then dragging = nil; self:Hide(); return end
+    for _, r in ipairs(list) do
+        local t = r.targetBtn
+        if t and t:IsShown() then Place(t) end
+    end
+end)
+local function StopFollow(top)
+    if dragging == top then dragging = nil; follow:Hide() end
+end
+function T.Dragging() return dragging end
+
+-- Hooked once on each window rows are in.
 HookDrag = function(row)
     local top = row
     while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
@@ -84,11 +103,13 @@ HookDrag = function(row)
         if top.HookScript then
             top:HookScript("OnDragStart", function()
                 if Fight() then return end
-                for _, r in ipairs(list) do if r.targetBtn then r.targetBtn:Hide() end end
+                dragging = top
+                follow:Show()
             end)
-            top:HookScript("OnDragStop", function() T.RefreshAll(top) end)
+            top:HookScript("OnDragStop", function() StopFollow(top); T.RefreshAll(top) end)
             -- the window closing takes them all (as well as each row's own OnHide)
             top:HookScript("OnHide", function()
+                StopFollow(top)
                 if Fight() then return end
                 for _, r in ipairs(list) do if r.targetBtn then r.targetBtn:Hide() end end
             end)
