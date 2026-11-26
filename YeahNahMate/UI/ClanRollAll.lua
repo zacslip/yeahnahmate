@@ -254,10 +254,10 @@ function CA.BuildPanel(parent, x, y)
         -- Mouse over a winner: their clan (the row only has room for the name).
         row:SetScript("OnEnter", function(self)
             if self.hl then self.hl:Show() end
-            local x = self.race and R.all and R.all.clans[self.race]
-            if not x then return end
-            CU.Tip(self, { ClanName(self.race), (x.winner and CU.Who(x.winner, true) or L.CLANROLL_ALL_NONE)
-                .. (x.roll and ("  " .. ns.GOLD .. x.roll .. "|r") or "") })
+            local c = self.race and R.all and R.all.clans[self.race]
+            if not c then return end
+            CU.Tip(self, { ClanName(self.race), (c.winner and CU.Who(c.winner, true) or L.CLANROLL_ALL_NONE)
+                .. (c.roll and ("  " .. ns.GOLD .. c.roll .. "|r") or "") })
         end)
         row:SetScript("OnLeave", function(self) if self.hl then self.hl:Hide() end; CU.NoTip() end)
     end
