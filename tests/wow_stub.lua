@@ -86,7 +86,19 @@ function methods.GetName(self) return self._name end
 function methods.GetParent(self) return self._parent end
 function methods.GetWidth() return 140 end
 -- Where a frame was last put and how big (tests read _pt and _w; GetPoint/GetWidth stay fixed).
-function methods.SetPoint(self, ...) self._pt = { ... } end
+-- Like the game: a secure frame (Secure*Template) inside or ANCHORED to one of our frames makes the game
+-- protect that frame and everything it's in. Our window then can't change in a fight and, worse, can't
+-- be told to pass keys on, so / and Enter never reach chat while it's open (0.28.0, found in game).
+-- Here that's an error at once: a secure frame may only be parented and anchored to UIParent.
+local function IsSecure(f) return type(f) == "table" and f._template and f._template:find("Secure", 1, true) end
+function methods.SetPoint(self, ...)
+    local rel = select(2, ...)
+    if IsSecure(self) and type(rel) == "table" and rel ~= UIParent then
+        error("a secure frame is anchored to " .. tostring(rel._name or rel._kind or "one of our frames")
+            .. ": the game would protect it (and the window it's in). Anchor secure frames to UIParent only.", 2)
+    end
+    self._pt = { ... }
+end
 function methods.ClearAllPoints(self) self._pt = nil end
 function methods.SetSize(self, w, h) self._w, self._h = w, h end
 function methods.SetWidth(self, w) self._w = w end
@@ -117,6 +129,10 @@ function methods.Click(self, button)
 end
 
 function CreateFrame(kind, name, parent, template)
+    if template and template:find("Secure", 1, true) and parent and parent ~= UIParent then
+        error("a secure frame is made inside " .. tostring(parent._name or parent._kind or "one of our frames")
+            .. ": the game would protect it (and the window it's in). Parent secure frames to UIParent only.", 2)
+    end
     local f = Obj(kind, name, parent, template)
     -- Like the game: these templates come with an X button that closes through HideUIPanel.
     if template and template:find("BasicFrameTemplate", 1, true) then
