@@ -160,6 +160,35 @@ Tick(1)
 local g = p.guide
 check(g.zoneTitle:GetText() == string.format(L.GUIDE_ZONES_FOR, 40), "the Zones title says my level")
 check(g.zones.rows[1]:IsShown() and g.zones.rows[1].item.best, "a best zone on top")
+
+-- Fishing: Classic base levels; catches from the base (at least 1), nothing gets away from base + 95.
+local fMin, fAll = G.Fishing("Stranglethorn Vale")
+check(fMin == 130 and fAll == 225, "Stranglethorn fishing 130 / 225")
+fMin, fAll = G.Fishing("Durotar")
+check(fMin == 1 and fAll == 25, "Durotar fishing 1 / 25")
+check(G.Fishing("Badlands") == false and G.Fishing("Zephras Isle") == nil, "no fishing listed: false; Forever's own zone: not known")
+for _, zz in ipairs(G.ZONES) do
+    local known = G.Fishing(zz[1])
+    local forever = zz[1] == "Zephras Isle" or zz[1] == "Riverglades" or zz[1] == "Shen'dralas" or zz[1] == "Mount Hyjal"
+    check(forever == (known == nil), "fishing known for every zone but Forever's own: " .. zz[1])
+end
+-- My skill colours the cell: 150 = everything lands at 55 / 150, some get away at 130 / 225.
+local realLines, realInfo = GetNumSkillLines, GetSkillLineInfo
+GetNumSkillLines = function() return 2 end
+GetSkillLineInfo = function(i)
+    if i == 1 then return "Professions", true end
+    return "Fishing", false, nil, 150
+end
+UI.SetLevelingPretend(30); UI.Dirty(); Tick(1)
+local function ZoneRow(name)
+    for _, r in ipairs(g.zones.rows) do if r:IsShown() and r.item and r.item.name == name then return r end end
+end
+local ash, stv = ZoneRow("Ashenvale"), ZoneRow("Stranglethorn Vale")
+check(ash and ash.fish:GetText() == ns.GREEN .. "55 / 150|r", "my 150 lands everything in Ashenvale: green (" .. tostring(ash and ash.fish:GetText()) .. ")")
+check(stv and stv.fish:GetText():find("130 / 225", 1, true) and not stv.fish:GetText():find(ns.GREEN, 1, true), "STV at 150: some get away, not green")
+ash:GetScript("OnEnter")(ash); ash:GetScript("OnLeave")(ash)
+GetNumSkillLines, GetSkillLineInfo = realLines, realInfo
+UI.SetLevelingPretend(40); UI.Dirty(); Tick(1)
 dungeonsBtn:Click()
 Tick(1)
 check(g.dungeonTitle:GetText() == string.format(L.GUIDE_DUNGEONS_FOR, 40), "the Dungeons title says my level")

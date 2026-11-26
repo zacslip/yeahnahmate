@@ -75,6 +75,43 @@ G.ZONES = {
     { "Winterspring", 55, 60, { 56, 60 }, { 56, 60 } },
 }
 
+-- Fishing: each zone's base fishing level from the Classic server data (cMaNGOS classic-db,
+-- skill_fishing_base_level). The game's own files don't have it, it's kept on the server. A cast only
+-- catches anything at that skill or more, and every catch lands from that +95 (the chance is skill - base + 5
+-- in 100). false: not in the list (little or no water). Not there at all: one of Forever's own zones, not
+-- known yet (it shows blank, the tooltip says so).
+local FISHING = {
+    ["Durotar"] = -70, ["Elwynn Forest"] = -70, ["Mulgore"] = -70, ["Teldrassil"] = -70, ["Dun Morogh"] = -70,
+    ["Tirisfal Glades"] = -70, ["Westfall"] = -20, ["Loch Modan"] = -20, ["Silverpine Forest"] = -20,
+    ["The Barrens"] = -20, ["Darkshore"] = -20, ["Redridge Mountains"] = 55, ["Stonetalon Mountains"] = 55,
+    ["Ashenvale"] = 55, ["Duskwood"] = 55, ["Wetlands"] = 55, ["Hillsbrad Foothills"] = 55,
+    ["Thousand Needles"] = 130, ["Alterac Mountains"] = 130, ["Desolace"] = 130, ["Arathi Highlands"] = 130,
+    ["Stranglethorn Vale"] = 130, ["Dustwallow Marsh"] = 130, ["Swamp of Sorrows"] = 130, ["Badlands"] = false,
+    ["Tanaris"] = 205, ["Feralas"] = 205, ["The Hinterlands"] = 205, ["Azshara"] = 205, ["Searing Gorge"] = false,
+    ["Blasted Lands"] = false, ["Western Plaguelands"] = 205, ["Felwood"] = 205, ["Un'Goro Crater"] = 205,
+    ["Burning Steppes"] = 330, ["Eastern Plaguelands"] = 330, ["Silithus"] = 330, ["Winterspring"] = 330,
+}
+G.FISHING_GRACE = 95
+
+-- A zone's fishing: the lowest skill that catches anything and the skill where nothing gets away, or
+-- false (no fishing listed), or nil (not known: Forever's own zones).
+function G.Fishing(name)
+    local base = FISHING[name]
+    if base == nil or base == false then return base end
+    return math.max(1, base), base + G.FISHING_GRACE
+end
+
+-- My fishing skill, or nil if I haven't learned it. From the skill list (fishing has no recipe window).
+function G.MyFishing()
+    if not (GetNumSkillLines and GetSkillLineInfo) then return nil end
+    local want = (GetSpellInfo and GetSpellInfo(7620)) or "Fishing"     -- Fishing (Apprentice): its name is the skill's
+    for i = 1, GetNumSkillLines() do
+        local ok, name, header, _, rank = pcall(GetSkillLineInfo, i)
+        if ok and not header and (name == want or name == "Fishing") then return tonumber(rank) end
+    end
+    return nil
+end
+
 -- Each zone's map id. Ids, because the game's own zone names change with the client's language.
 local ZONE_MAPS = {
     ["Durotar"] = 1411, ["Elwynn Forest"] = 1429, ["Mulgore"] = 1412, ["Teldrassil"] = 1438, ["Dun Morogh"] = 1426,
@@ -485,7 +522,9 @@ function G.Zones(level, all)
         if mine == "Alliance" then band = z[4] elseif mine == "Horde" then band = z[5] else band = z[4] or z[5] end
         local inRange = level >= z[2] and level <= z[3]
         if band and (all or inRange) then
+            local fishMin, fishAll = G.Fishing(z[1])
             list[#list + 1] = { name = z[1], min = z[2], max = z[3], bestMin = band[1], bestMax = band[2],
+                                fishMin = fishMin, fishAll = fishAll,
                                 best = level >= band[1] and level <= band[2], outside = not inRange,
                                 away = math.abs(level - (band[1] + band[2]) / 2) }
         end

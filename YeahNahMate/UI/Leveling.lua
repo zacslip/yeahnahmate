@@ -111,6 +111,20 @@ local function OpenMap(mapID)
     return true
 end
 
+-- The Fishing cell: "min / no getaways", coloured by my own fishing skill when I have it: green = nothing
+-- gets away, yellow = some get away, grey = too low to catch anything. "-" no fishing listed, blank not known.
+local myFishing
+local function FishText(z)
+    if z.fishMin == false then return ns.GREY .. "-|r" end
+    if not z.fishMin then return "" end
+    local text = z.fishMin .. " / " .. z.fishAll
+    local mine = myFishing
+    if not mine then return text end
+    if mine >= z.fishAll then return ns.GREEN .. text .. "|r" end
+    if mine >= z.fishMin then return YELLOW .. text .. "|r" end
+    return ns.GREY .. text .. "|r"
+end
+
 local function ZoneTip(self)
     self.hl:Show()
     local z = self.item
@@ -119,6 +133,14 @@ local function ZoneTip(self)
     GameTooltip:AddLine(z.name, 1, 1, 1)
     GameTooltip:AddLine(string.format(L.GUIDE_TIP_RANGE, z.min, z.max))
     GameTooltip:AddLine(string.format(L.GUIDE_TIP_ZONE_BEST, z.bestMin, z.bestMax))
+    if z.fishMin == false then
+        GameTooltip:AddLine(L.GUIDE_TIP_FISH_NONE, 0.62, 0.62, 0.62)
+    elseif z.fishMin then
+        GameTooltip:AddLine(string.format(L.GUIDE_TIP_FISH, z.fishMin, z.fishAll))
+    else
+        GameTooltip:AddLine(L.GUIDE_TIP_FISH_UNKNOWN, 0.62, 0.62, 0.62, true)
+    end
+    if myFishing then GameTooltip:AddLine(string.format(L.GUIDE_TIP_MY_FISH, myFishing), 0.62, 0.62, 0.62) end
     if ns.LevelGuide.ZoneMap(z.name) then
         GameTooltip:AddLine(L.GUIDE_TIP_ZONE_MAP, 0.25, 1, 0.25)
     else
@@ -127,10 +149,14 @@ local function ZoneTip(self)
     GameTooltip:Show()
 end
 
+-- Zones list columns: name, Range, Best at, Fishing (x, width). The headings use the same.
+local ZCOL = { name = { 6, 330 }, range = { 340, 110 }, best = { 455, 130 }, fish = { 590, 140 } }
+
 local function MakeZoneRow(r)
-    r.name = Text(r, "", "GameFontHighlightSmall", 6, -5, 400)
-    r.range = Text(r, "", "GameFontHighlightSmall", 420, -5, 120, "CENTER")
-    r.best = Text(r, "", "GameFontHighlightSmall", 560, -5, 170, "CENTER")
+    r.name = Text(r, "", "GameFontHighlightSmall", ZCOL.name[1], -5, ZCOL.name[2])
+    r.range = Text(r, "", "GameFontHighlightSmall", ZCOL.range[1], -5, ZCOL.range[2], "CENTER")
+    r.best = Text(r, "", "GameFontHighlightSmall", ZCOL.best[1], -5, ZCOL.best[2], "CENTER")
+    r.fish = Text(r, "", "GameFontHighlightSmall", ZCOL.fish[1], -5, ZCOL.fish[2], "CENTER")
     r:SetScript("OnClick", function(self)
         local mapID = self.item and ns.LevelGuide.ZoneMap(self.item.name)
         if not mapID then return end
@@ -149,6 +175,7 @@ local function FillZoneRow(r, z)
     r.name:SetText(colour .. z.name .. "|r")
     r.range:SetText(z.min .. "-" .. z.max)
     r.best:SetText(colour .. z.bestMin .. "-" .. z.bestMax .. "|r")
+    r.fish:SetText(FishText(z))
 end
 
 local TAGS = { key = L.GUIDE_TAG_KEY, attune = L.GUIDE_TAG_ATTUNE, item = L.GUIDE_TAG_ITEM, enemy = L.GUIDE_TAG_ENEMY }
@@ -676,23 +703,26 @@ local function BuildZones(panel, p)
     local g = p.guide
     g.zoneTitle = UI.Header(panel, "", 0, -32, LIST_W)
     g.zoneAll = ShowAllButton(panel, g)
-    Text(panel, L.GUIDE_ZONE, "GameFontDisableSmall", 6, -53, 400)
-    Text(panel, L.GUIDE_RANGE, "GameFontDisableSmall", 420, -53, 120, "CENTER")
-    Text(panel, L.GUIDE_BEST_AT, "GameFontDisableSmall", 560, -53, 170, "CENTER")
+    Text(panel, L.GUIDE_ZONE, "GameFontDisableSmall", ZCOL.name[1], -53, ZCOL.name[2])
+    Text(panel, L.GUIDE_RANGE, "GameFontDisableSmall", ZCOL.range[1], -53, ZCOL.range[2], "CENTER")
+    Text(panel, L.GUIDE_BEST_AT, "GameFontDisableSmall", ZCOL.best[1], -53, ZCOL.best[2], "CENTER")
+    Text(panel, L.GUIDE_FISHING, "GameFontDisableSmall", ZCOL.fish[1], -53, ZCOL.fish[2], "CENTER")
     g.zones = RowList(panel, 0, LIST_W, -68, 22, 14, MakeZoneRow, FillZoneRow)
     g.noZones = Text(panel, L.GUIDE_NO_ZONES, "GameFontDisableSmall", 6, -74, LIST_W - 12)
-    g.zoneKey = Text(panel, "", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, 580)
+    g.zoneKey = Text(panel, "", "GameFontDisableSmall", 0, LIST_BOTTOM - 3, LIST_W)
 end
 
 local function RefreshZones(p)
     local g, level = p.guide, Level()
     g.zoneTitle:SetText(string.format(g.showAll and L.GUIDE_ALL_ZONES or L.GUIDE_ZONES_FOR, level))
     g.zoneAll:SetText(g.showAll and L.GUIDE_MY_LEVEL or L.GUIDE_SHOW_ALL)
+    myFishing = ns.LevelGuide.MyFishing()
     local zones = ns.LevelGuide.Zones(level, g.showAll)
     g.zones.Set(zones)
     g.noZones:SetShown(#zones == 0)
     g.zoneKey:SetText(g.zoneHint or (ns.GREEN .. L.GUIDE_ZONE_KEY .. "|r  "
-        .. (g.showAll and (ns.GREY .. L.GUIDE_OUTSIDE_KEY .. "|r  ") or "") .. L.GUIDE_ZONE_CLICK))
+        .. (g.showAll and (ns.GREY .. L.GUIDE_OUTSIDE_KEY .. "|r  ") or "") .. L.GUIDE_ZONE_CLICK
+        .. "  " .. L.GUIDE_FISH_KEY))
 end
 
 local function BuildDungeons(panel, p)
