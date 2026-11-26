@@ -136,7 +136,7 @@ function H.BuildAll(panel)
     local W = ns.ClanRollUI.W
     local TOP = -40
     local LX, LW = 12, 150                   -- you
-    local MX, MW = 196, 186                  -- the leaders' addons
+    local MX, MW = 196, 150                  -- the leaders' addons
     local RX = MX + MW + 34                  -- back to you
     local RW = W - RX - 12
     local BOX_H, GAP = 40, 8
@@ -164,10 +164,10 @@ function H.BuildAll(panel)
         local b = UI.Box(c, MX, y, MW, BOX_H)
         b:EnableMouse(false)
         if b.SetBackdropBorderColor then b:SetBackdropBorderColor(col[1], col[2], col[3], 0.95) end
-        Text(b, hex .. ns.Clans.RaceName(race) .. "|r", "GameFontNormalSmall", 8, -7, 100)
+        Text(b, hex .. ns.Clans.RaceName(race) .. "|r", "GameFontNormalSmall", 8, -7, MW - 90)
         Text(b, "|TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t " .. ns.GREY .. L.CLANROLL_HOW_ALL_LEADER .. "|r",
-            "GameFontHighlightSmall", 8, -22, 100)
-        Fake(b, L.CLANROLL_START_BTN, 76, MW - 84, -10, 20)
+            "GameFontHighlightSmall", 8, -22, MW - 90)
+        Fake(b, L.CLANROLL_START_BTN, 76, MW - 82, -10, 20)
         -- Arrow in from you, arrow out to the winners.
         local mid = y - BOX_H / 2
         Line(c, LX + LW, mid, MX - LX - LW - 6, 2)
@@ -184,11 +184,13 @@ function H.BuildAll(panel)
     Para(back, L.CLANROLL_HOW_ALL_3, "GameFontHighlightSmall", 36, -10, RW - 44)
     -- Made-up results: each clan's winning roll in its colour, the highest one gold with a crown.
     local rolls, best = { 88, 95, 72, 81 }, 95
+    local names = { "Bazza Stubbs", "Shazza Kettle", "Macca Ute", "Kezza Galah" }
     for i, race in ipairs(DIAGRAM_CLANS) do
         local y = -84 - (i - 1) * 15
-        Text(back, ClanHex(race) .. ns.Clans.RaceName(race) .. "|r", "GameFontHighlightSmall", 14, y, 80)
-        Text(back, rolls[i] == best and (ns.GOLD .. best .. "|r  |TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t")
-            or tostring(rolls[i]), "GameFontHighlightSmall", 96, y, RW - 106)
+        Text(back, ClanHex(race) .. ns.Clans.RaceName(race) .. "|r", "GameFontHighlightSmall", 10, y, 48)
+        Text(back, names[i], "GameFontHighlightSmall", 58, y, 98)
+        Text(back, rolls[i] == best and (ns.GOLD .. best .. "|r |TInterface\\GroupFrame\\UI-Group-LeaderIcon:12:12|t")
+            or tostring(rolls[i]), "GameFontHighlightSmall", 156, y, RW - 162)
     end
     c.announce = Fake(back, L.CLANROLL_ANNOUNCE, 100, (RW - 100) / 2, -colH + 34, 24)
 

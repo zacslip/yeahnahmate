@@ -12,6 +12,7 @@
 - The guild master or a manager can run an **All clans roll** from its own view on the Clans tab. Tick the clans to include and set the roll up; each clan's leader gets that setup and clicks Start in their own group. If a leader isn't in a group or doesn't answer, the next leader or their second in command is asked instead.
 - You see who'll be asked, how each clan is going, each clan's winner and the overall winner: the highest roll across the clans. Start roll turns into Cancel while it's going. Announce posts the winners to guild chat, or to group chat, and the last 20 all-clans rolls are saved.
 - Several clans can roll in the same raid: each player's screen follows their own clan's roll.
+- Every name on the roll lists has **Whisper** and **Target** buttons, and the lists show full names. Whisper opens a message to that player; the winner's has "You won" filled in, and nothing is sent until you press Send. Target targets the player, but only someone in your group and never during a fight. On the All clans roll, each clan's winner shows by name.
 - **How it works** cards on the Clans tab: one on the Clan roll panel with the steps for clan leaders, and one on the All clans roll view showing how the roll goes out to each clan leader's addon and how the winners come back.
 - Calendar: each guildie can have up to 15 upcoming events. A weekly event counts once. If you're at the limit, the new-event form tells you why.
 - Professions: the first "Yeah" to sharing your professions now actually shares them.

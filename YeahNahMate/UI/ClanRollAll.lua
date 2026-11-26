@@ -241,6 +241,15 @@ function CA.BuildPanel(parent, x, y)
     p.missTitle = Text(p, L.CLANROLL_ALL_PENDING, "GameFontNormalSmall", 340, ly, 230)
     p.res = Rows(p, 10, ly - 16, 310, CU.RES_ROWS)
     p.miss = Rows(p, 338, ly - 16, 238, MISS_ROWS)
+    -- Whisper and Target on each clan's winner (UI/RollTarget.lua).
+    ns.RollTarget.AddTo(p.res, 310 - 46 - 104, function(row)
+        local all = R.all
+        if not all or not row.key then return nil end
+        for _, x in pairs(all.clans) do
+            if x.winner == row.key then return string.format(L.CLANROLL_WHISPER, R.Head(all), x.roll or 0) end
+        end
+    end)
+    for _, row in ipairs(p.res) do row.left:SetWidth(310 - 50 - 104) end
     for _, r in ipairs(p.miss) do
         r.left:SetWidth(100)
         r.right:ClearAllPoints()
@@ -376,9 +385,10 @@ function CA.RefreshPanel(p)
             if race then
                 local x = all.clans[race]
                 local crown = (top and roll == x.roll and x.winner) and (CROWN .. " ") or ""
-                row.left:SetText(crown .. ClanName(race) .. "  " .. (x.winner and CU.Who(x.winner) or (ns.GREY .. L.CLANROLL_ALL_NONE .. "|r")))
+                row.left:SetText(crown .. ClanName(race) .. "  " .. (x.winner and CU.Who(x.winner, true) or (ns.GREY .. L.CLANROLL_ALL_NONE .. "|r")))
                 row.right:SetText(x.roll and (ns.GOLD .. x.roll .. "|r") or "")
             end
+            ns.RollTarget.Set(row, race and all.clans[race].winner or nil)
         end
         for i, row in ipairs(p.miss) do
             local race = pending[i]

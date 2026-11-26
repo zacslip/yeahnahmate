@@ -74,9 +74,11 @@ local function Edit(parent, x, y, w, max)
 end
 
 -- A name in class colour (first name only, it's a small list).
-local function Who(key)
+-- A player's name in their class colour: the first name, or with full the whole name (first and
+-- second, as the lists show it).
+local function Who(key, full)
     local m = ns.Guild.Get(key)
-    local short = key:match("^%S+") or key
+    local short = full and key or (key:match("^%S+") or key)
     if m and m.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[m.class] then
         local c = RAID_CLASS_COLORS[m.class]
         return string.format("|cff%02x%02x%02x%s|r", c.r * 255, c.g * 255, c.b * 255, short)
@@ -195,6 +197,12 @@ function CU.Build(parent, x, y)
     p.miss = Rows(p, 338, ly - 16, 238, MISS_ROWS)
     Wheel(p, p.res, "resOff")
     Wheel(p, p.miss, "missOff")
+    -- Whisper and Target on each roll (UI/RollTarget.lua); the name column makes room for them.
+    ns.RollTarget.AddTo(p.res, 310 - 46 - 104, function(row)
+        local r = ns.ClanRoll.cur
+        if r and not r.open and r.winner == row.key then return ns.ClanRoll.WhisperLine(r) end
+    end)
+    for _, row in ipairs(p.res) do row.left:SetWidth(310 - 50 - 104) end
     p.hist = Rows(p, 10, ly - 16, W - 20, HIST_ROWS)
     for _, r in ipairs(p.hist) do
         r.left:SetWidth(W - 170)
@@ -280,13 +288,14 @@ local function FillResults(p, r)
         local e = list[off + i]
         row:SetShown(e ~= nil)
         if e then
-            local name = Who(e.name)
+            local name = Who(e.name, true)
             local tag = ""
-            if e.past then name = ns.GREY .. (e.name:match("^%S+") or e.name) .. "|r"; tag = ns.GREY .. " " .. L.CLANROLL_PAST_TAG .. "|r"
-            elseif e.outsider then name = BLUE .. (e.name:match("^%S+") or e.name) .. "|r"; tag = BLUE .. " " .. L.CLANROLL_OUTSIDER_TAG .. "|r" end
+            if e.past then name = ns.GREY .. e.name .. "|r"; tag = ns.GREY .. " " .. L.CLANROLL_PAST_TAG .. "|r"
+            elseif e.outsider then name = BLUE .. e.name .. "|r"; tag = BLUE .. " " .. L.CLANROLL_OUTSIDER_TAG .. "|r" end
             row.left:SetText((off + i) .. ". " .. name .. tag)
             row.right:SetText((e.top and ns.GOLD or (e.past and ns.GREY or "")) .. e.roll .. "|r")
         end
+        ns.RollTarget.Set(row, e and e.name or nil)
     end
     local missing = (r and r.open) and R.Missing(r) or {}
     local moff = math.max(0, math.min(p.missOff or 0, #missing - MISS_ROWS))
@@ -295,7 +304,7 @@ local function FillResults(p, r)
     for i, row in ipairs(p.miss) do
         local k = missing[moff + i]
         row:SetShown(k ~= nil)
-        if k then row.left:SetText(Who(k)); row.right:SetText("") end
+        if k then row.left:SetText(Who(k, true)); row.right:SetText("") end
     end
 end
 
