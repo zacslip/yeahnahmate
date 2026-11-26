@@ -62,6 +62,9 @@ local function StartTip(f, getRace, tip)
     return f
 end
 
+-- Item boxes: room for a whole dragged item link (colour, item string and name), which can pass 80.
+local ITEM_LETTERS = 255
+
 local function Edit(parent, x, y, w, max)
     local e = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     e:SetSize(w, 20)
@@ -92,7 +95,8 @@ function CU.ResultText(r)
     if not r or r.open then return "" end
     if r.cancelled then return ns.GREY .. L.CLANROLL_ALL_CANCELLED .. "|r" end
     if r.winner then return string.format(L.CLANROLL_WINNER, Who(r.winner), ns.GOLD .. (r.winRoll or "") .. "|r") end
-    if r.ties then return string.format(L.CLANROLL_TIE, r.winRoll or 0) end
+    -- Only the one who ran it has Reroll ties; anyone following just hears one is coming.
+    if r.ties then return string.format(r.by == ns.me and L.CLANROLL_TIE or L.CLANROLL_TIE_FOLLOW, r.winRoll or 0) end
     if r.follower and not r.ended then return "" end
     return ns.GREY .. L.CLANROLL_NOBODY_SHORT .. "|r"
 end
@@ -151,7 +155,7 @@ function CU.Build(parent, x, y)
     p.msg:SetScript("OnTextChanged", function(self, user) if user then CU.Prefs().msg = self:GetText() end end)
     WithTip(p.msg, { L.CLANROLL_MSG, L.CLANROLL_MSG_TIP })
     Text(p, L.CLANROLL_ITEM, "GameFontNormalSmall", 236, sy - 4, 40)
-    p.item = Edit(p, 272, sy, 230, 80)
+    p.item = Edit(p, 272, sy, 230, ITEM_LETTERS)
     p.item:SetScript("OnReceiveDrag", function() CU.TakeItem(p) end)
     p.item:SetScript("OnMouseUp", function() if GetCursorInfo and GetCursorInfo() then CU.TakeItem(p) end end)
     WithTip(p.item, { L.CLANROLL_ITEM, L.CLANROLL_ITEM_TIP })
@@ -522,7 +526,7 @@ local function BuildPop()
     f.msg = Edit(f.setup, 60, 0, 220, 40)
     f.msg:SetScript("OnTextChanged", function(self, user) if user then CU.Prefs().msg = self:GetText() end end)
     Text(f.setup, L.CLANROLL_ITEM, "GameFontNormalSmall", 10, -28, 56)
-    f.item = Edit(f.setup, 60, -24, 220, 80)
+    f.item = Edit(f.setup, 60, -24, 220, ITEM_LETTERS)
     f.item:SetScript("OnReceiveDrag", function() CU.TakeItem(f) end)
     f.item:SetScript("OnMouseUp", function() if GetCursorInfo and GetCursorInfo() then CU.TakeItem(f) end end)
     WithTip(f.item, { L.CLANROLL_ITEM, L.CLANROLL_ITEM_TIP })
@@ -569,6 +573,8 @@ local function BuildPop()
     f.whisper, f.whisperText = wc, wfs
     f.reroll = WithTip(Button(f, L.CLANROLL_REROLL, 120, 170, -74, function() CU.Reroll() end, 24),
         { L.CLANROLL_REROLL, L.CLANROLL_REROLL_TIP })
+    -- However it closes, its boxes let go of the keyboard.
+    f:HookScript("OnHide", function() f.msg:ClearFocus(); f.item:ClearFocus() end)
     f:Hide()
     return f
 end
@@ -581,6 +587,7 @@ function CU.StartFrom(f)
     local r = R.Start({ race = f.race, msg = pr.msg, item = f.item:GetText(), timer = pr.timer,
         countdown = pr.countdown, others = pr.others, skip = pr.skip })
     if r then R.PostStart(r) end
+    f.msg:ClearFocus(); f.item:ClearFocus()
     UI.Dirty()
     CU.RefreshPop()
 end
@@ -606,6 +613,9 @@ function CU.RefreshPop()
         .. (asked and (ns.GREY .. " " .. string.format(L.CLANROLL_ASKED_BY, asked.from:match("^%S+") or asked.from) .. "|r") or ""))
 
     local setup = can and not open
+    -- Setup going away (the roll started) lets go of the keyboard: the pop-out is outside the main
+    -- window, so UI.FreeKeyboard doesn't cover it, and a hidden box would swallow / and Enter.
+    if not setup then f.msg:ClearFocus(); f.item:ClearFocus() end
     f.setup:SetShown(setup and true or false)
     if setup then
         if set or not f.msg:HasFocus() then f.msg:SetText(pr.msg or "") end
@@ -682,7 +692,7 @@ function CU.OpenPop(auto, race)
     pop:Show()
     CU.RefreshPop()
 end
-function CU.ClosePop() if pop then pop:Hide(); pop.auto, pop.pinned = nil, nil end end
+function CU.ClosePop() if pop then pop.msg:ClearFocus(); pop.item:ClearFocus(); pop:Hide(); pop.auto, pop.pinned = nil, nil end end
 function CU.TogglePop()
     if pop and pop:IsShown() then CU.ClosePop() else CU.OpenPop(false) end
 end
@@ -769,6 +779,7 @@ end)
 
 -- Shared with UI/ClanRollAll.lua (the all-clans view, laid out like this panel).
 CU.W, CU.H, CU.ROW_H, CU.RES_ROWS, CU.HIST_ROWS = W, H, ROW_H, RES_ROWS, HIST_ROWS
+CU.ITEM_LETTERS = ITEM_LETTERS
 CU.Edit, CU.Who, CU.Rows, CU.Wheel, CU.WithTip, CU.Tip, CU.NoTip = Edit, Who, Rows, Wheel, WithTip, Tip, NoTip
 
 -- The all-clans roll: its own view on the Clans tab (UI/ClanRollAll.lua).

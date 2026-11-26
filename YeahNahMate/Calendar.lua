@@ -412,9 +412,12 @@ local function TakeEvent(owner, msg, direct)
                 ns.Log("dropped: bad event from " .. owner)
                 return false
             end
-            -- One more upcoming event from an owner who already has MAX_OWN: not kept.
+            -- One more upcoming event from an owner who already has MAX_OWN: not kept, but only for a copy.
+            -- The owner's own word always is: their addon already keeps the limit, an older one may have
+            -- more, and my count can be stale (a cancel not heard yet); dropping it would leave calendars
+            -- disagreeing.
             local now = GetServerTime()
-            if not IsUpcoming(old, now) and IsUpcoming({ at = math.floor(msg.at), w = msg.w == true or nil }, now)
+            if not direct and not IsUpcoming(old, now) and IsUpcoming({ at = math.floor(msg.at), w = msg.w == true or nil }, now)
                 and Cal.Full(owner) then
                 ns.Log("dropped: " .. owner .. " already has " .. MAX_OWN .. " upcoming events")
                 return false

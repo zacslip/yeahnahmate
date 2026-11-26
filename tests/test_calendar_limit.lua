@@ -1,7 +1,8 @@
 -- Calendar limit (25 Nov): one guildie can have at most 15 upcoming events. A weekly event counts once
 -- (it never runs out, so it keeps its place until cancelled). Edits to events they have still go
 -- through; past and cancelled ones don't count. Mine: Save says why (and the new-event form shows it).
--- Others': a 16th is not kept, whether it comes from them or as a copy.
+-- Others': a 16th straight from them is kept (their addon keeps the limit; an older one may not, and my
+-- count can be stale); a 16th that comes only as a copy is not (test_calendar_limit_copies.lua).
 math.randomseed(25)
 YeahNahMateDB = nil
 local ns = LoadAddon("YeahNahMate", "YeahNahMate")
@@ -63,13 +64,13 @@ check(f.tip:GetText() == L.EVENT_TIP, "editing: the normal tip")
 cal.mode = nil
 ns.UI.Dirty(); Tick(1)
 
--- Another guildie's: 15 kept, the 16th not; an edit to one of the 15 still is.
+-- Another guildie's, straight from them: all kept, the 16th too; an edit still goes through.
 for i = 1, 15 do
     INJECT("YNM", Msg({ t = "EVT", id = 100 + i, ti = "Bluey " .. i, at = now + i * 3600, k = "s", ev = now }), "GUILD", "Bluey Heeler")
 end
 INJECT("YNM", Msg({ t = "EVT", id = 200, ti = "Bluey 16", at = now + 99000, k = "s", ev = now }), "GUILD", "Bluey Heeler")
 Tick(1)
-check(C.OwnCount("Bluey Heeler") == 15 and store["Bluey Heeler:200"] == nil, "a guildie's 16th isn't kept")
+check(C.OwnCount("Bluey Heeler") == 16 and store["Bluey Heeler:200"] ~= nil, "a guildie's 16th straight from them is kept (their word)")
 INJECT("YNM", Msg({ t = "EVT", id = 105, ti = "Bluey 5 (moved)", at = now + 80000, k = "s", ev = now + 1 }), "GUILD", "Bluey Heeler")
 Tick(1)
 check(store["Bluey Heeler:105"].title == "Bluey 5 (moved)", "their edit still goes through")
@@ -77,10 +78,10 @@ check(store["Bluey Heeler:105"].title == "Bluey 5 (moved)", "their edit still go
 INJECT("YNM", Msg({ t = "EVT", id = 201, ti = "Last week", at = now - 5 * 86400, k = "s", ev = now }), "GUILD", "Bluey Heeler")
 Tick(1)
 check(store["Bluey Heeler:201"] ~= nil, "a past event from them is kept")
--- They cancel one: room for a new one.
+-- They cancel one and make another: both heard.
 INJECT("YNM", Msg({ t = "EVT", id = 101, x = true, ev = now + 2 }), "GUILD", "Bluey Heeler")
 INJECT("YNM", Msg({ t = "EVT", id = 202, ti = "Bluey new", at = now + 7200, k = "s", ev = now + 2 }), "GUILD", "Bluey Heeler")
 Tick(1)
-check(store["Bluey Heeler:202"] ~= nil and C.OwnCount("Bluey Heeler") == 15, "after a cancel, a new one is kept")
+check(store["Bluey Heeler:202"] ~= nil and store["Bluey Heeler:101"].x and C.OwnCount("Bluey Heeler") == 16, "after a cancel, a new one is kept")
 
 check(#ERRORS == 0, "no errors (" .. tostring(ERRORS[1]) .. ")")

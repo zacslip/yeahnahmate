@@ -186,7 +186,7 @@ function H.BuildAll(panel)
     Para(back, L.CLANROLL_HOW_ALL_3, "GameFontHighlightSmall", 36, -10, RW - 44)
     -- Made-up results: each clan's winning roll in its colour, the highest one gold with a crown.
     local rolls, best = { 88, 95, 72, 81 }, 95
-    local names = { "Bazza Stubbs", "Shazza Kettle", "Macca Ute", "Kezza Galah" }
+    local names = L.CLANROLL_HOW_ALL_SAMPLES
     for i, race in ipairs(DIAGRAM_CLANS) do
         local y = -84 - (i - 1) * 15
         Text(back, ClanHex(race) .. ns.Clans.RaceName(race) .. "|r", "GameFontHighlightSmall", 10, y, 48)

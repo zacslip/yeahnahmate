@@ -563,6 +563,8 @@ ns.Comm.On("CRS", function(msg, from, channel, isSelf)
     if race ~= mine then
         if msg.o ~= true then return end
         if R.cur and R.cur.open and R.cur.race == mine then return end
+        -- My own roll just ended in a tie: it stays (Reroll ties is still to come), not replaced by another clan's.
+        if R.cur and not R.cur.open and R.cur.by == ns.me and R.cur.ties and not R.cur.cancelled then return end
     end
     if R.cur and R.cur.open then R.cur.open = false end
     local timer = 0

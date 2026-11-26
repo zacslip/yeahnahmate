@@ -227,16 +227,17 @@ local function NewRollMark()
     f.die:SetPoint("LEFT")
     f.num = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     f.num:SetPoint("LEFT", f.die, "RIGHT", 2, 0)
-    f:SetScript("OnUpdate", function(self)
-        if self.pulse then self:SetAlpha(0.65 + 0.35 * math.abs(math.sin(GetTime() * 3))) end
-    end)
     return f
 end
+
+-- The winner's die pulses: the only mark that runs every frame, and only for its 10 s.
+local function Pulse(self) self:SetAlpha(0.65 + 0.35 * math.abs(math.sin(GetTime() * 3))) end
 
 local function HideRoll(unit)
     local f = rollMarks[unit]
     if not f then return end
     rollMarks[unit] = nil
+    f:SetScript("OnUpdate", nil)
     f:Hide()
     f:ClearAllPoints()
     rollSpare[#rollSpare + 1] = f
@@ -256,11 +257,13 @@ local function ShowRoll(unit)
         f.die:SetSize(28, 28)
         f.num:SetText(ns.GOLD .. winner.n .. "|r")
         f.pulse = true
+        f:SetScript("OnUpdate", Pulse)
     else
         f.die:SetTexture(DICE)
         f.die:SetSize(20, 20)
         f.num:SetText((e.top and ns.GOLD or "|cffffffff") .. e.n .. "|r")
         f.pulse = nil
+        f:SetScript("OnUpdate", nil)
         f:SetAlpha(1)
     end
     f.key = key

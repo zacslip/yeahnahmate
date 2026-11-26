@@ -204,17 +204,19 @@ local function TabFont(b, small)
     b:SetDisabledFontObject(small and GameFontDisableSmall or GameFontDisable)
 end
 local shown, widths, laidOut = {}, {}, nil     -- reused: the row is laid out again only when its tabs change
+local guessed, retries = false, 0               -- a label measured 0 (font not ready): measure again, a few times
 local function TabWidths()
     local total = 0
     for i, s in ipairs(shown) do
         local tw = s.b.GetTextWidth and s.b:GetTextWidth()
+        if not (tw and tw > 0) then guessed = true end
         widths[i] = (tw and tw > 0) and math.ceil(tw) + TAB_MARGIN or s.t[3]
         total = total + widths[i]
     end
     return total
 end
 -- Lay the row out again on the next redraw even if the same tabs show (labels changed size).
-function UI.TabsChanged() laidOut = nil end
+function UI.TabsChanged() laidOut, retries = nil, 0 end
 local function LayoutTabs()
     local mask, n = 0, 0
     for i, t in ipairs(TABS) do
@@ -232,6 +234,7 @@ local function LayoutTabs()
     for i = #shown, n + 1, -1 do shown[i] = nil end
     if mask == laidOut then return end
     laidOut = mask
+    guessed = false
     local room = TAB_ROW - TAB_GAP * (#shown - 1)
     for _, s in ipairs(shown) do TabFont(s.b, false) end
     local total = TabWidths()
@@ -250,6 +253,9 @@ local function LayoutTabs()
         s.b:SetPoint("TOPLEFT", x, -82)
         x = x + w + TAB_GAP
     end
+    -- The fixed widths stood in: try the real ones on the next few redraws (not for ever: a label that
+    -- never measures would lay the row out on every redraw).
+    if guessed and retries < 5 then laidOut, retries = nil, retries + 1 end
 end
 
 -- An edit box of ours that still has the keyboard while it can't be seen (its page or the window was

@@ -1175,6 +1175,7 @@ L.CLANROLL_ONLY_LEADERS = "Only the clan's leader, second in command, Clan moder
 L.CLANROLL_BUSY_TIP = "Your own roll for another clan is still going. Stop it (or let it finish) first."
 L.CLANROLL_WINNER = "Winner: %s %s"
 L.CLANROLL_TIE = "Tie at %d: Reroll ties"
+L.CLANROLL_TIE_FOLLOW = "Tie at %d: reroll coming"
 L.CLANROLL_NOBODY_SHORT = "Nobody rolled"
 L.CLANROLL_ENDING_IN = "Ending in %d"
 L.CLAN_VIEW_MINE = "My Clan"
@@ -1225,6 +1226,8 @@ L.CLANROLL_HOW_4 = "Watch the rolls come in"
 L.CLANROLL_HOW_4_TEXT = "Highest first, with who hasn't rolled yet. Only a first, normal roll counts. Whisper or Target anyone on the list."
 L.CLANROLL_HOW_5 = "Click Announce"
 L.CLANROLL_HOW_5_TEXT = "When the timer ends the winner shows. Announce tells the group; Whisper winner tells them too."
+-- Made-up winners on the All clans roll How it works card.
+L.CLANROLL_HOW_ALL_SAMPLES = { "Bazza Stubbs", "Shazza Kettle", "Macca Ute", "Kezza Galah" }
 L.CLANROLL_HOW_POP = "Pop out: the roll in a small window you can move anywhere, with Whisper and Target."
 L.CLANROLL_HOW_TIE = "A tie? Reroll ties shows where Start roll was. Only the tied players roll again."
 L.CLANROLL_HOW_ASKED = "The guild master asked you? A pop-up opens this with their setup. Get your group, click Start roll."

@@ -102,14 +102,26 @@ function G.Fishing(name)
 end
 
 -- My fishing skill, or nil if I haven't learned it. From the skill list (fishing has no recipe window).
+-- The list leaves out skills under a header the player collapsed in their Skills panel, so the last one
+-- seen is kept per character (ns.settings.fishing) and used while it's hidden.
 function G.MyFishing()
     if not (GetNumSkillLines and GetSkillLineInfo) then return nil end
     local want = (GetSpellInfo and GetSpellInfo(7620)) or "Fishing"     -- Fishing (Apprentice): its name is the skill's
+    local collapsed = false
     for i = 1, GetNumSkillLines() do
-        local ok, name, header, _, rank = pcall(GetSkillLineInfo, i)
-        if ok and not header and (name == want or name == "Fishing") then return tonumber(rank) end
+        local ok, name, header, expanded, rank = pcall(GetSkillLineInfo, i)
+        if ok and header and not expanded then collapsed = true end
+        if ok and not header and (name == want or name == "Fishing") then
+            local n = tonumber(rank)
+            if n and ns.settings and ns.me then
+                ns.settings.fishing = type(ns.settings.fishing) == "table" and ns.settings.fishing or {}
+                ns.settings.fishing[ns.me] = n
+            end
+            return n
+        end
     end
-    return nil
+    local saved = collapsed and ns.settings and type(ns.settings.fishing) == "table" and ns.me and ns.settings.fishing[ns.me]
+    return type(saved) == "number" and saved or nil
 end
 
 -- Each zone's map id. Ids, because the game's own zone names change with the client's language.
