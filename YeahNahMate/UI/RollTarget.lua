@@ -3,7 +3,7 @@
 --            for a winner; nothing is sent until the player presses Send.
 --   Target:  targets that player. Targeting is protected, so it's a secure button (the game does the
 --            targeting from the player's own click) and it only works on someone in my group (by
---            their party/raid unit). It is parented to UIParent and only anchored to the row: a secure
+--            their party/raid unit); anyone else gets it greyed out, saying why. It is parented to UIParent and only anchored to the row: a secure
 --            child would make our whole window protected, so it couldn't open or close in a fight.
 --            In a fight nothing secure can be changed, so every Target button hides when combat
 --            starts and comes back after it.
@@ -65,10 +65,11 @@ function T.AddTo(rows, x, whisperText)
             if not GameTooltip then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L.CLANROLL_TARGET, 1, 0.82, 0)
-            GameTooltip:AddLine(L.CLANROLL_ROW_TARGET_TIP, 1, 1, 1, true)
+            GameTooltip:AddLine(self:IsEnabled() and L.CLANROLL_ROW_TARGET_TIP or L.CLANROLL_ROW_TARGET_OFF, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         t:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        t:SetMotionScriptsWhileDisabled(true)       -- greyed out still says why on hover
         t:Hide()
         row.targetBtn = t
         buttons[#buttons + 1] = t
@@ -78,8 +79,8 @@ function T.AddTo(rows, x, whisperText)
     end
 end
 
--- Points a row's buttons at a player (nil: none). Whisper for any guildie; Target only for someone in
--- my group, and never during a fight.
+-- Points a row's buttons at a player (nil: none). Whisper for any guildie; Target for anyone but me,
+-- working only for someone in my group (greyed out for the rest), and never touched during a fight.
 function T.Set(row, key)
     row.key = key
     if row.whisperBtn then
@@ -87,9 +88,10 @@ function T.Set(row, key)
     end
     local t = row.targetBtn
     if not t or Fight() then return end
-    local unit = key and key ~= ns.me and T.UnitFor(key)
-    if unit and row:IsVisible() then
-        t:SetAttribute("unit", unit)
+    if key and key ~= ns.me and row:IsVisible() then
+        local unit = T.UnitFor(key)
+        t:SetAttribute("unit", unit)               -- nil when not in my group: nothing to target
+        t:SetEnabled(unit ~= nil)
         t:Show()
     else
         t:Hide()

@@ -249,6 +249,18 @@ win._scripts.OnKeyDown(win, "ESCAPE")
 check(not win:IsShown(), "Escape closes the window")
 check(#UISpecialFrames == 0, "UISpecialFrames untouched (no taint)")
 check(PanelManagerCalls == 0, "no ShowUIPanel/HideUIPanel calls (no taint)")
+-- Escape, then a fight starts before the window lets keys through again: the fight's start puts it
+-- back, so the window opened in the fight doesn't eat every key (chat's / and Enter included).
+ns.UI.Open()
+win._scripts.OnKeyDown(win, "ESCAPE")
+check(win._propagate == false, "Escape: that one press stays with the window")
+FireEvent("PLAYER_REGEN_DISABLED")
+FAKE.combat = true
+Tick(1)
+ns.UI.Open()
+check(win._propagate == true, "a fight starting right after Escape: keys pass through again")
+win._scripts.OnKeyDown(win, "ESCAPE")
+FAKE.combat = false
 check(#ERRORS == 0, "no errors at the end (" .. (ERRORS[1] or "none") .. ")")
 
 -- /ynm dev wipe: asks first; "yes" forgets all saved data and reloads, sending nothing.

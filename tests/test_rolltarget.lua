@@ -60,10 +60,10 @@ ns.Whisper.Open = real
 FAKE.party = { "Bluey Heeler" }
 FAKE.group = 2
 FireEvent("GROUP_ROSTER_UPDATE"); UI.Dirty(); Tick(1)
-check(not top.targetBtn:IsShown() and top.whisperBtn:IsShown(), "Bingo left the group: no Target, Whisper still there")
+check(top.targetBtn:IsShown() and not top.targetBtn:IsEnabled() and top.whisperBtn:IsShown(), "Bingo left the group: Target greyed out, Whisper still there")
 FAKE.party, FAKE.group = { "Bluey Heeler", "Bingo Heeler" }, 3
 UI.Dirty(); Tick(1)
-check(top.targetBtn:IsShown(), "back in the group: Target again")
+check(top.targetBtn:IsShown() and top.targetBtn:IsEnabled(), "back in the group: Target works again")
 
 -- A fight: every Target hides at the start; nothing secure is touched during it; back after.
 FireEvent("PLAYER_REGEN_DISABLED")
@@ -81,3 +81,26 @@ p.histBtn:Click(); Tick(1)
 check(not top.targetBtn:IsShown(), "History: the Target buttons go with the rows")
 p.histBtn:Click(); Tick(1)
 check(top.targetBtn:IsShown(), "back from History: Target again")
+
+-- Someone not in my group (like the sim's fake guildies, who are never real group members): Target
+-- shows greyed out.
+local fake = "Bandit Heeler"
+local row = p.res[3]
+row:Show()
+T.Set(row, fake)
+check(row.targetBtn:IsShown() and not row.targetBtn:IsEnabled(), "not in my group: Target greyed out")
+T.Set(row, ns.me)
+check(not row.targetBtn:IsShown() and not row.whisperBtn:IsShown(), "my own row: no Whisper or Target")
+
+-- Typing in the roll panel, then the window closes or the view changes: the keyboard is let go, so
+-- / and Enter open the game's chat again.
+p.histBtn:Click(); Tick(1)
+p.histBtn:Click(); Tick(1)
+p.msg:SetFocus()
+check(GetCurrentKeyBoardFocus() == p.msg, "typing in the Message box")
+UI.Select("home"); Tick(1)
+check(GetCurrentKeyBoardFocus() == nil, "another tab: the hidden box lets go of the keyboard")
+UI.Select("clans"); Tick(1)
+p.item:SetFocus()
+UI.Toggle(); Tick(1)
+check(GetCurrentKeyBoardFocus() == nil, "the window closed: the keyboard is let go")

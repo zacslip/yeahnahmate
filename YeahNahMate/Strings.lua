@@ -1203,6 +1203,7 @@ L.CLANROLL_ALL_CLEAR_TIP = "Done: takes the results off the screen (History keep
 L.CLANROLL_TARGET = "Target"
 L.CLANROLL_ROW_WHISPER_TIP = "Opens a whisper to them (the winner's has \"You won\" filled in). Nothing is sent until you press Send."
 L.CLANROLL_ROW_TARGET_TIP = "Targets them. Only for someone in your group, and not during a fight."
+L.CLANROLL_ROW_TARGET_OFF = "Not in your group: the game only lets the addon target someone in your party or raid."
 L.CLANROLL_HOW = "How it works"
 L.CLANROLL_HOW_TIP = "A quick card with the steps, right here on the tab."
 L.CLANROLL_HOW_CLOSE = "Close"

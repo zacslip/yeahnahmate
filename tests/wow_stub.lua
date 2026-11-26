@@ -102,7 +102,11 @@ function methods.SetFrameStrata(self, s) self._strata = s end
 function methods.GetFrameStrata(self) return self._strata or "MEDIUM" end
 function methods.SetFrameLevel(self, n) self._level = n end
 function methods.GetPoint() return "CENTER", nil, "CENTER", 10, 20 end
-function methods.HasFocus() return false end
+-- Keyboard focus: one edit box at a time (FAKE.focus), like the game.
+function methods.HasFocus(self) return FAKE.focus == self end
+function methods.SetFocus(self) FAKE.focus = self end
+function methods.ClearFocus(self) if FAKE.focus == self then FAKE.focus = nil end end
+function GetCurrentKeyBoardFocus() return FAKE.focus end
 function methods.CreateTexture(self) return Obj("Texture", nil, self) end
 function methods.CreateFontString(self) return Obj("FontString", nil, self) end
 function methods.CreateAnimationGroup(self) return Obj("AnimationGroup", nil, self) end

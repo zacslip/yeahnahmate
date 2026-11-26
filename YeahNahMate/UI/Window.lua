@@ -206,10 +206,32 @@ local function LayoutTabs()
     end
 end
 
+-- An edit box of ours that still has the keyboard while it can't be seen (its page or the window was
+-- hidden while you were typing in it) takes every key, so / and Enter no longer open the game's chat.
+-- Let go of it: always when it can't be seen, and with all set, also when it can (the window closing).
+-- Only ever our own boxes (inside the window); the game's chat box is never touched.
+function UI.FreeKeyboard(all)
+    local f = GetCurrentKeyBoardFocus and GetCurrentKeyBoardFocus()
+    if not f or not frame or not f.ClearFocus then return false end
+    local o, ours = f, false
+    for _ = 1, 30 do
+        if not o then break end
+        if o == frame then ours = true break end
+        o = o.GetParent and o:GetParent() or nil
+    end
+    if not ours then return false end
+    if all or not (f.IsVisible and f:IsVisible()) then
+        f:ClearFocus()
+        return true
+    end
+    return false
+end
+
 -- Redraw the page that's showing (and the title and footer).
 local function RefreshNow()
     dirty = false
     if not frame or not frame:IsShown() then return end
+    UI.FreeKeyboard(false)
     LayoutTabs()
     for _, t in ipairs(TABS) do
         if t[1] == current and t[4] and not t[4]() then UI.Select("home") return end
@@ -258,6 +280,7 @@ function UI.Select(key)
     for k, p in pairs(pages) do
         if p.frame then p.frame:SetShown(k == key) end
     end
+    UI.FreeKeyboard(false)          -- typing on the page just hidden: let go of the keyboard
     if key ~= entered then
         entered = key
         if pages[key].onEnter and pages[key].frame then pages[key].onEnter(pages[key].frame) end
@@ -327,10 +350,17 @@ local function Build()
     -- Escape turns key pass-through off for that one press; turn it back on as soon as the window
     -- is hidden, so a window opened later (even in combat, when it can't be changed) never eats keys.
     frame:SetScript("OnHide", function(self)
+        UI.FreeKeyboard(true)
         ComeBack(false)
         C_Timer.After(0, function()
             if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
         end)
+    end)
+    -- A fight about to start: make sure keys pass through now, while that can still be changed. (If
+    -- Escape closed the window just before, the switch back after it may not have run yet; the
+    -- window opened again in the fight would then eat every key, chat included.)
+    ns.OnEvent("PLAYER_REGEN_DISABLED", function()
+        if frame and not InCombatLockdown() then frame:SetPropagateKeyboardInput(true) end
     end)
     frame:SetScript("OnShow", function(self)
         self:Raise()
