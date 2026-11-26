@@ -1,4 +1,4 @@
--- Whisper and Target on each row of the roll lists (Clan roll results, All clans roll winners).
+-- Whisper and Target on each row of the roll lists (Clan roll results, its pop-out, All clans roll winners).
 --   Whisper: opens our own whisper box (UI/Whisper.lua) to that player, with "You won ..." filled in
 --            for a winner; nothing is sent until the player presses Send.
 --   Target:  targets that player. Targeting is protected, so it's a secure button (the game does the
@@ -59,19 +59,42 @@ local function Place(t)
     return true
 end
 
--- Dragging the window: the buttons can't follow (they aren't anchored), so they hide while it moves and
--- the lists put them back where it stops. Hooked once on the window the rows are in.
-local hooked = {}
+-- Every row with the buttons, by the window it's in (the main window, the roll pop-out).
+local rowsIn = {}
+
+-- Points every row at its player again: after a fight, a group change, or its window being dragged.
+function T.RefreshAll(top)
+    if Fight() then return end
+    for win, rows in pairs(rowsIn) do
+        if not top or win == top then
+            for _, row in ipairs(rows) do T.Set(row, row.key) end
+        end
+    end
+end
+
+-- Dragging a window: its buttons can't follow (they aren't anchored), so they hide while it moves and
+-- come back where it stops. Hooked once on each window rows are in.
 HookDrag = function(row)
     local top = row
     while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
-    if hooked[top] or not top.HookScript then return end
-    hooked[top] = true
-    top:HookScript("OnDragStart", function()
-        if Fight() then return end
-        for _, t in ipairs(buttons) do t:Hide() end
-    end)
-    top:HookScript("OnDragStop", function() UI.Dirty() end)
+    local list = rowsIn[top]
+    if not list then
+        list = {}
+        rowsIn[top] = list
+        if top.HookScript then
+            top:HookScript("OnDragStart", function()
+                if Fight() then return end
+                for _, r in ipairs(list) do if r.targetBtn then r.targetBtn:Hide() end end
+            end)
+            top:HookScript("OnDragStop", function() T.RefreshAll(top) end)
+            -- the window closing takes them all (as well as each row's own OnHide)
+            top:HookScript("OnHide", function()
+                if Fight() then return end
+                for _, r in ipairs(list) do if r.targetBtn then r.targetBtn:Hide() end end
+            end)
+        end
+    end
+    list[#list + 1] = row
 end
 
 -- Adds Whisper and Target to a list's rows, at x on each row (Whisper, then Target right after it).
@@ -135,5 +158,5 @@ function T.Buttons() return buttons end
 
 -- A fight: hide them all while that's still allowed; after it, the lists put them back.
 ns.OnEvent("PLAYER_REGEN_DISABLED", function() for _, t in ipairs(buttons) do t:Hide() end end)
-ns.OnEvent("PLAYER_REGEN_ENABLED", function() UI.Dirty() end)
-ns.OnEvent("GROUP_ROSTER_UPDATE", function() if not Fight() then UI.Dirty() end end)
+ns.OnEvent("PLAYER_REGEN_ENABLED", function() T.RefreshAll() end)
+ns.OnEvent("GROUP_ROSTER_UPDATE", function() T.RefreshAll() end)

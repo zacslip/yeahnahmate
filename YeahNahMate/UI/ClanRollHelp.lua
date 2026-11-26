@@ -92,7 +92,7 @@ function H.BuildLeader(panel)
         { L.CLANROLL_HOW_4, L.CLANROLL_HOW_4_TEXT },
         { L.CLANROLL_HOW_5, L.CLANROLL_HOW_5_TEXT },
     }
-    local y0, STEP = -38, 54
+    local y0, STEP = -38, 50
     c.steps = {}
     for i, s in ipairs(steps) do
         local y = y0 - (i - 1) * STEP
@@ -119,12 +119,14 @@ function H.BuildLeader(panel)
     -- 5: Announce.
     c.announce = Fake(c, L.CLANROLL_ANNOUNCE, 100, PX, y0 - 4 * STEP - 4, 24)
 
-    -- Under the steps: a tie, and when the guild master asks.
-    local ty = y0 - 5 * STEP + 2
+    -- Under the steps: a tie, the pop-out, and when the guild master asks.
+    local ty = y0 - 5 * STEP - 4
     Line(c, 10, ty + 4, W - 20, 1)
     c.reroll = Fake(c, L.CLANROLL_REROLL, 100, 12, ty - 2, 20)
     c.tie = Para(c, L.CLANROLL_HOW_TIE, "GameFontHighlightSmall", 122, ty - 4, W - 134)
-    c.asked = Para(c, ns.GREY .. L.CLANROLL_HOW_ASKED .. "|r", "GameFontHighlightSmall", 12, ty - 34, W - 24)
+    c.pop = Fake(c, L.CLANROLL_POP, 100, 12, ty - 26, 20)
+    c.popText = Para(c, L.CLANROLL_HOW_POP, "GameFontHighlightSmall", 122, ty - 28, W - 134)
+    c.asked = Para(c, ns.GREY .. L.CLANROLL_HOW_ASKED .. "|r", "GameFontHighlightSmall", 12, ty - 52, W - 24)
     return c
 end
 

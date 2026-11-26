@@ -116,3 +116,36 @@ do  -- after everything above has shown and placed them
     check(placed > 0 and bad == 0, "Target buttons are placed against UIParent, never anchored to our window's rows ("
         .. placed .. " placed, " .. bad .. " anchored to a row)")
 end
+
+-- The pop-out has the same buttons: full names, Whisper ("You won" for the winner), Target placed against
+-- UIParent; dragging it hides its Target buttons and they come back where it stops; closing it takes them away.
+do
+    if InCombatLockdown() then FAKE.combat = false; FireEvent("PLAYER_REGEN_ENABLED") end
+    FAKE.group, FAKE.party = 3, { "Bluey Heeler", "Bingo Heeler" }
+    p.start:Click(); Tick(1)
+    Roll("Bluey Heeler", 30)
+    Roll("Bingo Heeler", 77)
+    R.Stop(); Tick(1)
+    ns.ClanRollUI.OpenPop(false, "Orc"); Tick(1)
+    local pop
+    for _, o in ipairs(CREATED) do if o.rows and o.missText then pop = o end end
+    check(pop and pop:IsShown(), "the pop-out is open")
+    local row = pop.rows[1]
+    check(row.left:GetText():find("Bingo Heeler", 1, true), "pop-out: full names")
+    check(row.whisperBtn and row.whisperBtn:IsShown() and row.targetBtn and row.targetBtn:IsShown()
+        and row.targetBtn:IsEnabled(), "pop-out: Whisper and Target on the winner's row, Target working (in my group)")
+    check(row.targetBtn._parent == UIParent and row.targetBtn._pt and row.targetBtn._pt[2] == UIParent,
+        "pop-out: Target placed against UIParent, not anchored to the pop-out")
+    local opened2
+    local real2 = ns.Whisper.Open
+    ns.Whisper.Open = function(m, text) opened2 = { m = m, text = text } end
+    row.whisperBtn:Click()
+    ns.Whisper.Open = real2
+    check(opened2 and opened2.m.name == "Bingo Heeler" and opened2.text == R.WhisperLine(R.cur), "pop-out: the winner's Whisper has You won filled in")
+    pop:GetScript("OnDragStart")(pop)
+    check(not row.targetBtn:IsShown(), "pop-out dragged: its Target buttons hide while it moves")
+    pop:GetScript("OnDragStop")(pop)
+    check(row.targetBtn:IsShown(), "pop-out dropped: Target back")
+    ns.ClanRollUI.ClosePop(); Tick(1)
+    check(not row.targetBtn:IsShown(), "pop-out closed: its Target buttons go too")
+end

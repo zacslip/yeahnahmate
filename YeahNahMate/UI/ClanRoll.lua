@@ -198,10 +198,7 @@ function CU.Build(parent, x, y)
     Wheel(p, p.res, "resOff")
     Wheel(p, p.miss, "missOff")
     -- Whisper and Target on each roll (UI/RollTarget.lua); the name column makes room for them.
-    ns.RollTarget.AddTo(p.res, 310 - 46 - 104, function(row)
-        local r = ns.ClanRoll.cur
-        if r and not r.open and r.winner == row.key then return ns.ClanRoll.WhisperLine(r) end
-    end)
+    ns.RollTarget.AddTo(p.res, 310 - 46 - 104, CU.WinnerWhisper)
     for _, row in ipairs(p.res) do row.left:SetWidth(310 - 50 - 104) end
     p.hist = Rows(p, 10, ly - 16, W - 20, HIST_ROWS)
     for _, r in ipairs(p.hist) do
@@ -482,6 +479,12 @@ end)
 -- (the main window isn't on Clans > My Clan, and this isn't open); one that opened by itself closes
 -- by itself 15 s after the result. Closing it never stops a roll.
 
+-- Whisper's text on a roll list row: "You won ..." for the winner of the roll just closed, else nothing.
+function CU.WinnerWhisper(row)
+    local r = ns.ClanRoll.cur
+    if r and not r.open and r.winner == row.key then return ns.ClanRoll.WhisperLine(r) end
+end
+
 local PW, PH = 300, 340
 local POP_ROWS = 8
 CU.AUTO_CLOSE = 15
@@ -538,6 +541,9 @@ local function BuildPop()
 
     f.resTitle = Text(f, "", "GameFontNormalSmall", 10, -112, PW - 20)
     f.rows = Rows(f, 8, -128, PW - 16, POP_ROWS)
+    -- Whisper and Target on each roll, like the panel's (UI/RollTarget.lua); names make room for them.
+    ns.RollTarget.AddTo(f.rows, PW - 16 - 46 - 104, CU.WinnerWhisper)
+    for _, row in ipairs(f.rows) do row.left:SetWidth(PW - 16 - 50 - 104) end
     f.missing = CreateFrame("Button", nil, f)
     f.missing:SetPoint("TOPLEFT", 10, -128 - POP_ROWS * ROW_H - 4)
     f.missing:SetSize(PW - 20, 16)
@@ -633,12 +639,13 @@ function CU.RefreshPop()
         local e = list[i]
         row:SetShown(e ~= nil)
         if e then
-            local name = Who(e.name)
-            if e.past then name = ns.GREY .. (e.name:match("^%S+") or e.name) .. "|r"
-            elseif e.outsider then name = BLUE .. (e.name:match("^%S+") or e.name) .. "|r" end
+            local name = Who(e.name, true)
+            if e.past then name = ns.GREY .. e.name .. "|r"
+            elseif e.outsider then name = BLUE .. e.name .. "|r" end
             row.left:SetText(i .. ". " .. name)
             row.right:SetText((e.top and ns.GOLD or (e.past and ns.GREY or "")) .. e.roll .. "|r")
         end
+        ns.RollTarget.Set(row, e and e.name or nil)
     end
     local missing = open and R.Missing(r) or {}
     f.missText:SetText(open and string.format(L.CLANROLL_MISSING, #missing) .. (#missing > 0 and (ns.GREY .. "  " .. L.CLANROLL_HOVER .. "|r") or "") or "")
