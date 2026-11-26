@@ -93,6 +93,8 @@ function methods.SetWidth(self, w) self._w = w end
 function methods.GetHeight() return 140 end
 function methods.GetCenter() return 500, 400 end
 function methods.GetEffectiveScale() return 1 end
+function methods.GetLeft(self) return self._left or 100 end
+function methods.GetTop(self) return self._top or 500 end
 function methods.SetPropagateKeyboardInput(self, v)
     assert(not FAKE.combat, "SetPropagateKeyboardInput is blocked in combat")
     self._propagate = v

@@ -3,8 +3,11 @@
 --            for a winner; nothing is sent until the player presses Send.
 --   Target:  targets that player. Targeting is protected, so it's a secure button (the game does the
 --            targeting from the player's own click) and it only works on someone in my group (by
---            their party/raid unit); anyone else gets it greyed out, saying why. It is parented to UIParent and only anchored to the row: a secure
---            child would make our whole window protected, so it couldn't open or close in a fight.
+--            their party/raid unit); anyone else gets it greyed out, saying why. It is parented to UIParent
+--            and NOT anchored to the row: it's placed at the row's spot on screen (by numbers, again
+--            whenever the list redraws or the window is dragged). A secure frame anchored to (or inside)
+--            our window makes the game protect the whole window, and a protected window can't be told to
+--            pass keys on: with the window open, / and Enter never reached chat (0.28.0 before release).
 --            In a fight nothing secure can be changed, so every Target button hides when combat
 --            starts and comes back after it.
 local ADDON, ns = ...
@@ -16,6 +19,7 @@ local T = ns.RollTarget
 
 local BTN_W, BTN_H = 50, 15
 local buttons = {}                   -- every Target button made, to hide them all when a fight starts
+local HookDrag
 
 local function Fight() return InCombatLockdown and InCombatLockdown() or false end
 
@@ -40,6 +44,36 @@ local function Small(b)
     end
 end
 
+-- Puts a Target button over its row's spot on screen (false: the row has no spot yet). Same scale as the
+-- row, so it lines up whatever the window's scale. Only by numbers against UIParent (see the top).
+local function Place(t)
+    local row = t.row
+    local l, top = row:GetLeft(), row:GetTop()
+    if not l or not top then return false end
+    local ui = UIParent:GetEffectiveScale()
+    t:SetScale((row:GetEffectiveScale() or 1) / ((ui and ui > 0) and ui or 1))
+    t:ClearAllPoints()
+    t:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l + t.dx, top - 1)
+    t:SetFrameStrata(row:GetFrameStrata() or "HIGH")
+    t:SetFrameLevel((row:GetFrameLevel() or 1) + 5)
+    return true
+end
+
+-- Dragging the window: the buttons can't follow (they aren't anchored), so they hide while it moves and
+-- the lists put them back where it stops. Hooked once on the window the rows are in.
+local hooked = {}
+HookDrag = function(row)
+    local top = row
+    while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
+    if hooked[top] or not top.HookScript then return end
+    hooked[top] = true
+    top:HookScript("OnDragStart", function()
+        if Fight() then return end
+        for _, t in ipairs(buttons) do t:Hide() end
+    end)
+    top:HookScript("OnDragStop", function() UI.Dirty() end)
+end
+
 -- Adds Whisper and Target to a list's rows, at x on each row (Whisper, then Target right after it).
 -- whisperText(row) gives the text to fill in (or nil).
 function T.AddTo(rows, x, whisperText)
@@ -54,13 +88,11 @@ function T.AddTo(rows, x, whisperText)
 
         local t = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate,UIPanelButtonTemplate")
         t:SetSize(BTN_W, BTN_H)
-        t:SetPoint("TOPLEFT", row, "TOPLEFT", x + BTN_W + 2, -1)
+        t.row, t.dx = row, x + BTN_W + 2         -- where it goes; placed by Place, never anchored to the row
         t:SetText(L.CLANROLL_TARGET)
         Small(t)
         t:RegisterForClicks("AnyUp", "AnyDown")
         t:SetAttribute("type", "target")
-        t:SetFrameStrata(row:GetFrameStrata() or "HIGH")
-        t:SetFrameLevel((row:GetFrameLevel() or 1) + 5)
         t:SetScript("OnEnter", function(self)
             if not GameTooltip then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -76,6 +108,7 @@ function T.AddTo(rows, x, whisperText)
         -- The row (or the window) going away takes its Target button with it.
         row:HookScript("OnHide", function() if not Fight() then t:Hide() end end)
         row:HookScript("OnShow", function() T.Set(row, row.key) end)
+        HookDrag(row)
     end
 end
 
@@ -88,7 +121,7 @@ function T.Set(row, key)
     end
     local t = row.targetBtn
     if not t or Fight() then return end
-    if key and key ~= ns.me and row:IsVisible() then
+    if key and key ~= ns.me and row:IsVisible() and Place(t) then
         local unit = T.UnitFor(key)
         t:SetAttribute("unit", unit)               -- nil when not in my group: nothing to target
         t:SetEnabled(unit ~= nil)

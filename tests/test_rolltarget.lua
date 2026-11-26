@@ -31,6 +31,9 @@ for _, o in ipairs(CREATED) do if o.cols and o.roleBtns then cp = o end end
 local p = cp.roll
 check(p.res[1].targetBtn and p.res[1].targetBtn._parent == UIParent and p.res[1].targetBtn._template:find("SecureActionButtonTemplate", 1, true),
     "Target is a secure button parented to UIParent, not to our window")
+-- Anchored to a row it would make the whole window protected: pass-through for keys can't then be set and
+-- / and Enter never reach chat while the window is open. Only ever placed against UIParent.
+
 
 p.start:Click(); Tick(1)
 Roll("Bluey Heeler", 40)
@@ -104,3 +107,12 @@ UI.Select("clans"); Tick(1)
 p.item:SetFocus()
 UI.Toggle(); Tick(1)
 check(GetCurrentKeyBoardFocus() == nil, "the window closed: the keyboard is let go")
+
+do  -- after everything above has shown and placed them
+    local placed, bad = 0, 0
+    for _, t in ipairs(ns.RollTarget.Buttons()) do
+        if t._pt then placed = placed + 1; if t._pt[2] ~= UIParent then bad = bad + 1 end end
+    end
+    check(placed > 0 and bad == 0, "Target buttons are placed against UIParent, never anchored to our window's rows ("
+        .. placed .. " placed, " .. bad .. " anchored to a row)")
+end
