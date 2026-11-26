@@ -245,8 +245,8 @@ function CA.BuildPanel(parent, x, y)
     ns.RollTarget.AddTo(p.res, 310 - 46 - 104, function(row)
         local all = R.all
         if not all or not row.key then return nil end
-        for _, x in pairs(all.clans) do
-            if x.winner == row.key then return string.format(L.CLANROLL_WHISPER, R.Head(all), x.roll or 0) end
+        for _, c in pairs(all.clans) do
+            if c.winner == row.key then return string.format(L.CLANROLL_WHISPER, R.Head(all), c.roll or 0) end
         end
     end)
     for _, row in ipairs(p.res) do row.left:SetWidth(310 - 50 - 104) end
