@@ -78,6 +78,8 @@ SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14 5")
 check(chilli._pt and chilli._pt[5] == -3 + 5, "dev platefit moves the brackets up")
 SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14")
 check(P.FIT.dy == 0, "three numbers: not moved")
+SlashCmdList.YEAHNAHMATE("dev plateprobe")
+check(#ns.db.errors == 0, "dev plateprobe runs")
 plates.nameplate1.UnitFrame = nil
 
 -- A secret name: nothing read from it (the game's guild check still works).

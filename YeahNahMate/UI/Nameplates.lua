@@ -190,6 +190,43 @@ ns.devCommands.platepreview = function(arg)
         or "(dev) Nameplate preview off: guildies only.")
 end
 
+-- /ynm dev plateprobe: the parts of the first bracketed nameplate (its UnitFrame and health bar): name,
+-- kind, shown, and what each is anchored to. No sizes or positions: Forever refuses to measure
+-- nameplates ("Can't measure restricted regions"), which is why the brackets can't fit by measuring.
+ns.devCommands.plateprobe = function()
+    local unit, plate
+    for u in pairs(markers) do unit = u; plate = C_NamePlate.GetNamePlateForUnit(u); break end
+    if not plate then ns.Print("(dev) Plate probe: no bracketed nameplate on screen (friendly nameplates on? Shift+V).") return end
+    local function Desc(r)
+        local ok, kind = pcall(r.GetObjectType, r)
+        local okS, shown = pcall(r.IsShown, r)
+        local okP, pt, rel, relPt, x, y = pcall(r.GetPoint, r, 1)
+        local relName = okP and rel and (pcall(rel.GetDebugName, rel) and rel:GetDebugName() or "?") or "-"
+        local anchor = okP and pt and string.format("%s->%s %s %s,%s", pt, tostring(relName):match("[^%.]*$") or "?", tostring(relPt),
+            type(x) == "number" and string.format("%.0f", x) or "?", type(y) == "number" and string.format("%.0f", y) or "?")
+            or (okP and "no anchor" or "anchor refused")
+        local okN, np = pcall(r.GetNumPoints, r)
+        return string.format("%s %s %s (%s pts)", ok and kind or "?", okS and (shown and "shown" or "hidden") or "?", anchor, okN and tostring(np) or "?")
+    end
+    local function List(label, t)
+        if type(t) ~= "table" then return end
+        ns.Print("(dev) " .. label .. ":")
+        local keys = {}
+        for k, v in pairs(t) do
+            if type(k) == "string" and type(v) == "table" and v.GetObjectType then keys[#keys + 1] = k end
+        end
+        table.sort(keys)
+        for _, k in ipairs(keys) do
+            local v = t[k]
+            local fine, line = pcall(Desc, v)
+            ns.Print("  " .. k .. ": " .. (fine and line or ("error " .. tostring(line))))
+        end
+    end
+    ns.Print("(dev) Plate probe " .. unit .. " " .. tostring(ns.UnitKey(unit)))
+    List("UnitFrame", plate.UnitFrame)
+    List("healthBar", type(plate.UnitFrame) == "table" and plate.UnitFrame.healthBar or nil)
+end
+
 -- /ynm dev platefit x y top [dy]: how far the brackets sit outside the health bar, and moved up
 -- (default -19 3 14 -5).
 ns.devCommands.platefit = function(arg)
