@@ -396,7 +396,7 @@ local function Refresh(p)
     for _, b in ipairs(p.styleButtons) do b:SetShown(game) end
     if game then p.pickStyle(p.previewStyle == "classic" and 2 or 1) end
     local shown = game and p.previewStyle or "plater"
-    for kind, s in pairs(p.previewKinds) do s.frame:SetShown(kind == shown) end
+    for kind, sample in pairs(p.previewKinds) do sample.frame:SetShown(kind == shown) end
     p.preview:ClearAllPoints()
     P.Anchor(p.preview, p.previewKinds[shown].around, fit)
     p.preview:Show()
