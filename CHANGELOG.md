@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.28.2
+
+- Settings now has two tabs: **General** and **Nameplates**. The Welcome page button moved up next to them.
+- Nameplates tab: the nameplate switches, and five numbers for how the brackets sit round guildies' nameplates: Width, Left / right, Up / down, Top gap and Bottom gap. Each has < > buttons, and a preview shows the result. The game's nameplates and Plater's keep their own numbers, and Reset puts the addon's fit back.
+
 ## 0.28.1
 
 - Guildies' nameplate brackets now fit the bar on every nameplate size. Before, on bigger nameplates they sat inside the bar and looked like a small square.

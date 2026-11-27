@@ -140,12 +140,12 @@ check(UI.RecruitOpen() and panel:IsShown(), "and again opens it")
 -- The open tab glows (its icon stays); the shut one doesn't.
 check(tab.sel == true, "the open tab glows")
 
--- Settings: the Welcome button at the top; the recruiting messages at the bottom; no Privacy box.
+-- Settings: the Welcome button on the tab row; the recruiting messages at the bottom; no Privacy box.
 UI.Select("settings")
 local welcome, privacyBox
 for _, o in ipairs(CREATED) do
     if o._text == L.SET_WELCOME and o.Click then welcome = o end
     if type(o._text) == "string" and o._text:find(L.PRIVACY .. "|r", 1, true) then privacyBox = o end
 end
-check(welcome and welcome._pt and welcome._pt[3] == -388, "the Welcome page button sits at the bottom, under the share message")
+check(welcome and welcome._pt and welcome._pt[3] == 0 and welcome._pt[2] == 616, "the Welcome page button sits on the Settings tab row, right side (0.28.2: Nameplates tab made room)")
 check(privacyBox == nil, "no Privacy box any more")
