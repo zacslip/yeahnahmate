@@ -73,11 +73,24 @@ local bar = CreateFrame("StatusBar")
 plates.nameplate1.UnitFrame = CreateFrame("Frame")
 plates.nameplate1.UnitFrame.healthBar = bar
 P.Refresh()
-check(chilli._pt and chilli._pt[2] == bar, "brackets round the health bar")
+check(chilli._pt and chilli._pt[2] == bar and chilli._pt[4] == P.FIT_FRAME.x and chilli.round == "bar",
+    "no drawn background: round the health bar frame, the old fit")
+-- Forever's nameplates: the bar's drawn background (bgTexture) is its real size on any nameplate size.
+-- Anchored to, never measured (Forever refuses measuring nameplate parts).
+local bg = CreateFrame("Frame")
+bar.bgTexture = bg
+local measured = false
+bg.GetLeft = function() measured = true error("Can't measure restricted regions") end
+bar.GetLeft = bg.GetLeft
+P.Refresh()
+check(chilli._pt and chilli._pt[2] == bg and chilli._pt[4] == P.FIT.x and chilli.round == "bg" and chilli:IsShown(),
+    "round the bar's drawn background")
+check(not measured, "nothing on the nameplate is measured")
 SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14 5")
 check(chilli._pt and chilli._pt[5] == -3 + 5, "dev platefit moves the brackets up")
-SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14")
+SlashCmdList.YEAHNAHMATE("dev platefit 2 2 14")
 check(P.FIT.dy == 0, "three numbers: not moved")
+bar.GetLeft = nil
 SlashCmdList.YEAHNAHMATE("dev plateprobe")
 check(#ns.db.errors == 0, "dev plateprobe runs")
 plates.nameplate1.UnitFrame = nil

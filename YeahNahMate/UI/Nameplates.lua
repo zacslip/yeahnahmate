@@ -34,7 +34,13 @@ Plates.GOLD = { 1, 0.82, 0 }
 local ARM, THICK = 10, 2          -- bracket arm length and thickness
 -- How far the brackets sit outside the health bar (x each side, y below), how much room above it for
 -- the name, and how far the whole thing is moved up (dy, negative = down). /ynm dev platefit tries a look.
-Plates.FIT = { x = -19, y = 3, top = 14, dy = -5 }   -- picked by eye in game
+-- Round the bar's drawn background (healthBar.bgTexture: the whole bar whatever the health, so it's the
+-- bar's real size on any nameplate size or scale). Anchored, never measured: Forever refuses to measure
+-- nameplate parts ("Can't measure restricted regions").
+Plates.FIT = { x = 2, y = 2, top = 14, dy = 0 }
+-- Only when a plate has no bgTexture: round the health bar frame, which is wider than what's drawn
+-- (picked by eye in game on one nameplate size; on bigger plates these sat inside the bar).
+Plates.FIT_FRAME = { x = -19, y = 3, top = 14, dy = -5 }
 local markers, spare = {}, {}     -- unit token -> marker frame; unused frames to reuse
 local live = {}                   -- unit tokens with a nameplate showing now (from the game's events)
 local CROWN = "Interface\\GroupFrame\\UI-Group-LeaderIcon"
@@ -117,9 +123,20 @@ local function Place(f, plate)
     local bar = Usable(uf) and uf.healthBar or nil
     f:ClearAllPoints()
     if Usable(bar) and bar.IsShown and bar:IsShown() then
-        f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, fit.top + fit.dy)
-        f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
+        local bg = Usable(bar.bgTexture) and bar.bgTexture or nil
+        local ok = bg and pcall(function()
+            f:SetPoint("TOPLEFT", bg, "TOPLEFT", -fit.x, fit.top + fit.dy)
+            f:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
+        end)
+        f.round = ok and "bg" or "bar"
+        if not ok then
+            local ff = Plates.FIT_FRAME
+            f:ClearAllPoints()
+            f:SetPoint("TOPLEFT", bar, "TOPLEFT", -ff.x, ff.top + ff.dy)
+            f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", ff.x, -ff.y + ff.dy)
+        end
     else
+        f.round = "plate"
         f:SetPoint("TOPLEFT", plate, "TOPLEFT", 12, -6 + fit.dy)
         f:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -12, 6 + fit.dy)
     end
@@ -227,13 +244,13 @@ ns.devCommands.plateprobe = function()
     List("healthBar", type(plate.UnitFrame) == "table" and plate.UnitFrame.healthBar or nil)
 end
 
--- /ynm dev platefit x y top [dy]: how far the brackets sit outside the health bar, and moved up
--- (default -19 3 14 -5).
+-- /ynm dev platefit x y top [dy]: how far the brackets sit outside the bar's drawn background (each
+-- side, below), room above it for the name, and moved up (default 2 2 14 0).
 ns.devCommands.platefit = function(arg)
     local x, y, top, dy = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
     if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top), dy = tonumber(dy) or 0 } end
     Plates.Refresh()
-    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name, moved up %d.",
+    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name, moved up %d. Round: " .. tostring((select(2, next(markers)) or {}).round),
         Plates.FIT.x, Plates.FIT.y, Plates.FIT.top, Plates.FIT.dy))
 end
 --@end-do-not-package@
