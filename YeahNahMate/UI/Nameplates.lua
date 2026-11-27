@@ -37,7 +37,7 @@ local ARM, THICK = 10, 2          -- bracket arm length and thickness
 -- Round the bar's drawn background (healthBar.bgTexture: the whole bar whatever the health, so it's the
 -- bar's real size on any nameplate size or scale). Anchored, never measured: Forever refuses to measure
 -- nameplate parts ("Can't measure restricted regions").
-Plates.FIT = { x = 2, y = 2, top = 14, dy = 0 }
+Plates.FIT = { x = 2, y = 2, top = 14, dy = -6 }   -- 6 down: picked in game, Plater and default plates
 -- Only when a plate has no bgTexture: round the health bar frame, which is wider than what's drawn
 -- (picked by eye in game on one nameplate size; on bigger plates these sat inside the bar).
 Plates.FIT_FRAME = { x = -19, y = 3, top = 14, dy = -5 }
@@ -256,7 +256,7 @@ ns.devCommands.plateprobe = function()
 end
 
 -- /ynm dev platefit x y top [dy]: how far the brackets sit outside the bar's drawn background (each
--- side, below), room above it for the name, and moved up (default 2 2 14 0).
+-- side, below), room above it for the name, and moved up (default 2 2 14 -6).
 ns.devCommands.platefit = function(arg)
     local x, y, top, dy = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
     if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top), dy = tonumber(dy) or 0 } end
