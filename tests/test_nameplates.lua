@@ -161,7 +161,24 @@ page.fitReset:Click(); Tick(1)
 check(P.IsDefault("game") and ns.settings.plateFit == nil and page.fitRows[1].val:GetText() == tostring(before), "Reset: back to the addon's fit")
 for i = 1, 60 do arrows[3]:Click() end
 check(P.Fit("game").dy == P.FIT_MAX, "kept within 40")
+Tick(1)
 page.fitReset:Click(); Tick(1)
+-- Preview: the game's plates in Modern or Classic look (starts on the game's Style), Plater its own;
+-- the brackets go round the same part as on a real plate.
+local K = page.previewKinds
+check(page.previewStyle == "modern" and K.modern.frame:IsShown() and not K.classic.frame:IsShown()
+    and not K.plater.frame:IsShown(), "preview: modern look by default")
+check(page.preview._pt and page.preview._pt[2] == K.modern.around, "preview brackets round the modern bar's backing")
+check(page.styleButtons[1]:IsShown(), "style switch shown for the game's plates")
+page.styleButtons[2]:Click(); Tick(1)
+check(page.previewStyle == "classic" and K.classic.frame:IsShown() and not K.modern.frame:IsShown()
+    and page.preview._pt[2] == K.classic.around, "Classic: the gold border plate")
+check(ns.settings.plateFit == nil, "the style switch changes no numbers")
+page.pickKind(2); Tick(1)
+check(K.plater.frame:IsShown() and not K.classic.frame:IsShown() and not page.styleButtons[1]:IsShown()
+    and page.preview._pt[2] == K.plater.around, "Plater: its own plate, no style switch")
+page.pickKind(1); Tick(1)
+page.styleButtons[1]:Click(); Tick(1)
 page.tabButtons[1]:Click(); Tick(1)
 check(page.general:IsShown(), "back to General")
 

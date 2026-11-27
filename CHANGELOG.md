@@ -4,6 +4,7 @@
 
 - Settings now has two tabs: **General** and **Nameplates**. The Welcome page button moved up next to them.
 - Nameplates tab: the nameplate switches, and five numbers for how the brackets sit round guildies' nameplates: Width, Left / right, Up / down, Top gap and Bottom gap. Each has < > buttons, and a preview shows the result. The game's nameplates and Plater's keep their own numbers, and Reset puts the addon's fit back.
+- The preview draws a real-looking nameplate with the game's own art. For the game's nameplates you can switch it between **Modern** and **Classic**, the two looks in the game's nameplate Style option. It starts on the one you use.
 
 ## 0.28.1
 

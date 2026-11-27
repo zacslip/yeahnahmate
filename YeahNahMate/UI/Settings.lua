@@ -202,6 +202,84 @@ end
 
 -- Nameplates tab: the switches, then the bracket fit with < > per number for the kind picked
 -- (game or Plater), and a preview on a sample bar.
+-- Which look the player's game nameplates have: the game's Nameplates "Style" option (only read).
+-- "classic" = the old gold border; every other style uses the modern bar.
+local function GameStyle()
+    local E = Enum and Enum.NamePlateStyle
+    local ok, v = pcall(GetCVar, "nameplateStyle")
+    if ok and E and E.Classic ~= nil and tonumber(v) == E.Classic then return "classic" end
+    return "modern"
+end
+
+-- Sample nameplates for the preview, drawn with the game's own nameplate art and sizes (from the
+-- game's Blizzard_NamePlates code, Medium size). Each returns { frame, around = the part the real
+-- brackets go round: the bar's background for the game's plates, the health bar for Plater's }.
+local GREEN = { 0.1, 0.8, 0.1 }
+local function PreviewPlates(box)
+    local kinds = {}
+    local function Holder()
+        local f = CreateFrame("Frame", nil, box)
+        f:SetAllPoints()
+        f:Hide()
+        return f
+    end
+    -- Modern (the game's default): grey bar coloured by the game, on a dark backing that reaches
+    -- 2 left, 3 up, 6 right and 6 down (its shadow); the name sits inside the bar on the left.
+    do
+        local f = Holder()
+        local bar = f:CreateTexture(nil, "ARTWORK")
+        bar:SetAtlas("UI-HUD-CoolDownManager-Bar")
+        bar:SetVertexColor(GREEN[1], GREEN[2], GREEN[3])
+        bar:SetSize(166, 20)
+        bar:SetPoint("CENTER", 0, -14)
+        local bg = f:CreateTexture(nil, "BACKGROUND")
+        bg:SetAtlas("UI-HUD-CoolDownManager-Bar-BG")
+        bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -2, 3)
+        bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 6, -6)
+        local name = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        name:SetPoint("LEFT", bar, "LEFT", 4, 0)
+        name:SetText(L.PF_PREVIEW_NAME)
+        kinds.modern = { frame = f, around = bg }
+    end
+    -- Classic: the old gold border (128 x 16, level box on the right) over a 10 high bar; the name
+    -- centred above.
+    do
+        local f = Holder()
+        local border = f:CreateTexture(nil, "ARTWORK", nil, 1)
+        border:SetTexture("Interface\\Tooltips\\Nameplate-Border")
+        border:SetTexCoord(0, 1, 0.5, 1)
+        border:SetSize(128, 16)
+        border:SetPoint("CENTER", 0, -14)
+        local bar = f:CreateTexture(nil, "ARTWORK", nil, 0)
+        bar:SetTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
+        bar:SetVertexColor(GREEN[1], GREEN[2], GREEN[3])
+        bar:SetPoint("TOPLEFT", border, "CENTER", -64 + 3.5, 5.5)
+        bar:SetPoint("BOTTOMRIGHT", border, "CENTER", 64 - 20.75, -4.5)
+        local name = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        name:SetPoint("BOTTOM", border, "CENTER", 0, 9)
+        name:SetText(L.PF_PREVIEW_NAME)
+        kinds.classic = { frame = f, around = border }
+    end
+    -- Plater: its own flat bar with a thin black edge and the name above.
+    do
+        local f = Holder()
+        local bar = f:CreateTexture(nil, "ARTWORK")
+        bar:SetSize(140, 10)
+        bar:SetPoint("CENTER", 0, -14)
+        bar:SetColorTexture(GREEN[1], GREEN[2], GREEN[3], 0.95)
+        local back = f:CreateTexture(nil, "BORDER")
+        back:SetPoint("TOPLEFT", bar, "TOPLEFT", -1, 1)
+        back:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 1, -1)
+        back:SetColorTexture(0, 0, 0, 0.9)
+        local name = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        name:SetPoint("BOTTOM", bar, "TOP", 0, 2)
+        name:SetText(L.PF_PREVIEW_NAME)
+        name:SetTextColor(0.25, 1, 0.25)
+        kinds.plater = { frame = f, around = bar }
+    end
+    return kinds
+end
+
 local FIT_ROWS = {
     { "x", "PF_WIDTH" }, { "dx", "PF_SIDEWAYS" }, { "dy", "PF_UPDOWN" }, { "top", "PF_TOP" }, { "y", "PF_BOTTOM" },
 }
@@ -250,24 +328,19 @@ local function BuildPlates(p, n)
     p.fitReset = Tip(UI.Button(n, L.PF_RESET, 80, 150, -322, function() P.SetFit(p.fitKind, nil) end, 22), L.PF_RESET, L.PF_RESET_TIP)
     p.fitState = Text(n, "", "GameFontDisableSmall", 236, -327, 114)
 
-    -- Preview: a sample name and bar with brackets in my clan's colour, moved by the same numbers.
+    -- Preview: a sample nameplate with brackets in my clan's colour, moved by the same numbers.
     Header(n, L.PF_PREVIEW, 386, -4, 350)
     local box = Tip(UI.Box(n, 386, -26, 350, 150), L.PF_PREVIEW, L.PF_PREVIEW_TIP)
     box:EnableMouse(true)
-    local bar = box:CreateTexture(nil, "ARTWORK")
-    bar:SetSize(140, 10)
-    bar:SetPoint("CENTER", 0, -10)
-    bar:SetColorTexture(0.1, 0.75, 0.15, 0.95)
-    local back = box:CreateTexture(nil, "BORDER")
-    back:SetPoint("TOPLEFT", bar, "TOPLEFT", -1, 1)
-    back:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 1, -1)
-    back:SetColorTexture(0, 0, 0, 0.9)
-    local name = box:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    name:SetPoint("BOTTOM", bar, "TOP", 0, 2)
-    name:SetText(L.PF_PREVIEW_NAME)
-    name:SetTextColor(0.25, 1, 0.25)
+    p.previewKinds = PreviewPlates(box)
+    -- The game's plates come in two looks (the game's Nameplates "Style" option): pick which to show.
+    p.previewStyle = p.previewStyle or GameStyle()
+    p.pickStyle, p.styleButtons = UI.Choice(box, { L.PF_MODERN, L.PF_CLASSIC }, 8, -8, 80, function(i)
+        local style = i == 2 and "classic" or "modern"
+        if p.previewStyle ~= style then p.previewStyle = style; UI.Dirty() end
+    end)
+    for _, b in ipairs(p.styleButtons) do Tip(b, L.PF_STYLE, L.PF_STYLE_TIP) end
     p.preview = P.NewMarker(box)
-    p.previewBar = bar
 end
 
 local function Build(p)
@@ -314,8 +387,13 @@ local function Refresh(p)
     local myRace = ns.Clans and ns.Clans.Race and ns.Clans.Race(ns.me)
     local col = (myRace and P.COLOURS[myRace]) or P.GOLD
     for _, b in ipairs(p.preview.bars) do b:SetColorTexture(col[1], col[2], col[3], 0.95) end
+    local game = p.fitKind ~= "plater"
+    for _, b in ipairs(p.styleButtons) do b:SetShown(game) end
+    if game then p.pickStyle(p.previewStyle == "classic" and 2 or 1) end
+    local shown = game and p.previewStyle or "plater"
+    for kind, s in pairs(p.previewKinds) do s.frame:SetShown(kind == shown) end
     p.preview:ClearAllPoints()
-    P.Anchor(p.preview, p.previewBar, fit)
+    P.Anchor(p.preview, p.previewKinds[shown].around, fit)
     p.preview:Show()
     p.shareProf:SetChecked(s.shareProfessions == true)
     for kind, c in pairs(p.pops) do c:SetChecked(s.pop[kind] ~= false) end
