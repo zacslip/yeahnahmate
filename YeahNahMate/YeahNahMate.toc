@@ -2,7 +2,7 @@
 ## Title: Yeah Nah Mate
 ## Notes: Guild map, roster, dungeon finder, calendar and professions, shared only with your guildmates.
 ## Author: zacslip
-## Version: 0.28.1
+## Version: 0.28.2
 ## SavedVariables: YeahNahMateDB
 ## OptionalDeps: QuestieDB
 ## IconTexture: Interface\AddOns\YeahNahMate\Media\crestmini
