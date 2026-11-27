@@ -312,8 +312,8 @@ local function Refresh(p)
     local rounds = P.Rounds()
     p.using:SetText(((rounds.plater or 0) > 0 and L.PF_USING_PLATER) or ((rounds.bg or 0) > 0 and L.PF_USING_GAME) or L.PF_USING_NONE)
     local myRace = ns.Clans and ns.Clans.Race and ns.Clans.Race(ns.me)
-    local c = (myRace and P.COLOURS[myRace]) or P.GOLD
-    for _, b in ipairs(p.preview.bars) do b:SetColorTexture(c[1], c[2], c[3], 0.95) end
+    local col = (myRace and P.COLOURS[myRace]) or P.GOLD
+    for _, b in ipairs(p.preview.bars) do b:SetColorTexture(col[1], col[2], col[3], 0.95) end
     p.preview:ClearAllPoints()
     P.Anchor(p.preview, p.previewBar, fit)
     p.preview:Show()
