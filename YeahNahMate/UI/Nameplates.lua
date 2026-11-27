@@ -122,6 +122,17 @@ local function Place(f, plate)
     local uf = plate.UnitFrame
     local bar = Usable(uf) and uf.healthBar or nil
     f:ClearAllPoints()
+    -- Plater (a nameplate addon) draws its own plate (plate.unitFrame, lowercase) over the game's: round
+    -- its health bar, which is the size it's drawn.
+    local pl = Usable(plate.unitFrame) and plate.unitFrame ~= uf and plate.unitFrame.healthBar or nil
+    if Usable(pl) and pl.IsShown and pl:IsShown() then
+        local ok = pcall(function()
+            f:SetPoint("TOPLEFT", pl, "TOPLEFT", -fit.x, fit.top + fit.dy)
+            f:SetPoint("BOTTOMRIGHT", pl, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
+        end)
+        if ok then f.round = "plater" return end
+        f:ClearAllPoints()
+    end
     if Usable(bar) and bar.IsShown and bar:IsShown() then
         local bg = Usable(bar.bgTexture) and bar.bgTexture or nil
         local ok = bg and pcall(function()

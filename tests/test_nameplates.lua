@@ -86,6 +86,15 @@ P.Refresh()
 check(chilli._pt and chilli._pt[2] == bg and chilli._pt[4] == P.FIT.x and chilli.round == "bg" and chilli:IsShown(),
     "round the bar's drawn background")
 check(not measured, "nothing on the nameplate is measured")
+-- Plater draws its own plate (plate.unitFrame): round its health bar instead.
+local platerBar = CreateFrame("StatusBar")
+plates.nameplate1.unitFrame = CreateFrame("Frame")
+plates.nameplate1.unitFrame.healthBar = platerBar
+P.Refresh()
+check(chilli._pt and chilli._pt[2] == platerBar and chilli.round == "plater", "Plater: round Plater's health bar")
+plates.nameplate1.unitFrame = nil
+P.Refresh()
+check(chilli._pt and chilli._pt[2] == bg, "no Plater: the game's bar again")
 SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14 5")
 check(chilli._pt and chilli._pt[5] == -3 + 5, "dev platefit moves the brackets up")
 SlashCmdList.YEAHNAHMATE("dev platefit 2 2 14")
