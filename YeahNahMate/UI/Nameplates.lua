@@ -37,7 +37,8 @@ local ARM, THICK = 10, 2          -- bracket arm length and thickness
 -- Round the bar's drawn background (healthBar.bgTexture: the whole bar whatever the health, so it's the
 -- bar's real size on any nameplate size or scale). Anchored, never measured: Forever refuses to measure
 -- nameplate parts ("Can't measure restricted regions").
-Plates.FIT = { x = 2, y = 2, top = 14, dy = -6 }   -- 6 down: picked in game, Plater and default plates
+Plates.FIT = { x = 2, y = 2, top = 14, dy = -6 }          -- the game's own nameplates
+Plates.FIT_PLATER = { x = 2, y = 2, top = 14, dy = -6 }   -- Plater's (its own look, so its own numbers)
 -- Only when a plate has no bgTexture: round the health bar frame, which is wider than what's drawn
 -- (picked by eye in game on one nameplate size; on bigger plates these sat inside the bar).
 Plates.FIT_FRAME = { x = -19, y = 3, top = 14, dy = -5 }
@@ -126,6 +127,7 @@ local function Place(f, plate)
     -- its health bar, which is the size it's drawn.
     local pl = Usable(plate.unitFrame) and plate.unitFrame ~= uf and plate.unitFrame.healthBar or nil
     if Usable(pl) and pl.IsShown and pl:IsShown() then
+        local fit = Plates.FIT_PLATER
         local ok = pcall(function()
             f:SetPoint("TOPLEFT", pl, "TOPLEFT", -fit.x, fit.top + fit.dy)
             f:SetPoint("BOTTOMRIGHT", pl, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
@@ -182,6 +184,12 @@ function Plates.Refresh()
 end
 
 function Plates.Count() local n = 0 for _ in pairs(markers) do n = n + 1 end return n end
+-- How many brackets are round each kind of plate now: { plater = n, bg = n, bar = n, plate = n }.
+function Plates.Rounds()
+    local t = {}
+    for _, f in pairs(markers) do if f.round then t[f.round] = (t[f.round] or 0) + 1 end end
+    return t
+end
 function Plates.MarkerFor(unit) return markers[unit] end
 
 ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit)
@@ -255,14 +263,20 @@ ns.devCommands.plateprobe = function()
     List("healthBar", type(plate.UnitFrame) == "table" and plate.UnitFrame.healthBar or nil)
 end
 
--- /ynm dev platefit x y top [dy]: how far the brackets sit outside the bar's drawn background (each
--- side, below), room above it for the name, and moved up (default 2 2 14 -6).
+-- /ynm dev platefit [game|plater] x y top [dy]: how far the brackets sit outside the bar (each side,
+-- below), room above it for the name, and moved up. "game" (the default) = the game's own nameplates
+-- (round the bar's drawn background), "plater" = Plater's. Both start at 2 2 14 -6. The dev console's
+-- Plates page steps these with < > and keeps them.
 ns.devCommands.platefit = function(arg)
-    local x, y, top, dy = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
-    if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top), dy = tonumber(dy) or 0 } end
+    local which, rest = arg:match("^(%a+)%s*(.*)$")
+    if which ~= "plater" and which ~= "game" then which, rest = "game", arg end
+    local t = which == "plater" and Plates.FIT_PLATER or Plates.FIT
+    local x, y, top, dy = (rest or ""):match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
+    if x then t.x, t.y, t.top, t.dy = tonumber(x), tonumber(y), tonumber(top), tonumber(dy) or 0 end
     Plates.Refresh()
-    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name, moved up %d. Round: " .. tostring((select(2, next(markers)) or {}).round),
-        Plates.FIT.x, Plates.FIT.y, Plates.FIT.top, Plates.FIT.dy))
+    if Plates.quietFit then return end
+    ns.Print(string.format("(dev) %s nameplates: brackets %d out each side, %d below, %d above the bar for the name, moved up %d.",
+        which == "plater" and "Plater" or "Game", t.x, t.y, t.top, t.dy))
 end
 --@end-do-not-package@
 
