@@ -157,24 +157,10 @@ local function Place(f, plate, unit)
         local fs = ns.Public(f:GetEffectiveScale(), "number") or 1
         if fs <= 0 then fs = 1 end
         if m then
-            local x1, y1 = (m.l - m.bl) / fs - fit.x, (m.t - m.bt) / fs + fit.top + fit.dy
-            local x2, y2 = (m.r - m.br) / fs + fit.x, (m.b - m.bb) / fs - fit.y + fit.dy
-            -- A shape that can't be right (inside out, tiny, or far off the bar) would hide the brackets:
-            -- the bar's own edges then, and the numbers kept for /ynm dev plateprobe.
-            local w = (m.br - m.bl) / fs - x1 + x2
-            local h = (m.bt - m.bb) / fs + y1 - y2
-            local sane = w >= 10 and h >= 4 and math.abs(x1) < 80 and math.abs(x2) < 80 and math.abs(y1) < 80 and math.abs(y2) < 80
-            f.fitLast = { m = m, fs = fs, x1 = x1, y1 = y1, x2 = x2, y2 = y2, sane = sane }
-            if sane then
-                f:SetPoint("TOPLEFT", bar, "TOPLEFT", x1, y1)
-                f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", x2, y2)
-                return
-            end
-            f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, 14 + fit.top + fit.dy)
-            f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
+            f:SetPoint("TOPLEFT", bar, "TOPLEFT", (m.l - m.bl) / fs - fit.x, (m.t - m.bt) / fs + fit.top + fit.dy)
+            f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", (m.r - m.br) / fs + fit.x, (m.b - m.bb) / fs - fit.y + fit.dy)
             return
         end
-        f.fitLast = { none = true }
         -- Not laid out yet (a plate that's just appeared): the bar's edges now, measured next frame.
         f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, 14 + fit.top + fit.dy)
         f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
@@ -254,37 +240,6 @@ ns.devCommands.platepreview = function(arg)
     Plates.Refresh()
     ns.Print(Plates.preview and "(dev) Nameplate preview on: every player's nameplate is marked, coloured by race."
         or "(dev) Nameplate preview off: guildies only.")
-end
-
--- /ynm dev plateprobe: for each bracketed nameplate, what was measured (screen pixels) and where the
--- brackets went, so a plate the brackets don't fit can be fixed from real numbers.
-ns.devCommands.plateprobe = function()
-    local n = 0
-    local function R(r)
-        if not (Usable(r) and r.GetLeft) then return "none" end
-        local l, rt, t, b = r:GetLeft(), r.GetRight and r:GetRight(), r:GetTop(), r.GetBottom and r:GetBottom()
-        local sc = r.GetEffectiveScale and r:GetEffectiveScale()
-        local function F(v) return type(v) == "number" and string.format("%.1f", v) or tostring(v) end
-        return string.format("L%s R%s T%s B%s s%s", F(l), F(rt), F(t), F(b), F(sc))
-    end
-    for unit, f in pairs(markers) do
-        n = n + 1
-        local plate = C_NamePlate.GetNamePlateForUnit(unit)
-        local uf = plate and Usable(plate.UnitFrame) and plate.UnitFrame or nil
-        local bar = uf and Usable(uf.healthBar) and uf.healthBar or nil
-        ns.Print(string.format("(dev) %s %s", unit, tostring(ns.UnitKey(unit))))
-        ns.Print("  plate " .. R(plate) .. " | bar " .. R(bar))
-        ns.Print("  fill " .. R(bar and bar.GetStatusBarTexture and bar:GetStatusBarTexture()) .. " | name " .. R(uf and Usable(uf.name) and uf.name or nil))
-        local fl = f.fitLast
-        if fl and fl.m then
-            ns.Print(string.format("  offsets %.1f %.1f / %.1f %.1f  ours s%.2f  %s", fl.x1, fl.y1, fl.x2, fl.y2, fl.fs,
-                fl.sane and "used" or "|cffff4040NOT SANE, bar edges used|r"))
-        else
-            ns.Print("  not measured (" .. (fl and "not laid out" or "no health bar") .. ")")
-        end
-        ns.Print("  brackets " .. R(f) .. (f:IsShown() and " shown" or " HIDDEN"))
-    end
-    if n == 0 then ns.Print("(dev) Plate probe: no bracketed nameplates on screen (friendly nameplates on? Shift+V).") end
 end
 
 -- /ynm dev platefit x y top [dy]: the gap between the brackets and the drawn bar (each side, below),

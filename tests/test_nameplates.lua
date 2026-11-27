@@ -116,14 +116,6 @@ check(chilli._pt and chilli._pt[2] == bar and chilli._pt[4] == 3, "not laid out:
 Geo(bar, 100, 300, 50, 40); Geo(fill, 120, 210, 50, 40); Geo(name, 150, 250, 64, 52)
 Tick(1)
 check(chilli._pt and chilli._pt[4] == -17, "measured the next frame")
--- A shape that can't be right (the name 300 above a bar 10 high is dropped, so try a fill far off):
--- round the bar's own edges, never hidden; the dev probe prints the numbers.
-Geo(fill, 100, 110, 400, 390)
-P.Refresh()
-check(chilli._pt and chilli._pt[4] == 3 and chilli._pt[5] == -3 and chilli:IsShown(), "nonsense numbers: bar edges, still shown")
-check(chilli.fitLast and chilli.fitLast.sane == false, "nonsense numbers noted for the probe")
-SlashCmdList.YEAHNAHMATE("dev plateprobe")
-check(#ns.db.errors == 0, "dev plateprobe runs")
 bar.GetStatusBarTexture = nil
 plates.nameplate1.UnitFrame = nil
 
