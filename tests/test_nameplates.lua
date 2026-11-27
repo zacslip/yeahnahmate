@@ -76,8 +76,47 @@ P.Refresh()
 check(chilli._pt and chilli._pt[2] == bar, "brackets round the health bar")
 SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14 5")
 check(chilli._pt and chilli._pt[5] == -3 + 5, "dev platefit moves the brackets up")
-SlashCmdList.YEAHNAHMATE("dev platefit 3 3 14")
+SlashCmdList.YEAHNAHMATE("dev platefit 3 3 2")
 check(P.FIT.dy == 0, "three numbers: not moved")
+
+-- Laid out: the bar frame (100..300 x 40..50) is wider than its drawn fill (120 from the left, so
+-- 120..280 mirrored), the name's top at 64. The brackets go round the fill and name, 3 outside,
+-- whatever the plate's size or scale (0.28.0 used fixed insets, so bigger plates had them inside).
+local function Geo(r, l, rt, t, b, sc)
+    r.GetLeft = function() return l end; r.GetRight = function() return rt end
+    r.GetTop = function() return t end; r.GetBottom = function() return b end
+    r.GetEffectiveScale = function() return sc or 1 end
+end
+local fill, name = CreateFrame("Frame"), CreateFrame("Frame")
+bar.GetStatusBarTexture = function() return fill end
+plates.nameplate1.UnitFrame.name = name
+Geo(bar, 100, 300, 50, 40); Geo(fill, 120, 210, 50, 40); Geo(name, 150, 250, 64, 52)
+P.Refresh()
+local pt = chilli._pt
+check(pt and pt[1] == "BOTTOMRIGHT" and pt[4] == -20 + 3 and pt[5] == -3, "bottom right: fill's mirrored edge, 3 outside")
+chilli._pt = nil
+local function TopLeft() -- the stub keeps the last SetPoint; place again with BOTTOMRIGHT skipped
+    local real = chilli.SetPoint
+    local got
+    chilli.SetPoint = function(self, ...) if ... == "TOPLEFT" then got = { ... } end return real(self, ...) end
+    P.Refresh()
+    chilli.SetPoint = real
+    return got
+end
+local tl = TopLeft()
+check(tl and tl[4] == 20 - 3 and tl[5] == 14 + 2, "top left: fill's left, above the name")
+-- The same plate drawn twice as big (scale 2): the gaps in our own units stay the same.
+Geo(bar, 100, 300, 50, 40, 2); Geo(fill, 120, 210, 50, 40, 2); Geo(name, 150, 250, 64, 52, 2)
+tl = TopLeft()
+check(tl and tl[4] == 40 - 3 and tl[5] == 28 + 2, "a bigger plate: brackets follow its fill, not fixed pixels")
+-- Not laid out yet: bar edges now, measured again next frame.
+bar.GetLeft = function() return nil end
+P.Refresh()
+check(chilli._pt and chilli._pt[2] == bar and chilli._pt[4] == 3, "not laid out: round the bar for now")
+Geo(bar, 100, 300, 50, 40); Geo(fill, 120, 210, 50, 40); Geo(name, 150, 250, 64, 52)
+Tick(1)
+check(chilli._pt and chilli._pt[4] == -17, "measured the next frame")
+bar.GetStatusBarTexture = nil
 plates.nameplate1.UnitFrame = nil
 
 -- A secret name: nothing read from it (the game's guild check still works).

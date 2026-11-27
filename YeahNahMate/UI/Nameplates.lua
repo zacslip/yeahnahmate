@@ -32,9 +32,12 @@ Plates.COLOURS = {
 Plates.GOLD = { 1, 0.82, 0 }
 
 local ARM, THICK = 10, 2          -- bracket arm length and thickness
--- How far the brackets sit outside the health bar (x each side, y below), how much room above it for
--- the name, and how far the whole thing is moved up (dy, negative = down). /ynm dev platefit tries a look.
-Plates.FIT = { x = -19, y = 3, top = 14, dy = -5 }   -- picked by eye in game
+-- The brackets go round what's drawn: the health bar's fill (measured on each plate, so any nameplate
+-- size or scale fits) and the name above it. FIT is the gap outside that: x each side, y below, top
+-- above the name, and dy moves the whole thing up (negative = down). /ynm dev platefit tries a look.
+-- (Up to 0.28.0 these were fixed pixel insets tuned on one nameplate size, so on bigger or smaller
+-- plates the brackets sat inside the bar.)
+Plates.FIT = { x = 3, y = 3, top = 2, dy = 0 }
 local markers, spare = {}, {}     -- unit token -> marker frame; unused frames to reuse
 local live = {}                   -- unit tokens with a nameplate showing now (from the game's events)
 local CROWN = "Interface\\GroupFrame\\UI-Group-LeaderIcon"
@@ -108,17 +111,66 @@ local function Hide(unit)
     spare[#spare + 1] = f
 end
 
--- Round the visible part: the health bar with room for the name above it. The nameplate's own frame
--- is a bigger click box, so it's only the fallback (pulled in a little).
+-- Round the visible part. The nameplate's own frame is a bigger click box, so it's only the fallback.
 local function Usable(frame) return frame ~= nil and type(frame) == "table" and not (frame.IsForbidden and frame:IsForbidden()) end
-local function Place(f, plate)
+
+-- A region's edges in screen pixels (left, right, top, bottom), or nil before the game has laid it out.
+local function Edges(r)
+    if not (r and r.GetLeft and r.GetRight and r.GetTop and r.GetBottom and r.GetEffectiveScale) then return nil end
+    local l, rt = ns.Public(r:GetLeft(), "number"), ns.Public(r:GetRight(), "number")
+    local t, b = ns.Public(r:GetTop(), "number"), ns.Public(r:GetBottom(), "number")
+    local sc = ns.Public(r:GetEffectiveScale(), "number")
+    if not (l and rt and t and b and sc) or rt <= l or t <= b then return nil end
+    return l * sc, rt * sc, t * sc, b * sc
+end
+
+-- Where the bar is drawn, in screen pixels: the health fill's left, top and bottom (the bar frame can be
+-- wider than what's drawn), the right edge mirrored (the fill's right moves with health). The name's top
+-- if it's showing. nil if the plate isn't laid out yet.
+function Plates.Measure(bar, name)
+    local bl, br, bt, bb = Edges(bar)
+    if not bl then return nil end
+    local l, r, t, b = bl, br, bt, bb
+    local tex = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+    local tl, _, tt, tb = Edges(tex)
+    if tl and tl >= bl and tl < br then
+        l, r = tl, br - (tl - bl)
+        if r <= l then l, r = bl, br end
+        t, b = math.min(tt, bt), math.max(tb, bb)
+    end
+    local top = t
+    if Usable(name) and (not name.IsShown or name:IsShown()) then
+        local _, _, nt = Edges(name)
+        if nt and nt > top and nt - t < math.max(40, (t - b) * 4) then top = nt end
+    end
+    return { bl = bl, br = br, bt = bt, bb = bb, l = l, r = r, t = top, b = b }
+end
+
+local pending = {}                -- unit tokens waiting a frame for their plate's layout
+local function Place(f, plate, unit)
     local fit = Plates.FIT
     local uf = plate.UnitFrame
     local bar = Usable(uf) and uf.healthBar or nil
     f:ClearAllPoints()
     if Usable(bar) and bar.IsShown and bar:IsShown() then
-        f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, fit.top + fit.dy)
+        local m = Plates.Measure(bar, uf.name)
+        local fs = ns.Public(f:GetEffectiveScale(), "number") or 1
+        if fs <= 0 then fs = 1 end
+        if m then
+            f:SetPoint("TOPLEFT", bar, "TOPLEFT", (m.l - m.bl) / fs - fit.x, (m.t - m.bt) / fs + fit.top + fit.dy)
+            f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", (m.r - m.br) / fs + fit.x, (m.b - m.bb) / fs - fit.y + fit.dy)
+            return
+        end
+        -- Not laid out yet (a plate that's just appeared): the bar's edges now, measured next frame.
+        f:SetPoint("TOPLEFT", bar, "TOPLEFT", -fit.x, 14 + fit.top + fit.dy)
         f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
+        if unit and not pending[unit] and C_Timer and C_Timer.After then
+            pending[unit] = true
+            C_Timer.After(0, function()
+                pending[unit] = nil
+                if markers[unit] == f then ns.Safe(Plates.Refresh) end
+            end)
+        end
     else
         f:SetPoint("TOPLEFT", plate, "TOPLEFT", 12, -6 + fit.dy)
         f:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -12, 6 + fit.dy)
@@ -138,7 +190,7 @@ local function Show(unit)
     local crown = type(rank) == "number" and rank <= Plates.CROWN_RANKS
     f.crown:SetShown(crown)
     f.crown2:SetShown(crown)
-    Place(f, plate)
+    Place(f, plate, unit)
     f:Show()
 end
 
@@ -190,13 +242,13 @@ ns.devCommands.platepreview = function(arg)
         or "(dev) Nameplate preview off: guildies only.")
 end
 
--- /ynm dev platefit x y top [dy]: how far the brackets sit outside the health bar, and moved up
--- (default -19 3 14 -5).
+-- /ynm dev platefit x y top [dy]: the gap between the brackets and the drawn bar (each side, below),
+-- above the name, and moved up (default 3 3 2 0).
 ns.devCommands.platefit = function(arg)
     local x, y, top, dy = arg:match("^(%-?%d+)%s+(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
     if x then Plates.FIT = { x = tonumber(x), y = tonumber(y), top = tonumber(top), dy = tonumber(dy) or 0 } end
     Plates.Refresh()
-    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the bar for the name, moved up %d.",
+    ns.Print(string.format("(dev) Nameplate brackets: %d out each side, %d below, %d above the name, moved up %d.",
         Plates.FIT.x, Plates.FIT.y, Plates.FIT.top, Plates.FIT.dy))
 end
 --@end-do-not-package@
