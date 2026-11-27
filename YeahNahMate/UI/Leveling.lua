@@ -846,7 +846,7 @@ local BuildKeys, RefreshKeys = GuideView("keys", function()
     return rows, string.format(L.GUIDE_KEYS_TITLE, have, total), L.GUIDE_KEYS_HINT
 end)
 local BuildMounts, RefreshMounts = GuideView("mounts", function()
-    return ns.LevelExtras.Mounts(Level()), L.GUIDE_MOUNTS_TITLE, L.GUIDE_MOUNTS_HINT
+    return ns.LevelExtras.Mounts(Level()), L.GUIDE_MOUNTS_TITLE, ns.LevelExtras.MountsHint()
 end)
 
 -- The row of views, left to right. To add one: a build(panel, page), an optional refresh(page), a line here.

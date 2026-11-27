@@ -213,6 +213,31 @@ check(app.place == nil and app.zone == 1426, "no exact spot: opens the zone inst
 race = "Pandaren"
 check(Mount(E.Mounts(40), L.GUIDE_MOUNT_APPRENTICE).detail == L.GUIDE_MOUNT_NO_RACE, "a race we don't list doesn't error")
 race = "Tauren"
+
+-- Home city reputation: Honored or better takes 10% off; the first mount comes free with Apprentice.
+local standing = {}
+GetFactionInfoByID = function(id) return id == 81 and "Thunder Bluff" or "?", "", standing[id] or 4 end
+app = Mount(E.Mounts(40), L.GUIDE_MOUNT_APPRENTICE)
+check(app.detail:find("100g from", 1, true) and not app.detail:find("off", 1, true), "Neutral: full price")
+check(app.detail:find("first mount comes free", 1, true), "Apprentice says the first mount is free")
+check(E.MountsHint() == string.format(L.GUIDE_MOUNTS_HINT_NEED, FACTION_STANDING_LABEL4 or "4", "Thunder Bluff"), "the note says to reach Honored")
+standing[81] = 6
+m = E.Mounts(60)
+check(Mount(m, L.GUIDE_MOUNT_APPRENTICE).detail:find("90g " .. L.GUIDE_MOUNT_OFF, 1, true), "Honored: 90g")
+check(Mount(m, L.GUIDE_MOUNT_JOURNEYMAN).detail:find("900g", 1, true), "Honored: Journeyman 900g")
+check(Mount(m, L.GUIDE_MOUNT_EPIC).detail:find("180g", 1, true), "Honored: epic 180g")
+check(Mount(m, string.format(L.GUIDE_MOUNT_VENDOR, "Harb Clawhoof")).detail:find("first mount is free", 1, true), "vendor: first one free")
+check(E.MountsHint():find("Thunder Bluff", 1, true) and E.MountsHint():find("prices above", 1, true), "the note says the prices include it")
+standing[81] = 8
+check(E.Discount("Tauren") == 0.9, "Exalted: still 10%")
+known[33388] = true
+check(not Mount(E.Mounts(60), string.format(L.GUIDE_MOUNT_VENDOR, "Harb Clawhoof")).detail:find("free", 1, true), "after Apprentice: no free mount line")
+known[33388] = nil
+race = "Skyborne"
+check(E.Discount("Skyborne") == 1 and E.MountsHint() == L.GUIDE_MOUNTS_HINT_NONE, "Skyborne: no home city, no discount")
+race = "Tauren"
+GetFactionInfoByID = nil
+check(E.Discount("Tauren") == 1 and E.MountsHint() == L.GUIDE_MOUNTS_HINT, "no reputation API: full price, general note")
 p.viewButtons.mounts:Click()
 Tick(1)
 check(g.mounts.title:GetText() == L.GUIDE_MOUNTS_TITLE and g.mounts.list.rows[1]:IsShown(), "the Mounts page draws")

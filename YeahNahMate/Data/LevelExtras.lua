@@ -185,6 +185,50 @@ E.NPC_NAMES = {
     [265756] = "Genn Fairweather",
 }
 
+-- Home city reputation for the trainer and vendor discount: Honored or better = 10% off (seen in game: 90g
+-- for Apprentice Riding). Skyborne have no home city reputation in Forever's files, so no discount shown.
+E.HOME = { Human = 72, Dwarf = 47, Gnome = 54, NightElf = 69, Orc = 76, Scourge = 68, Tauren = 81, Troll = 530 }
+local HONORED = 6
+
+-- My standing (1 Hated .. 8 Exalted) and the faction's name, or nil if the game doesn't say.
+local function Standing(id)
+    if C_Reputation and C_Reputation.GetFactionDataByID then
+        local ok, d = pcall(C_Reputation.GetFactionDataByID, id)
+        if ok and type(d) == "table" and d.reaction then return d.reaction, d.name end
+    end
+    if GetFactionInfoByID then
+        local ok, name, _, standing = pcall(GetFactionInfoByID, id)
+        if ok and standing then return standing, name end
+    end
+end
+
+-- For my race: the price multiplier (0.9 or 1), my standing, and the home faction's name.
+function E.Discount(race)
+    local id = E.HOME[race]
+    if not id then return 1 end
+    local standing, name = Standing(id)
+    return (standing and standing >= HONORED) and 0.9 or 1, standing, name
+end
+
+-- "90g (10% off)" or "100g".
+local function Price(gold, mult)
+    local s = BreakUpLargeNumbers and BreakUpLargeNumbers(math.floor(gold * mult + 0.5)) or tostring(math.floor(gold * mult + 0.5))
+    if mult < 1 then return s .. "g " .. ns.L.GUIDE_MOUNT_OFF end
+    return s .. "g"
+end
+
+-- The note under the Mounts list: my standing and what it saves.
+function E.MountsHint()
+    local L = ns.L
+    local _, race = UnitRace("player")
+    local mult, standing, name = E.Discount(race)
+    if not E.HOME[race] then return L.GUIDE_MOUNTS_HINT_NONE end
+    if not standing or not name then return L.GUIDE_MOUNTS_HINT end
+    local word = _G["FACTION_STANDING_LABEL" .. standing] or tostring(standing)
+    if mult < 1 then return string.format(L.GUIDE_MOUNTS_HINT_HAVE, word, name) end
+    return string.format(L.GUIDE_MOUNTS_HINT_NEED, word, name)
+end
+
 local function Knows(id)
     local known = (C_SpellBook and C_SpellBook.IsSpellKnown) or IsSpellKnown
     if not known then return false end
@@ -233,11 +277,12 @@ function E.Mounts(level)
     local apprentice = journeyman or KnowsAny(APPRENTICE)
     local trainer = r and E.NPC_NAMES[r.trainer]
     local mount = ClassMount(class, race)
+    local mult = E.Discount(race)
     local aState, aText = WhenReady(apprentice, 40)
     Add({ name = L.GUIDE_MOUNT_APPRENTICE, state = aState, stateText = aText, zone = r and r.map,
           place = not apprentice and r and Npc(r.trainer) or nil,
           detail = mount and L.GUIDE_MOUNT_APPRENTICE_CLASS
-              or (r and string.format(L.GUIDE_MOUNT_APPRENTICE_TEXT, trainer, r.where) or L.GUIDE_MOUNT_NO_RACE),
+              or (r and string.format(L.GUIDE_MOUNT_APPRENTICE_TEXT, Price(100, mult), trainer, r.where) or L.GUIDE_MOUNT_NO_RACE),
           tip = { L.GUIDE_MOUNT_APPRENTICE_TIP, L.GUIDE_MOUNT_DISCOUNT } })
     if mount then
         local done = AnyDone(mount.quests)
@@ -247,15 +292,16 @@ function E.Mounts(level)
     end
     if r then
         Add({ name = string.format(L.GUIDE_MOUNT_VENDOR, E.NPC_NAMES[r.vendor]), zone = r.map, place = Npc(r.vendor),
-              detail = string.format(L.GUIDE_MOUNT_VENDOR_TEXT, r.where), tip = { L.GUIDE_MOUNT_VENDOR_TIP, L.GUIDE_MOUNT_DISCOUNT } })
+              detail = string.format(apprentice and L.GUIDE_MOUNT_VENDOR_TEXT or L.GUIDE_MOUNT_VENDOR_FREE, r.where, Price(20, mult)), tip = { L.GUIDE_MOUNT_VENDOR_TIP, L.GUIDE_MOUNT_DISCOUNT } })
     end
     local jState, jText = WhenReady(journeyman, 60)
     Add({ name = L.GUIDE_MOUNT_JOURNEYMAN, state = jState, stateText = jText, zone = r and r.map,
           place = not journeyman and r and Npc(r.trainer) or nil,
-          detail = r and string.format(L.GUIDE_MOUNT_JOURNEYMAN_TEXT, trainer) or L.GUIDE_MOUNT_NO_RACE,
+          detail = r and string.format(L.GUIDE_MOUNT_JOURNEYMAN_TEXT, Price(1000, mult), trainer) or L.GUIDE_MOUNT_NO_RACE,
           tip = { L.GUIDE_MOUNT_JOURNEYMAN_TIP, L.GUIDE_MOUNT_DISCOUNT } })
     Add({ name = L.GUIDE_MOUNT_EPIC, zone = r and r.map, place = r and Npc(r.vendor) or nil,
           stateText = level < 60 and string.format(L.GUIDE_FROM_LEVEL, 60) or nil,
-          detail = mount and L.GUIDE_MOUNT_EPIC_CLASS or L.GUIDE_MOUNT_EPIC_TEXT, tip = { L.GUIDE_MOUNT_EPIC_TEXT } })
+          detail = string.format(mount and L.GUIDE_MOUNT_EPIC_CLASS or L.GUIDE_MOUNT_EPIC_TEXT, Price(200, mult)),
+          tip = { string.format(L.GUIDE_MOUNT_EPIC_TEXT, Price(200, mult)) } })
     return out
 end
