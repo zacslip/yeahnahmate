@@ -292,7 +292,8 @@ function E.Mounts(level)
     end
     if r then
         Add({ name = string.format(L.GUIDE_MOUNT_VENDOR, E.NPC_NAMES[r.vendor]), zone = r.map, place = Npc(r.vendor),
-              detail = string.format(apprentice and L.GUIDE_MOUNT_VENDOR_TEXT or L.GUIDE_MOUNT_VENDOR_FREE, r.where, Price(20, mult)), tip = { L.GUIDE_MOUNT_VENDOR_TIP, L.GUIDE_MOUNT_DISCOUNT } })
+              detail = string.format(apprentice and L.GUIDE_MOUNT_VENDOR_TEXT or L.GUIDE_MOUNT_VENDOR_FREE, r.where, Price(20, mult)),
+              tip = { L.GUIDE_MOUNT_VENDOR_TIP, L.GUIDE_MOUNT_DISCOUNT } })
     end
     local jState, jText = WhenReady(journeyman, 60)
     Add({ name = L.GUIDE_MOUNT_JOURNEYMAN, state = jState, stateText = jText, zone = r and r.map,
