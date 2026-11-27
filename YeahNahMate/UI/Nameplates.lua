@@ -127,10 +127,10 @@ local function Place(f, plate)
     -- its health bar, which is the size it's drawn.
     local pl = Usable(plate.unitFrame) and plate.unitFrame ~= uf and plate.unitFrame.healthBar or nil
     if Usable(pl) and pl.IsShown and pl:IsShown() then
-        local fit = Plates.FIT_PLATER
+        local pf = Plates.FIT_PLATER
         local ok = pcall(function()
-            f:SetPoint("TOPLEFT", pl, "TOPLEFT", -fit.x, fit.top + fit.dy)
-            f:SetPoint("BOTTOMRIGHT", pl, "BOTTOMRIGHT", fit.x, -fit.y + fit.dy)
+            f:SetPoint("TOPLEFT", pl, "TOPLEFT", -pf.x, pf.top + pf.dy)
+            f:SetPoint("BOTTOMRIGHT", pl, "BOTTOMRIGHT", pf.x, -pf.y + pf.dy)
         end)
         if ok then f.round = "plater" return end
         f:ClearAllPoints()
@@ -230,8 +230,8 @@ end
 -- kind, shown, and what each is anchored to. No sizes or positions: Forever refuses to measure
 -- nameplates ("Can't measure restricted regions"), which is why the brackets can't fit by measuring.
 ns.devCommands.plateprobe = function()
-    local unit, plate
-    for u in pairs(markers) do unit = u; plate = C_NamePlate.GetNamePlateForUnit(u); break end
+    local unit = next(markers)
+    local plate = unit and C_NamePlate.GetNamePlateForUnit(unit)
     if not plate then ns.Print("(dev) Plate probe: no bracketed nameplate on screen (friendly nameplates on? Shift+V).") return end
     local function Desc(r)
         local ok, kind = pcall(r.GetObjectType, r)
