@@ -241,22 +241,27 @@ local function PreviewPlates(box)
         name:SetText(L.PF_PREVIEW_NAME)
         kinds.modern = { frame = f, around = bg }
     end
-    -- Classic: the old gold border (128 x 16, level box on the right) over a 10 high bar; the name
-    -- centred above.
+    -- Classic: the old gold border (level box on the right) over the bar; the name centred above.
+    -- The art is only the top-left 138 x 17 pixels of the lower half of a 256 x 32 file, so only that
+    -- part is drawn, pixel for pixel (the whole file squeezed to 128 wide left the bar sticking out).
     do
         local f = Holder()
         local border = f:CreateTexture(nil, "ARTWORK", nil, 1)
         border:SetTexture("Interface\\Tooltips\\Nameplate-Border")
-        border:SetTexCoord(0, 1, 0.5, 1)
-        border:SetSize(128, 16)
+        border:SetTexCoord(0, 138 / 256, 15 / 32, 1)
+        border:SetSize(138, 17)
         border:SetPoint("CENTER", 0, -14)
+        -- The bar fills the border's opening (5 to 106 across), its ends under the gold edges.
         local bar = f:CreateTexture(nil, "ARTWORK", nil, 0)
         bar:SetTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
         bar:SetVertexColor(GREEN[1], GREEN[2], GREEN[3])
-        bar:SetPoint("TOPLEFT", border, "CENTER", -64 + 3.5, 5.5)
-        bar:SetPoint("BOTTOMRIGHT", border, "CENTER", 64 - 20.75, -4.5)
+        bar:SetPoint("TOPLEFT", border, "TOPLEFT", 4, -3)
+        bar:SetPoint("BOTTOMRIGHT", border, "BOTTOMLEFT", 106, 3)
         local name = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        name:SetPoint("BOTTOM", border, "CENTER", 0, 9)
+        name:SetPoint("BOTTOM", border, "TOP", 0, 3)
+        local level = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        level:SetPoint("CENTER", border, "TOPLEFT", 121, -8.5)
+        level:SetText(tostring(UnitLevel and UnitLevel("player") or 60))
         name:SetText(L.PF_PREVIEW_NAME)
         kinds.classic = { frame = f, around = border }
     end
