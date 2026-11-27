@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.28.1
+
+- Guildies' nameplate brackets now fit the bar on every nameplate size. Before, on bigger nameplates they sat inside the bar and looked like a small square.
+- Plater users get their own fit for the brackets, round Plater's health bar.
+- Leveling guide, Mounts: prices take off the 10% discount when you're Honored or better with your home city, and a note says your standing. The first mount comes free with Apprentice Riding.
+
 ## 0.28.0
 
 - Clans tab: a new **My Clan / All clans** switch at the left of the bar. My Clan shows your clan's list next to the new Clan roll panel.
